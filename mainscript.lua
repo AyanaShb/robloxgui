@@ -1,5 +1,5 @@
 -- ========================================================
--- DEAR IMGUI PREMIUM GRADIENT UI (V3 - ULTIMATE FIX)
+-- DEAR IMGUI PREMIUM GRADIENT UI (V4 - ADVANCED LOGIC FIX)
 -- "D3D MENU AMIN GANTENG"
 -- ========================================================
 
@@ -16,7 +16,7 @@ local Camera = Workspace.CurrentCamera
 
 -- Container Setup
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "ImGui_Gradient_Hub_V3"
+ScreenGui.Name = "ImGui_Gradient_Hub_V4"
 ScreenGui.ResetOnSpawn = false
 
 if syn and syn.protect_gui then
@@ -97,16 +97,16 @@ local DefaultLighting = {
 }
 
 local Settings = {
-    WalkSpeed = 16, MultiJump = false, JumpPower = 50,
+    WalkSpeed = 16, MultiJump = false, MultiJumpPower = 60,
     Chams = false, ChamsColor = Color3.fromRGB(255, 0, 80), 
     Noclip = false, AntiCrash = false, AntiKick = false, 
-    NightMode = false, DaylightMode = false, 
+    NightMode = false, DaylightMode = false, AntiHit = false,
     SilentAim = false, Wallbang = false, ShowFOV = false, 
     FOVRadius = 150, SpeedFire = false, LineTarget = false, 
-    TargetPart = "Head"
+    TargetPart = "Head" -- Default: Head
 }
 
--- FOV Circle Visual
+-- FOV & Target Line Drawings
 local FOVCircle = Drawing.new("Circle")
 FOVCircle.Thickness = 1.5
 FOVCircle.Color = Color3.fromRGB(0, 235, 255)
@@ -114,10 +114,9 @@ FOVCircle.Filled = false
 FOVCircle.Transparency = 1
 FOVCircle.Visible = false
 
--- Line Target Visual
 local TargetLine = Drawing.new("Line")
-TargetLine.Thickness = 1.5
-TargetLine.Color = Color3.fromRGB(255, 0, 100)
+TargetLine.Thickness = 2
+TargetLine.Color = Color3.fromRGB(255, 30, 80)
 TargetLine.Transparency = 1
 TargetLine.Visible = false
 
@@ -161,7 +160,7 @@ BtnStroke.Parent = ToggleBtn
 -- ==========================================
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
-MainFrame.Size = UDim2.new(0, 350, 0, 470)
+MainFrame.Size = UDim2.new(0, 350, 0, 480)
 MainFrame.Position = UDim2.new(0.3, 0, 0.15, 0)
 MainFrame.BackgroundColor3 = Color3.fromRGB(18, 18, 26)
 MainFrame.BorderSizePixel = 0
@@ -218,7 +217,7 @@ local SubText = Instance.new("TextLabel")
 SubText.Size = UDim2.new(1, -10, 1, 0)
 SubText.Position = UDim2.new(0, 8, 0, 0)
 SubText.BackgroundTransparency = 1
-SubText.Text = "Dear ImGui v3.0 (Fixed MultiJump & Wallbang)"
+SubText.Text = "Dear ImGui v4.0 (AntiHit & Locked Line Fix)"
 SubText.Font = Enum.Font.Code
 SubText.TextSize = 11
 SubText.TextColor3 = Color3.fromRGB(150, 160, 180)
@@ -322,7 +321,7 @@ for i, name in ipairs(tabs) do
 end
 
 -- ==========================================
--- UI HELPERS (TOGGLE & SLIDER & COLOR SELECTOR)
+-- HELPER COMPONENTS
 -- ==========================================
 local function CreateFeatureHeader(parent, titleText, isSupported)
     local Frame = Instance.new("Frame")
@@ -490,7 +489,39 @@ local function CreateSlider(parent, text, min, max, default, isSupported, callba
     end)
 end
 
--- Table Draw Color Picker Widget
+-- Selector Dropdown Widget (Head / Body Selector)
+local function CreateSelector(parent, text, options, defaultIndex, callback)
+    CreateFeatureHeader(parent, text, true)
+    
+    local Frame = Instance.new("Frame")
+    Frame.Size = UDim2.new(1, 0, 0, 26)
+    Frame.BackgroundColor3 = Color3.fromRGB(22, 22, 32)
+    Frame.BorderSizePixel = 0
+    Frame.Parent = parent
+
+    local Corner = Instance.new("UICorner")
+    Corner.CornerRadius = UDim.new(0, 4)
+    Corner.Parent = Frame
+
+    local Btn = Instance.new("TextButton")
+    Btn.Size = UDim2.new(1, 0, 1, 0)
+    Btn.BackgroundTransparency = 1
+    Btn.Text = text .. ": " .. options[defaultIndex]
+    Btn.Font = Enum.Font.Code
+    Btn.TextSize = 12
+    Btn.TextColor3 = Color3.fromRGB(0, 235, 255)
+    Btn.Parent = Frame
+
+    local currIndex = defaultIndex
+    Btn.MouseButton1Click:Connect(function()
+        currIndex = currIndex + 1
+        if currIndex > #options then currIndex = 1 end
+        Btn.Text = text .. ": " .. options[currIndex]
+        ShowToast("Target Part: " .. options[currIndex], true)
+        callback(options[currIndex])
+    end)
+end
+
 local function CreateColorTable(parent, text, callback)
     CreateFeatureHeader(parent, text, true)
     
@@ -538,24 +569,29 @@ local function CreateColorTable(parent, text, callback)
 end
 
 -- ==========================================
--- LOGIC IMPLEMENTATIONS & FIXES
+-- LOGIC IMPLEMENTATIONS & REVISED FIXES
 -- ==========================================
 
--- 1. PLAYER TAB LOGIC
+-- 1. PLAYER TAB
 CreateSlider(PlayerPage, "Speed Hack", 16, 150, 16, true, function(val) Settings.WalkSpeed = val end)
 CreateToggle(PlayerPage, "Multi Jump", true, function(state) Settings.MultiJump = state end)
 
--- FIXED: Multi Jump dengan Instant Velocity (100% Work)
+-- FIXED MULTI JUMP (Tap-to-Fly Infinite Stacking)
 UserInputService.JumpRequest:Connect(function()
     if Settings.MultiJump then
         local char = LocalPlayer.Character
-        if char and char:FindFirstChild("HumanoidRootPart") and char:FindFirstChildOfClass("Humanoid") then
-            char.HumanoidRootPart.Velocity = Vector3.new(char.HumanoidRootPart.Velocity.X, Settings.JumpPower, char.HumanoidRootPart.Velocity.Z)
+        if char then
+            local hrp = char:FindFirstChild("HumanoidRootPart")
+            local hum = char:FindFirstChildOfClass("Humanoid")
+            if hrp and hum then
+                hum:ChangeState(Enum.HumanoidStateType.Jumping)
+                hrp.AssemblyLinearVelocity = Vector3.new(hrp.AssemblyLinearVelocity.X, Settings.MultiJumpPower, hrp.AssemblyLinearVelocity.Z)
+            end
         end
     end
 end)
 
--- FIXED: PEKAT SOLID CHAMS WITH AUTOMATIC UPDATE (NO BUG/MISSING USERS)
+-- SOLID CHAMS
 local function ApplyChams(plr)
     if plr == LocalPlayer then return end
     local function UpdateHighlight(char)
@@ -568,7 +604,7 @@ local function ApplyChams(plr)
                 hl.Parent = char
             end
             hl.FillColor = Settings.ChamsColor
-            hl.FillTransparency = 0 -- Pekat Solid!
+            hl.FillTransparency = 0
             hl.OutlineColor = Color3.fromRGB(255, 255, 255)
             hl.OutlineTransparency = 0
             hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
@@ -627,9 +663,35 @@ RunService.Stepped:Connect(function()
     end
 end)
 
--- 2. MISC TAB LOGIC
+-- 2. MISC TAB
 CreateToggle(MiscPage, "Anti Crash", true, function(state) Settings.AntiCrash = state end)
 CreateToggle(MiscPage, "Anti Kick", true, function(state) Settings.AntiKick = state end)
+
+-- NEW FEATURE: ANTI HIT (Immunity Protection)
+CreateToggle(MiscPage, "Anti Hit (Immunity)", true, function(state)
+    Settings.AntiHit = state
+    local char = LocalPlayer.Character
+    if char then
+        if state then
+            local ff = Instance.new("ForceField")
+            ff.Name = "ImGui_AntiHit"
+            ff.Visible = false
+            ff.Parent = char
+        else
+            if char:FindFirstChild("ImGui_AntiHit") then char.ImGui_AntiHit:Destroy() end
+        end
+    end
+end)
+
+LocalPlayer.CharacterAdded:Connect(function(char)
+    if Settings.AntiHit then
+        task.wait(0.5)
+        local ff = Instance.new("ForceField")
+        ff.Name = "ImGui_AntiHit"
+        ff.Visible = false
+        ff.Parent = char
+    end
+end)
 
 CreateToggle(MiscPage, "Night Mode", true, function(state)
     Settings.NightMode = state
@@ -659,55 +721,73 @@ CreateToggle(MiscPage, "Daylight Mode", true, function(state)
     end
 end)
 
--- 3. GUN TAB LOGIC (FULLY FIXED & NEW WALLBANG FEATURE)
-CreateToggle(GunPage, "Silent Aim (Auto Headshot)", true, function(state) Settings.SilentAim = state end)
-CreateToggle(GunPage, "Wallbang (Peluru Tembus Tembok)", true, function(state) Settings.Wallbang = state end)
+-- 3. GUN TAB (WITH REVISED TARGET SELECTOR & LOCKED SINGLE LINE)
+CreateToggle(GunPage, "Silent Aim", true, function(state) Settings.SilentAim = state end)
+CreateSelector(GunPage, "Target Part", {"Head", "Body"}, 1, function(selected) 
+    Settings.TargetPart = selected == "Body" and "UpperTorso" or "Head"
+end)
+CreateToggle(GunPage, "Wallbang (Tembus Tembok)", true, function(state) Settings.Wallbang = state end)
 CreateToggle(GunPage, "Show FOV Circle", true, function(state) Settings.ShowFOV = state end)
 CreateSlider(GunPage, "FOV Size", 50, 400, 150, true, function(val) Settings.FOVRadius = val end)
-CreateToggle(GunPage, "Line Target (ESP Line)", true, function(state) Settings.LineTarget = state end)
+CreateToggle(GunPage, "Line Target (Single Lock)", true, function(state) Settings.LineTarget = state end)
 CreateToggle(GunPage, "Speed Fire (Rapid Shot)", true, function(state) Settings.SpeedFire = state end)
 
--- Helper Target Finder
+-- TARGET FINDER FUNCTION (SINGLE BEST TARGET LOCK)
 local function GetClosestTarget()
-    local closest = nil
+    local closestPart = nil
     local maxDist = Settings.FOVRadius
     local screenCenter = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
 
     for _, plr in pairs(Players:GetPlayers()) do
-        if plr ~= LocalPlayer and plr.Character and plr.Character:FindFirstChild("Head") and plr.Character:FindFirstChildOfClass("Humanoid") then
+        if plr ~= LocalPlayer and plr.Character and plr.Character:FindFirstChildOfClass("Humanoid") then
             if plr.Character.Humanoid.Health > 0 then
-                local head = plr.Character.Head
-                local pos, onScreen = Camera:WorldToViewportPoint(head.Position)
-                if onScreen then
-                    local dist = (Vector2.new(pos.X, pos.Y) - screenCenter).Magnitude
-                    if dist < maxDist then
-                        maxDist = dist
-                        closest = head
+                local partName = Settings.TargetPart
+                local targetPart = plr.Character:FindFirstChild(partName) or plr.Character:FindFirstChild("HumanoidRootPart") or plr.Character:FindFirstChild("Head")
+                
+                if targetPart then
+                    local pos, onScreen = Camera:WorldToViewportPoint(targetPart.Position)
+                    if onScreen then
+                        local dist = (Vector2.new(pos.X, pos.Y) - screenCenter).Magnitude
+                        if dist < maxDist then
+                            maxDist = dist
+                            closestPart = targetPart
+                        end
                     end
                 end
             end
         end
     end
-    return closest
+    return closestPart
 end
 
--- WALLBANG & SILENT AIM LOGIC OVERRIDE
+-- UNIVERSAL SILENT AIM & WALLBANG HOOK
 local oldNamecall
 oldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
     local method = getnamecallmethod()
     local args = {...}
 
-    if Settings.SilentAim and (method == "FindPartOnRayWithIgnoreList" or method == "Raycast" or method == "FindPartOnRay") then
-        local targetHead = GetClosestTarget()
-        if targetHead then
+    if Settings.SilentAim and (method == "FindPartOnRayWithIgnoreList" or method == "Raycast" or method == "FindPartOnRay" or method == "ScreenPointToRay") then
+        local targetPart = GetClosestTarget()
+        if targetPart then
             if method == "Raycast" then
-                args[2] = (targetHead.Position - args[1]).Unit * 1000
+                args[2] = (targetPart.Position - args[1]).Unit * 2000
                 if Settings.Wallbang then
-                    -- Mengabaikan filter kolisi dinding (Wallbang)
-                    local rayParams = args[3] or RaycastParams.new()
+                    local rayParams = RaycastParams.new()
                     rayParams.FilterType = Enum.RaycastFilterType.Include
-                    rayParams.FilterDescendantsInstances = {targetHead.Parent}
+                    rayParams.FilterDescendantsInstances = {targetPart.Parent}
                     args[3] = rayParams
+                end
+                return oldNamecall(self, unpack(args))
+            elseif method == "FindPartOnRayWithIgnoreList" or method == "FindPartOnRay" then
+                local origin = args[1].Origin
+                args[1] = Ray.new(origin, (targetPart.Position - origin).Unit * 2000)
+                if Settings.Wallbang and args[2] then
+                    table.clear(args[2])
+                    for _, v in pairs(Workspace:GetChildren()) do
+                        if v ~= targetPart.Parent and v ~= LocalPlayer.Character then
+                            table.insert(args[2], v)
+                        end
+                    end
                 end
                 return oldNamecall(self, unpack(args))
             end
@@ -716,14 +796,14 @@ oldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
     return oldNamecall(self, ...)
 end)
 
--- RUNTIME LOOPS (RENDER STEPPED)
+-- RUNTIME LOOPS
 RunService.RenderStepped:Connect(function()
-    -- Speed Hack Loop
+    -- Speed Hack
     if Settings.WalkSpeed ~= 16 and LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
         LocalPlayer.Character:FindFirstChildOfClass("Humanoid").WalkSpeed = Settings.WalkSpeed
     end
 
-    -- FOV Circle Loop
+    -- FOV Circle
     local center = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
     if Settings.ShowFOV then
         FOVCircle.Position = center
@@ -733,10 +813,10 @@ RunService.RenderStepped:Connect(function()
         FOVCircle.Visible = false
     end
 
-    -- Target Line & Silent Aim Visual Loop
-    local target = GetClosestTarget()
-    if target and Settings.LineTarget then
-        local pos, onScreen = Camera:WorldToViewportPoint(target.Position)
+    -- Single Target Lock Line (Line Target Fix)
+    local lockedTarget = GetClosestTarget()
+    if lockedTarget and Settings.LineTarget then
+        local pos, onScreen = Camera:WorldToViewportPoint(lockedTarget.Position)
         if onScreen then
             TargetLine.From = center
             TargetLine.To = Vector2.new(pos.X, pos.Y)
@@ -748,7 +828,7 @@ RunService.RenderStepped:Connect(function()
         TargetLine.Visible = false
     end
 
-    -- Speed Fire Loop (Rapid Tool Activated)
+    -- Rapid Speed Fire
     if Settings.SpeedFire and LocalPlayer.Character then
         local tool = LocalPlayer.Character:FindFirstChildOfClass("Tool")
         if tool and UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton1) then
