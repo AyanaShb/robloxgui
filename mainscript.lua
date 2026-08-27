@@ -1,5 +1,5 @@
 -- ========================================================
--- DEAR IMGUI PREMIUM GRADIENT UI (V4.3 - FULL AIR JUMP FIX)
+-- DEAR IMGUI PREMIUM GRADIENT UI (V4.5 - FULL WALLBANG & NOCLIP FIX)
 -- "D3D MENU AMIN GANTENG"
 -- ========================================================
 
@@ -14,10 +14,10 @@ local TweenService = game:GetService("TweenService")
 local LocalPlayer = Players.LocalPlayer
 local Camera = Workspace.CurrentCamera
 
--- Clean up instance lama jika script di-run ulang
+-- Clean up instance lama
 if _G.ImGuiV4_ScreenGui then _G.ImGuiV4_ScreenGui:Destroy() end
-if _G.ImGuiV4_FOV then _G.ImGuiV4_FOV:Remove() end
-if _G.ImGuiV4_Line then _G.ImGuiV4_Line:Remove() end
+if _G.ImGuiV4_FOV then pcall(function() _G.ImGuiV4_FOV:Remove() end) end
+if _G.ImGuiV4_Line then pcall(function() _G.ImGuiV4_Line:Remove() end) end
 
 -- Container Setup
 local ScreenGui = Instance.new("ScreenGui")
@@ -129,7 +129,7 @@ TargetLine.Visible = false
 _G.ImGuiV4_Line = TargetLine
 
 -- ==========================================
--- FLOATING TOGGLE ICON (MINI SIZE 26x26)
+-- FLOATING TOGGLE ICON
 -- ==========================================
 local ToggleBtn = Instance.new("TextButton")
 ToggleBtn.Name = "ImGui_ToggleIcon"
@@ -223,7 +223,7 @@ local SubText = Instance.new("TextLabel")
 SubText.Size = UDim2.new(1, -10, 1, 0)
 SubText.Position = UDim2.new(0, 8, 0, 0)
 SubText.BackgroundTransparency = 1
-SubText.Text = "Dear ImGui v4.3 (Full Air Jump Fix)"
+SubText.Text = "Dear ImGui v4.5 (Full Wallbang Fix)"
 SubText.Font = Enum.Font.Code
 SubText.TextSize = 11
 SubText.TextColor3 = Color3.fromRGB(150, 160, 180)
@@ -581,40 +581,23 @@ end
 CreateSlider(PlayerPage, "Speed Hack", 16, 150, 16, true, function(val) Settings.WalkSpeed = val end)
 CreateToggle(PlayerPage, "Multi Jump", true, function(state) Settings.MultiJump = state end)
 
--- UPDATED MULTI JUMP LOGIC
+-- MULTI JUMP (CLEAN - JUMP BUTTON ONLY)
 local function DoExtraJump()
     if not Settings.MultiJump then return end
     local char = LocalPlayer.Character
     if not char then return end
     local hum = char:FindFirstChildOfClass("Humanoid")
     local hrp = char:FindFirstChild("HumanoidRootPart")
+    
     if hum and hrp and hum:GetState() ~= Enum.HumanoidStateType.Dead then
         hum:ChangeState(Enum.HumanoidStateType.Jumping)
         hrp.AssemblyLinearVelocity = Vector3.new(hrp.AssemblyLinearVelocity.X, Settings.MultiJumpPower, hrp.AssemblyLinearVelocity.Z)
     end
 end
 
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
-    if input.KeyCode == Enum.KeyCode.Space or input.UserInputType == Enum.UserInputType.Touch then
-        local char = LocalPlayer.Character
-        if char then
-            local hum = char:FindFirstChildOfClass("Humanoid")
-            if hum and (hum:GetState() == Enum.HumanoidStateType.Freefall or hum:GetState() == Enum.HumanoidStateType.Jumping) then
-                DoExtraJump()
-            end
-        end
-    end
-end)
-
 UserInputService.JumpRequest:Connect(function()
     if Settings.MultiJump then
-        local char = LocalPlayer.Character
-        if char then
-            local hum = char:FindFirstChildOfClass("Humanoid")
-            if hum and hum:GetState() == Enum.HumanoidStateType.Freefall then
-                DoExtraJump()
-            end
-        end
+        DoExtraJump()
     end
 end)
 
@@ -680,12 +663,15 @@ CreateColorTable(PlayerPage, "Chams Color Selector", function(col)
     end
 end)
 
-CreateToggle(PlayerPage, "Wall Hack (Noclip Ground-Safe)", true, function(state) Settings.Noclip = state end)
+-- WALL HACK (NORMAL NOCLIP MURNI)
+CreateToggle(PlayerPage, "Wall Hack (Noclip Normal)", true, function(state) Settings.Noclip = state end)
 
 RunService.Stepped:Connect(function()
     if Settings.Noclip and LocalPlayer.Character then
-        for _, v in pairs(LocalPlayer.Character:GetChildren()) do
-            if v:IsA("BasePart") then v.CanCollide = false end
+        for _, part in pairs(LocalPlayer.Character:GetDescendants()) do
+            if part:IsA("BasePart") then
+                part.CanCollide = false
+            end
         end
     end
 end)
@@ -694,23 +680,30 @@ end)
 CreateToggle(MiscPage, "Anti Crash", true, function(state) Settings.AntiCrash = state end)
 CreateToggle(MiscPage, "Anti Kick", true, function(state) Settings.AntiKick = state end)
 
+-- ANTI HIT (IMMUNITY ENHANCED)
+local function ApplyAntiHit(char)
+    if not char then return end
+    for _, part in pairs(char:GetDescendants()) do
+        if part:IsA("BasePart") then
+            part.CanTouch = not Settings.AntiHit
+        elseif part:IsA("TouchTransmitter") and Settings.AntiHit then
+            part:Destroy()
+        end
+    end
+end
+
 CreateToggle(MiscPage, "Anti Hit (Immunity)", true, function(state)
     Settings.AntiHit = state
-    local char = LocalPlayer.Character
-    if char then
-        for _, v in pairs(char:GetChildren()) do
-            if v:IsA("BasePart") then
-                v.CanTouch = not state
-            end
-        end
+    if LocalPlayer.Character then
+        ApplyAntiHit(LocalPlayer.Character)
     end
 end)
 
 RunService.Stepped:Connect(function()
     if Settings.AntiHit and LocalPlayer.Character then
-        for _, v in pairs(LocalPlayer.Character:GetChildren()) do
-            if v:IsA("BasePart") and v.CanTouch then
-                v.CanTouch = false
+        for _, part in pairs(LocalPlayer.Character:GetDescendants()) do
+            if part:IsA("BasePart") and part.CanTouch then
+                part.CanTouch = false
             end
         end
     end
@@ -783,51 +776,81 @@ local function GetClosestTarget()
     return closestPart
 end
 
--- UNIVERSAL SILENT AIM & WALLBANG HOOK
-local oldNamecall
-oldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
-    local method = getnamecallmethod()
-    local args = {...}
-
-    if Settings.SilentAim and (method == "FindPartOnRayWithIgnoreList" or method == "Raycast" or method == "FindPartOnRay" or method == "ScreenPointToRay") then
-        local targetPart = GetClosestTarget()
-        if targetPart then
-            if method == "Raycast" then
-                args[2] = (targetPart.Position - args[1]).Unit * 2000
-                if Settings.Wallbang then
-                    local rayParams = args[3] or RaycastParams.new()
-                    rayParams.FilterType = Enum.RaycastFilterType.Include
-                    rayParams.FilterDescendantsInstances = {targetPart.Parent}
-                    args[3] = rayParams
-                end
-                return oldNamecall(self, unpack(args))
-            elseif method == "FindPartOnRayWithIgnoreList" or method == "FindPartOnRay" then
-                local origin = args[1].Origin
-                args[1] = Ray.new(origin, (targetPart.Position - origin).Unit * 2000)
-                if Settings.Wallbang then
-                    local ignoreList = {}
-                    for _, v in pairs(Workspace:GetChildren()) do
-                        if v ~= targetPart.Parent and v ~= LocalPlayer.Character then
-                            table.insert(ignoreList, v)
-                        end
-                    end
-                    args[2] = ignoreList
-                end
-                return oldNamecall(self, unpack(args))
+-- DYNAMIC IGNORE LIST UNTUK WALLBANG
+local function GetIgnoreList()
+    local ignore = {LocalPlayer.Character, Camera}
+    if Settings.Wallbang then
+        for _, obj in pairs(Workspace:GetChildren()) do
+            if obj ~= Workspace.CurrentCamera and not Players:GetPlayerFromCharacter(obj) then
+                table.insert(ignore, obj)
             end
         end
     end
-    return oldNamecall(self, ...)
-end)
+    return ignore
+end
 
-Workspace.ChildAdded:Connect(function(child)
-    if Settings.Wallbang then
-        task.wait()
-        if child:IsA("BasePart") and not child:IsDescendantOf(LocalPlayer.Character) then
-            child.CanCollide = false
+-- ADVANCED SILENT AIM & WALLBANG HOOKS
+if hookmetamethod then
+    -- 1. Namecall Hook (Raycasts & Target Checks)
+    local oldNamecall
+    oldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
+        local method = getnamecallmethod()
+        local args = {...}
+
+        if Settings.SilentAim then
+            local targetPart = GetClosestTarget()
+            if targetPart then
+                if method == "Raycast" then
+                    local origin = args[1]
+                    args[2] = (targetPart.Position - origin).Unit * 10000
+                    
+                    if Settings.Wallbang then
+                        local rayParams = args[3] or RaycastParams.new()
+                        rayParams.FilterType = Enum.RaycastFilterType.Exclude
+                        rayParams.FilterDescendantsInstances = GetIgnoreList()
+                        args[3] = rayParams
+                    end
+                    return oldNamecall(self, unpack(args))
+
+                elseif method == "FindPartOnRayWithIgnoreList" or method == "FindPartOnRayWithWhitelist" or method == "FindPartOnRay" then
+                    local origin = args[1].Origin
+                    args[1] = Ray.new(origin, (targetPart.Position - origin).Unit * 10000)
+                    
+                    if Settings.Wallbang then
+                        args[2] = GetIgnoreList()
+                    end
+                    return oldNamecall(self, unpack(args))
+
+                elseif method == "ScreenPointToRay" or method == "ViewportPointToRay" then
+                    local pos = Camera:WorldToScreenPoint(targetPart.Position)
+                    args[1] = pos.X
+                    args[2] = pos.Y
+                    return oldNamecall(self, unpack(args))
+                end
+            end
         end
-    end
-end)
+
+        return oldNamecall(self, unpack(args))
+    end)
+
+    -- 2. Index Hook (Mouse.Hit / Mouse.Target Override)
+    local oldIndex
+    oldIndex = hookmetamethod(game, "__index", function(self, key)
+        if Settings.SilentAim and not checkcaller() then
+            if self:IsA("Mouse") and (key == "Hit" or key == "Target") then
+                local targetPart = GetClosestTarget()
+                if targetPart then
+                    if key == "Hit" then
+                        return targetPart.CFrame
+                    elseif key == "Target" then
+                        return targetPart
+                    end
+                end
+            end
+        end
+        return oldIndex(self, key)
+    end)
+end
 
 -- RUNTIME LOOPS
 RunService.RenderStepped:Connect(function()
