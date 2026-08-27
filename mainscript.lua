@@ -1,5 +1,5 @@
 -- ========================================================
--- DEAR IMGUI PREMIUM GRADIENT UI (V4 - ADVANCED LOGIC FIX)
+-- DEAR IMGUI PREMIUM GRADIENT UI (V4.1 - MULTI-FIX EDITION)
 -- "D3D MENU AMIN GANTENG"
 -- ========================================================
 
@@ -14,10 +14,16 @@ local TweenService = game:GetService("TweenService")
 local LocalPlayer = Players.LocalPlayer
 local Camera = Workspace.CurrentCamera
 
+-- Pembersihan objek lama jika script di-run ulang (Anti-Overlap)
+if _G.ImGuiV4_ScreenGui then _G.ImGuiV4_ScreenGui:Destroy() end
+if _G.ImGuiV4_FOV then _G.ImGuiV4_FOV:Remove() end
+if _G.ImGuiV4_Line then _G.ImGuiV4_Line:Remove() end
+
 -- Container Setup
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "ImGui_Gradient_Hub_V4"
 ScreenGui.ResetOnSpawn = false
+_G.ImGuiV4_ScreenGui = ScreenGui
 
 if syn and syn.protect_gui then
     syn.protect_gui(ScreenGui)
@@ -97,13 +103,13 @@ local DefaultLighting = {
 }
 
 local Settings = {
-    WalkSpeed = 16, MultiJump = false, MultiJumpPower = 60,
+    WalkSpeed = 16, MultiJump = false, MultiJumpPower = 50,
     Chams = false, ChamsColor = Color3.fromRGB(255, 0, 80), 
     Noclip = false, AntiCrash = false, AntiKick = false, 
     NightMode = false, DaylightMode = false, AntiHit = false,
     SilentAim = false, Wallbang = false, ShowFOV = false, 
     FOVRadius = 150, SpeedFire = false, LineTarget = false, 
-    TargetPart = "Head" -- Default: Head
+    TargetPart = "Head"
 }
 
 -- FOV & Target Line Drawings
@@ -113,12 +119,14 @@ FOVCircle.Color = Color3.fromRGB(0, 235, 255)
 FOVCircle.Filled = false
 FOVCircle.Transparency = 1
 FOVCircle.Visible = false
+_G.ImGuiV4_FOV = FOVCircle
 
 local TargetLine = Drawing.new("Line")
 TargetLine.Thickness = 2
 TargetLine.Color = Color3.fromRGB(255, 30, 80)
 TargetLine.Transparency = 1
 TargetLine.Visible = false
+_G.ImGuiV4_Line = TargetLine
 
 -- ==========================================
 -- FLOATING TOGGLE ICON
@@ -177,7 +185,6 @@ MainStroke.Thickness = 1.5
 MainStroke.Color = Color3.fromRGB(140, 60, 255)
 MainStroke.Parent = MainFrame
 
--- SUPER HEADER
 local SuperHeader = Instance.new("Frame")
 SuperHeader.Size = UDim2.new(1, 0, 0, 32)
 SuperHeader.BackgroundColor3 = Color3.fromRGB(30, 20, 50)
@@ -205,7 +212,6 @@ SuperText.TextSize = 16
 SuperText.TextColor3 = Color3.fromRGB(255, 255, 255)
 SuperText.Parent = SuperHeader
 
--- SUB-BAR
 local SubBar = Instance.new("Frame")
 SubBar.Size = UDim2.new(1, 0, 0, 20)
 SubBar.Position = UDim2.new(0, 0, 0, 32)
@@ -217,7 +223,7 @@ local SubText = Instance.new("TextLabel")
 SubText.Size = UDim2.new(1, -10, 1, 0)
 SubText.Position = UDim2.new(0, 8, 0, 0)
 SubText.BackgroundTransparency = 1
-SubText.Text = "Dear ImGui v4.0 (AntiHit & Locked Line Fix)"
+SubText.Text = "Dear ImGui v4.1 (Universal Fix Edition)"
 SubText.Font = Enum.Font.Code
 SubText.TextSize = 11
 SubText.TextColor3 = Color3.fromRGB(150, 160, 180)
@@ -489,7 +495,6 @@ local function CreateSlider(parent, text, min, max, default, isSupported, callba
     end)
 end
 
--- Selector Dropdown Widget (Head / Body Selector)
 local function CreateSelector(parent, text, options, defaultIndex, callback)
     CreateFeatureHeader(parent, text, true)
     
@@ -569,21 +574,22 @@ local function CreateColorTable(parent, text, callback)
 end
 
 -- ==========================================
--- LOGIC IMPLEMENTATIONS & REVISED FIXES
+-- LOGIC IMPLEMENTATIONS (PERBAIKAN LENGKAP)
 -- ==========================================
 
 -- 1. PLAYER TAB
 CreateSlider(PlayerPage, "Speed Hack", 16, 150, 16, true, function(val) Settings.WalkSpeed = val end)
 CreateToggle(PlayerPage, "Multi Jump", true, function(state) Settings.MultiJump = state end)
 
--- FIXED MULTI JUMP (Tap-to-Fly Infinite Stacking)
-UserInputService.JumpRequest:Connect(function()
-    if Settings.MultiJump then
+-- FIXED MULTI JUMP (Universal Spacebar Detector)
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    if Settings.MultiJump and (input.KeyCode == Enum.KeyCode.Space or input.UserInputType == Enum.UserInputType.Touch) then
         local char = LocalPlayer.Character
         if char then
-            local hrp = char:FindFirstChild("HumanoidRootPart")
             local hum = char:FindFirstChildOfClass("Humanoid")
-            if hrp and hum then
+            local hrp = char:FindFirstChild("HumanoidRootPart")
+            if hum and hrp then
                 hum:ChangeState(Enum.HumanoidStateType.Jumping)
                 hrp.AssemblyLinearVelocity = Vector3.new(hrp.AssemblyLinearVelocity.X, Settings.MultiJumpPower, hrp.AssemblyLinearVelocity.Z)
             end
@@ -657,7 +663,7 @@ CreateToggle(PlayerPage, "Wall Hack (Noclip Ground-Safe)", true, function(state)
 
 RunService.Stepped:Connect(function()
     if Settings.Noclip and LocalPlayer.Character then
-        for _, v in pairs(LocalPlayer.Character:GetDescendants()) do
+        for _, v in pairs(LocalPlayer.Character:GetChildren()) do
             if v:IsA("BasePart") then v.CanCollide = false end
         end
     end
@@ -667,29 +673,26 @@ end)
 CreateToggle(MiscPage, "Anti Crash", true, function(state) Settings.AntiCrash = state end)
 CreateToggle(MiscPage, "Anti Kick", true, function(state) Settings.AntiKick = state end)
 
--- NEW FEATURE: ANTI HIT (Immunity Protection)
+-- FIXED ANTI HIT (Hitbox Bypass / CanTouch Disabler for Chameleon & Paintball Maps)
 CreateToggle(MiscPage, "Anti Hit (Immunity)", true, function(state)
     Settings.AntiHit = state
     local char = LocalPlayer.Character
     if char then
-        if state then
-            local ff = Instance.new("ForceField")
-            ff.Name = "ImGui_AntiHit"
-            ff.Visible = false
-            ff.Parent = char
-        else
-            if char:FindFirstChild("ImGui_AntiHit") then char.ImGui_AntiHit:Destroy() end
+        for _, v in pairs(char:GetChildren()) do
+            if v:IsA("BasePart") then
+                v.CanTouch = not state -- Mencegah registrasi peluru cat / projectile touch event
+            end
         end
     end
 end)
 
-LocalPlayer.CharacterAdded:Connect(function(char)
-    if Settings.AntiHit then
-        task.wait(0.5)
-        local ff = Instance.new("ForceField")
-        ff.Name = "ImGui_AntiHit"
-        ff.Visible = false
-        ff.Parent = char
+RunService.Stepped:Connect(function()
+    if Settings.AntiHit and LocalPlayer.Character then
+        for _, v in pairs(LocalPlayer.Character:GetChildren()) do
+            if v:IsA("BasePart") and v.CanTouch then
+                v.CanTouch = false
+            end
+        end
     end
 end)
 
@@ -721,7 +724,7 @@ CreateToggle(MiscPage, "Daylight Mode", true, function(state)
     end
 end)
 
--- 3. GUN TAB (WITH REVISED TARGET SELECTOR & LOCKED SINGLE LINE)
+-- 3. GUN TAB
 CreateToggle(GunPage, "Silent Aim", true, function(state) Settings.SilentAim = state end)
 CreateSelector(GunPage, "Target Part", {"Head", "Body"}, 1, function(selected) 
     Settings.TargetPart = selected == "Body" and "UpperTorso" or "Head"
@@ -732,7 +735,7 @@ CreateSlider(GunPage, "FOV Size", 50, 400, 150, true, function(val) Settings.FOV
 CreateToggle(GunPage, "Line Target (Single Lock)", true, function(state) Settings.LineTarget = state end)
 CreateToggle(GunPage, "Speed Fire (Rapid Shot)", true, function(state) Settings.SpeedFire = state end)
 
--- TARGET FINDER FUNCTION (SINGLE BEST TARGET LOCK)
+-- TARGET FINDER
 local function GetClosestTarget()
     local closestPart = nil
     local maxDist = Settings.FOVRadius
@@ -760,7 +763,7 @@ local function GetClosestTarget()
     return closestPart
 end
 
--- UNIVERSAL SILENT AIM & WALLBANG HOOK
+-- FIXED UNIVERSAL SILENT AIM & ADVANCED WALLBANG HOOK
 local oldNamecall
 oldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
     local method = getnamecallmethod()
@@ -770,30 +773,48 @@ oldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
         local targetPart = GetClosestTarget()
         if targetPart then
             if method == "Raycast" then
+                -- Ubah arah raycast agar mengunci target
                 args[2] = (targetPart.Position - args[1]).Unit * 2000
+                
+                -- WALLBANG FIX: Hapus filter tembok/lingkungan dari RaycastParams
                 if Settings.Wallbang then
-                    local rayParams = RaycastParams.new()
+                    local rayParams = args[3] or RaycastParams.new()
                     rayParams.FilterType = Enum.RaycastFilterType.Include
                     rayParams.FilterDescendantsInstances = {targetPart.Parent}
                     args[3] = rayParams
                 end
                 return oldNamecall(self, unpack(args))
+                
             elseif method == "FindPartOnRayWithIgnoreList" or method == "FindPartOnRay" then
                 local origin = args[1].Origin
                 args[1] = Ray.new(origin, (targetPart.Position - origin).Unit * 2000)
-                if Settings.Wallbang and args[2] then
-                    table.clear(args[2])
+                
+                -- WALLBANG FIX: Mengabaikan semua objek kecuali karakter target
+                if Settings.Wallbang then
+                    local ignoreList = {}
                     for _, v in pairs(Workspace:GetChildren()) do
                         if v ~= targetPart.Parent and v ~= LocalPlayer.Character then
-                            table.insert(args[2], v)
+                            table.insert(ignoreList, v)
                         end
                     end
+                    args[2] = ignoreList
                 end
                 return oldNamecall(self, unpack(args))
             end
         end
     end
     return oldNamecall(self, ...)
+end)
+
+-- WALLBANG PELURU FISIK / PAINTBALL BULLETS (Bypass Collision Part Peluru)
+Workspace.ChildAdded:Connect(function(child)
+    if Settings.Wallbang then
+        task.wait()
+        if child:IsA("BasePart") and not child:IsDescendantOf(LocalPlayer.Character) then
+            -- Mencegah peluru hancur saat menyentuh tembok
+            child.CanCollide = false
+        end
+    end
 end)
 
 -- RUNTIME LOOPS
@@ -813,7 +834,7 @@ RunService.RenderStepped:Connect(function()
         FOVCircle.Visible = false
     end
 
-    -- Single Target Lock Line (Line Target Fix)
+    -- Target Line
     local lockedTarget = GetClosestTarget()
     if lockedTarget and Settings.LineTarget then
         local pos, onScreen = Camera:WorldToViewportPoint(lockedTarget.Position)
@@ -828,7 +849,7 @@ RunService.RenderStepped:Connect(function()
         TargetLine.Visible = false
     end
 
-    -- Rapid Speed Fire
+    -- Speed Fire
     if Settings.SpeedFire and LocalPlayer.Character then
         local tool = LocalPlayer.Character:FindFirstChildOfClass("Tool")
         if tool and UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton1) then
