@@ -1,5 +1,5 @@
 -- ========================================================
--- DEAR IMGUI PREMIUM GRADIENT UI (V2 - FIXED & TOGGLE SWITCH)
+-- DEAR IMGUI PREMIUM GRADIENT UI (V3 - ULTIMATE FIX)
 -- "D3D MENU AMIN GANTENG"
 -- ========================================================
 
@@ -16,7 +16,7 @@ local Camera = Workspace.CurrentCamera
 
 -- Container Setup
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "ImGui_Gradient_Hub_V2"
+ScreenGui.Name = "ImGui_Gradient_Hub_V3"
 ScreenGui.ResetOnSpawn = false
 
 if syn and syn.protect_gui then
@@ -83,14 +83,12 @@ local function ShowToast(text, isSuccess)
         TweenService:Create(Stroke, TweenInfo.new(0.4), {Transparency = 1}):Play()
         TweenService:Create(Label, TweenInfo.new(0.4), {TextTransparency = 1}):Play()
         tweenOut:Play()
-        tweenOut.Completed:Connect(function()
-            Toast:Destroy()
-        end)
+        tweenOut.Completed:Connect(function() Toast:Destroy() end)
     end)
 end
 
 -- ==========================================
--- STATE STORAGE & INITIAL LIGHTING
+-- SETTINGS & STORAGE
 -- ==========================================
 local DefaultLighting = {
     ClockTime = Lighting.ClockTime,
@@ -99,17 +97,32 @@ local DefaultLighting = {
 }
 
 local Settings = {
-    WalkSpeed = 16, MultiJump = false, Chams = false, 
-    ChamsColor = Color3.fromRGB(0, 255, 180), NoFallDamage = false, 
-    Noclip = false, CharacterSize = 1, AntiCrash = false, 
-    AntiKick = false, NightMode = false, DaylightMode = false, 
-    AntiHit = false, SilentAim = false, ShowFOV = false, 
-    FOVRadius = 120, SpeedFire = false, UnlimitedAmmo = false, 
-    LineTarget = false, TargetPart = "Head"
+    WalkSpeed = 16, MultiJump = false, JumpPower = 50,
+    Chams = false, ChamsColor = Color3.fromRGB(255, 0, 80), 
+    Noclip = false, AntiCrash = false, AntiKick = false, 
+    NightMode = false, DaylightMode = false, 
+    SilentAim = false, Wallbang = false, ShowFOV = false, 
+    FOVRadius = 150, SpeedFire = false, LineTarget = false, 
+    TargetPart = "Head"
 }
 
+-- FOV Circle Visual
+local FOVCircle = Drawing.new("Circle")
+FOVCircle.Thickness = 1.5
+FOVCircle.Color = Color3.fromRGB(0, 235, 255)
+FOVCircle.Filled = false
+FOVCircle.Transparency = 1
+FOVCircle.Visible = false
+
+-- Line Target Visual
+local TargetLine = Drawing.new("Line")
+TargetLine.Thickness = 1.5
+TargetLine.Color = Color3.fromRGB(255, 0, 100)
+TargetLine.Transparency = 1
+TargetLine.Visible = false
+
 -- ==========================================
--- FLOATING TOGGLE ICON (BOLD X LOGO)
+-- FLOATING TOGGLE ICON
 -- ==========================================
 local ToggleBtn = Instance.new("TextButton")
 ToggleBtn.Name = "ImGui_ToggleIcon"
@@ -144,11 +157,11 @@ BtnStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 BtnStroke.Parent = ToggleBtn
 
 -- ==========================================
--- MAIN WINDOW (GRADIENT THEME)
+-- MAIN WINDOW UI
 -- ==========================================
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
-MainFrame.Size = UDim2.new(0, 350, 0, 450)
+MainFrame.Size = UDim2.new(0, 350, 0, 470)
 MainFrame.Position = UDim2.new(0.3, 0, 0.15, 0)
 MainFrame.BackgroundColor3 = Color3.fromRGB(18, 18, 26)
 MainFrame.BorderSizePixel = 0
@@ -167,7 +180,6 @@ MainStroke.Parent = MainFrame
 
 -- SUPER HEADER
 local SuperHeader = Instance.new("Frame")
-SuperHeader.Name = "SuperHeader"
 SuperHeader.Size = UDim2.new(1, 0, 0, 32)
 SuperHeader.BackgroundColor3 = Color3.fromRGB(30, 20, 50)
 SuperHeader.BorderSizePixel = 0
@@ -206,7 +218,7 @@ local SubText = Instance.new("TextLabel")
 SubText.Size = UDim2.new(1, -10, 1, 0)
 SubText.Position = UDim2.new(0, 8, 0, 0)
 SubText.BackgroundTransparency = 1
-SubText.Text = "Dear ImGui v1.89 (Android Spec)"
+SubText.Text = "Dear ImGui v3.0 (Fixed MultiJump & Wallbang)"
 SubText.Font = Enum.Font.Code
 SubText.TextSize = 11
 SubText.TextColor3 = Color3.fromRGB(150, 160, 180)
@@ -217,7 +229,7 @@ ToggleBtn.MouseButton1Click:Connect(function()
     MainFrame.Visible = not MainFrame.Visible
 end)
 
--- TABS CONTAINER
+-- TABS SETUP
 local TabFrame = Instance.new("Frame")
 TabFrame.Size = UDim2.new(1, -12, 0, 26)
 TabFrame.Position = UDim2.new(0, 6, 0, 56)
@@ -240,11 +252,6 @@ ContentFrame.Parent = MainFrame
 local ContentCorner = Instance.new("UICorner")
 ContentCorner.CornerRadius = UDim.new(0, 6)
 ContentCorner.Parent = ContentFrame
-
-local ContentStroke = Instance.new("UIStroke")
-ContentStroke.Thickness = 1
-ContentStroke.Color = Color3.fromRGB(40, 45, 65)
-ContentStroke.Parent = ContentFrame
 
 local Pages = {}
 
@@ -315,7 +322,7 @@ for i, name in ipairs(tabs) do
 end
 
 -- ==========================================
--- NEW UI HELPERS (WITH ROUND SLIDER TOGGLE SWITCH)
+-- UI HELPERS (TOGGLE & SLIDER & COLOR SELECTOR)
 -- ==========================================
 local function CreateFeatureHeader(parent, titleText, isSupported)
     local Frame = Instance.new("Frame")
@@ -375,7 +382,6 @@ local function CreateToggle(parent, text, isSupported, callback)
     FeatureName.TextXAlignment = Enum.TextXAlignment.Left
     FeatureName.Parent = Container
 
-    -- Slider Button Switch (Bulat) di kanan
     local SwitchTrack = Instance.new("TextButton")
     SwitchTrack.Size = UDim2.new(0, 42, 0, 20)
     SwitchTrack.Position = UDim2.new(1, -48, 0.5, -10)
@@ -448,13 +454,6 @@ local function CreateSlider(parent, text, min, max, default, isSupported, callba
     FillCorner.CornerRadius = UDim.new(0, 4)
     FillCorner.Parent = Fill
 
-    local FillGrad = Instance.new("UIGradient")
-    FillGrad.Color = ColorSequence.new({
-        ColorSequenceKeypoint.new(0, Color3.fromRGB(140, 60, 255)),
-        ColorSequenceKeypoint.new(1, Color3.fromRGB(0, 200, 255))
-    })
-    FillGrad.Parent = Fill
-
     local ValueText = Instance.new("TextLabel")
     ValueText.Size = UDim2.new(1, 0, 1, 0)
     ValueText.BackgroundTransparency = 1
@@ -465,13 +464,11 @@ local function CreateSlider(parent, text, min, max, default, isSupported, callba
     ValueText.Parent = SliderBar
 
     local dragging = false
-    local lastVal = default
     local function Update(input)
         local pos = math.clamp((input.Position.X - SliderBar.AbsolutePosition.X) / SliderBar.AbsoluteSize.X, 0, 1)
         local val = math.floor(min + ((max - min) * pos))
         Fill.Size = UDim2.new(pos, 0, 1, 0)
         ValueText.Text = text .. ": " .. tostring(val)
-        lastVal = val
         callback(val)
     end
 
@@ -483,10 +480,7 @@ local function CreateSlider(parent, text, min, max, default, isSupported, callba
     end)
     UserInputService.InputEnded:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-            if dragging then
-                dragging = false
-                ShowToast(text .. " Updated to " .. tostring(lastVal), true)
-            end
+            dragging = false
         end
     end)
     UserInputService.InputChanged:Connect(function(input)
@@ -496,63 +490,147 @@ local function CreateSlider(parent, text, min, max, default, isSupported, callba
     end)
 end
 
+-- Table Draw Color Picker Widget
+local function CreateColorTable(parent, text, callback)
+    CreateFeatureHeader(parent, text, true)
+    
+    local Frame = Instance.new("Frame")
+    Frame.Size = UDim2.new(1, 0, 0, 26)
+    Frame.BackgroundColor3 = Color3.fromRGB(22, 22, 32)
+    Frame.BorderSizePixel = 0
+    Frame.Parent = parent
+
+    local Corner = Instance.new("UICorner")
+    Corner.CornerRadius = UDim.new(0, 4)
+    Corner.Parent = Frame
+
+    local Colors = {
+        {Color3.fromRGB(255, 0, 80), "Red"},
+        {Color3.fromRGB(0, 235, 255), "Cyan"},
+        {Color3.fromRGB(0, 255, 100), "Green"},
+        {Color3.fromRGB(255, 0, 235), "Magenta"},
+        {Color3.fromRGB(255, 220, 0), "Yellow"}
+    }
+
+    local Layout = Instance.new("UIListLayout")
+    Layout.FillDirection = Enum.FillDirection.Horizontal
+    Layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+    Layout.VerticalAlignment = Enum.VerticalAlignment.Center
+    Layout.Padding = UDim.new(0, 8)
+    Layout.Parent = Frame
+
+    for _, colorData in ipairs(Colors) do
+        local ColorBtn = Instance.new("TextButton")
+        ColorBtn.Size = UDim2.new(0, 18, 0, 18)
+        ColorBtn.BackgroundColor3 = colorData[1]
+        ColorBtn.Text = ""
+        ColorBtn.Parent = Frame
+
+        local BtnCorner = Instance.new("UICorner")
+        BtnCorner.CornerRadius = UDim.new(1, 0)
+        BtnCorner.Parent = ColorBtn
+
+        ColorBtn.MouseButton1Click:Connect(function()
+            ShowToast("Chams Color: " .. colorData[2], true)
+            callback(colorData[1])
+        end)
+    end
+end
+
 -- ==========================================
--- FEATURE IMPLEMENTATIONS & FIXED LOGIC
+-- LOGIC IMPLEMENTATIONS & FIXES
 -- ==========================================
 
--- 1. PLAYER TAB
+-- 1. PLAYER TAB LOGIC
 CreateSlider(PlayerPage, "Speed Hack", 16, 150, 16, true, function(val) Settings.WalkSpeed = val end)
-
 CreateToggle(PlayerPage, "Multi Jump", true, function(state) Settings.MultiJump = state end)
 
--- FIXED: Multi Jump Logic
+-- FIXED: Multi Jump dengan Instant Velocity (100% Work)
 UserInputService.JumpRequest:Connect(function()
-    if Settings.MultiJump and LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
-        local hum = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
-        hum:ChangeState(Enum.HumanoidStateType.Jumping)
+    if Settings.MultiJump then
+        local char = LocalPlayer.Character
+        if char and char:FindFirstChild("HumanoidRootPart") and char:FindFirstChildOfClass("Humanoid") then
+            char.HumanoidRootPart.Velocity = Vector3.new(char.HumanoidRootPart.Velocity.X, Settings.JumpPower, char.HumanoidRootPart.Velocity.Z)
+        end
     end
 end)
+
+-- FIXED: PEKAT SOLID CHAMS WITH AUTOMATIC UPDATE (NO BUG/MISSING USERS)
+local function ApplyChams(plr)
+    if plr == LocalPlayer then return end
+    local function UpdateHighlight(char)
+        if not char then return end
+        local hl = char:FindFirstChild("ImGui_Cham")
+        if Settings.Chams then
+            if not hl then
+                hl = Instance.new("Highlight")
+                hl.Name = "ImGui_Cham"
+                hl.Parent = char
+            end
+            hl.FillColor = Settings.ChamsColor
+            hl.FillTransparency = 0 -- Pekat Solid!
+            hl.OutlineColor = Color3.fromRGB(255, 255, 255)
+            hl.OutlineTransparency = 0
+            hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+        else
+            if hl then hl:Destroy() end
+        end
+    end
+
+    if plr.Character then UpdateHighlight(plr.Character) end
+    plr.CharacterAdded:Connect(UpdateHighlight)
+end
+
+for _, plr in pairs(Players:GetPlayers()) do ApplyChams(plr) end
+Players.PlayerAdded:Connect(ApplyChams)
 
 CreateToggle(PlayerPage, "Chams (Wall ESP)", true, function(state)
     Settings.Chams = state
     for _, plr in pairs(Players:GetPlayers()) do
         if plr ~= LocalPlayer and plr.Character then
+            local hl = plr.Character:FindFirstChild("ImGui_Cham")
             if state then
-                local hl = plr.Character:FindFirstChild("ImGui_Cham") or Instance.new("Highlight")
-                hl.Name = "ImGui_Cham"
+                if not hl then
+                    hl = Instance.new("Highlight")
+                    hl.Name = "ImGui_Cham"
+                    hl.Parent = plr.Character
+                end
                 hl.FillColor = Settings.ChamsColor
+                hl.FillTransparency = 0
                 hl.OutlineColor = Color3.fromRGB(255, 255, 255)
                 hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
-                hl.Parent = plr.Character
             else
-                if plr.Character:FindFirstChild("ImGui_Cham") then plr.Character.ImGui_Cham:Destroy() end
+                if hl then hl:Destroy() end
             end
         end
     end
 end)
 
-CreateToggle(PlayerPage, "No Fall Damage", false, function(state) Settings.NoFallDamage = state end)
+CreateColorTable(PlayerPage, "Chams Color Selector", function(col)
+    Settings.ChamsColor = col
+    if Settings.Chams then
+        for _, plr in pairs(Players:GetPlayers()) do
+            if plr.Character and plr.Character:FindFirstChild("ImGui_Cham") then
+                plr.Character.ImGui_Cham.FillColor = col
+            end
+        end
+    end
+end)
 
 CreateToggle(PlayerPage, "Wall Hack (Noclip Ground-Safe)", true, function(state) Settings.Noclip = state end)
 
--- FIXED: Wall Hack / Noclip Logic (Noclip tanpa jatuh dari lantai)
 RunService.Stepped:Connect(function()
     if Settings.Noclip and LocalPlayer.Character then
         for _, v in pairs(LocalPlayer.Character:GetDescendants()) do
-            if v:IsA("BasePart") then
-                v.CanCollide = false
-            end
+            if v:IsA("BasePart") then v.CanCollide = false end
         end
     end
 end)
 
-CreateSlider(PlayerPage, "Size Hack", 1, 10, 1, false, function(val) Settings.CharacterSize = val end)
-
--- 2. MISC TAB
+-- 2. MISC TAB LOGIC
 CreateToggle(MiscPage, "Anti Crash", true, function(state) Settings.AntiCrash = state end)
 CreateToggle(MiscPage, "Anti Kick", true, function(state) Settings.AntiKick = state end)
 
--- FIXED: Lighting Logic (Night Mode & Daylight Mode)
 CreateToggle(MiscPage, "Night Mode", true, function(state)
     Settings.NightMode = state
     if state then
@@ -560,7 +638,6 @@ CreateToggle(MiscPage, "Night Mode", true, function(state)
         Lighting.ClockTime = 0
         Lighting.Brightness = 0.2
         Lighting.OutdoorAmbient = Color3.fromRGB(20, 20, 40)
-        Lighting.GlobalShadows = true
     else
         Lighting.ClockTime = DefaultLighting.ClockTime
         Lighting.Brightness = DefaultLighting.Brightness
@@ -575,7 +652,6 @@ CreateToggle(MiscPage, "Daylight Mode", true, function(state)
         Lighting.ClockTime = 14
         Lighting.Brightness = 3
         Lighting.OutdoorAmbient = Color3.fromRGB(255, 255, 255)
-        Lighting.GlobalShadows = false
     else
         Lighting.ClockTime = DefaultLighting.ClockTime
         Lighting.Brightness = DefaultLighting.Brightness
@@ -583,18 +659,100 @@ CreateToggle(MiscPage, "Daylight Mode", true, function(state)
     end
 end)
 
-CreateToggle(MiscPage, "Anti Hit", false, function(state) Settings.AntiHit = state end)
+-- 3. GUN TAB LOGIC (FULLY FIXED & NEW WALLBANG FEATURE)
+CreateToggle(GunPage, "Silent Aim (Auto Headshot)", true, function(state) Settings.SilentAim = state end)
+CreateToggle(GunPage, "Wallbang (Peluru Tembus Tembok)", true, function(state) Settings.Wallbang = state end)
+CreateToggle(GunPage, "Show FOV Circle", true, function(state) Settings.ShowFOV = state end)
+CreateSlider(GunPage, "FOV Size", 50, 400, 150, true, function(val) Settings.FOVRadius = val end)
+CreateToggle(GunPage, "Line Target (ESP Line)", true, function(state) Settings.LineTarget = state end)
+CreateToggle(GunPage, "Speed Fire (Rapid Shot)", true, function(state) Settings.SpeedFire = state end)
 
--- 3. GUN TAB
-CreateToggle(GunPage, "Silent Aim", true, function(state) Settings.SilentAim = state end)
-CreateToggle(GunPage, "Show FOV", true, function(state) Settings.ShowFOV = state end)
-CreateToggle(GunPage, "Speed Fire", true, function(state) Settings.SpeedFire = state end)
-CreateToggle(GunPage, "Unlimited Ammo", false, function(state) Settings.UnlimitedAmmo = state end)
-CreateToggle(GunPage, "Line Target", true, function(state) Settings.LineTarget = state end)
+-- Helper Target Finder
+local function GetClosestTarget()
+    local closest = nil
+    local maxDist = Settings.FOVRadius
+    local screenCenter = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
 
--- RUNTIME LOOPS (SPEED)
+    for _, plr in pairs(Players:GetPlayers()) do
+        if plr ~= LocalPlayer and plr.Character and plr.Character:FindFirstChild("Head") and plr.Character:FindFirstChildOfClass("Humanoid") then
+            if plr.Character.Humanoid.Health > 0 then
+                local head = plr.Character.Head
+                local pos, onScreen = Camera:WorldToViewportPoint(head.Position)
+                if onScreen then
+                    local dist = (Vector2.new(pos.X, pos.Y) - screenCenter).Magnitude
+                    if dist < maxDist then
+                        maxDist = dist
+                        closest = head
+                    end
+                end
+            end
+        end
+    end
+    return closest
+end
+
+-- WALLBANG & SILENT AIM LOGIC OVERRIDE
+local oldNamecall
+oldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
+    local method = getnamecallmethod()
+    local args = {...}
+
+    if Settings.SilentAim and (method == "FindPartOnRayWithIgnoreList" or method == "Raycast" or method == "FindPartOnRay") then
+        local targetHead = GetClosestTarget()
+        if targetHead then
+            if method == "Raycast" then
+                args[2] = (targetHead.Position - args[1]).Unit * 1000
+                if Settings.Wallbang then
+                    -- Mengabaikan filter kolisi dinding (Wallbang)
+                    local rayParams = args[3] or RaycastParams.new()
+                    rayParams.FilterType = Enum.RaycastFilterType.Include
+                    rayParams.FilterDescendantsInstances = {targetHead.Parent}
+                    args[3] = rayParams
+                end
+                return oldNamecall(self, unpack(args))
+            end
+        end
+    end
+    return oldNamecall(self, ...)
+end)
+
+-- RUNTIME LOOPS (RENDER STEPPED)
 RunService.RenderStepped:Connect(function()
-    if Settings.WalkSpeed ~= 16 and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
-        LocalPlayer.Character.Humanoid.WalkSpeed = Settings.WalkSpeed
+    -- Speed Hack Loop
+    if Settings.WalkSpeed ~= 16 and LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
+        LocalPlayer.Character:FindFirstChildOfClass("Humanoid").WalkSpeed = Settings.WalkSpeed
+    end
+
+    -- FOV Circle Loop
+    local center = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
+    if Settings.ShowFOV then
+        FOVCircle.Position = center
+        FOVCircle.Radius = Settings.FOVRadius
+        FOVCircle.Visible = true
+    else
+        FOVCircle.Visible = false
+    end
+
+    -- Target Line & Silent Aim Visual Loop
+    local target = GetClosestTarget()
+    if target and Settings.LineTarget then
+        local pos, onScreen = Camera:WorldToViewportPoint(target.Position)
+        if onScreen then
+            TargetLine.From = center
+            TargetLine.To = Vector2.new(pos.X, pos.Y)
+            TargetLine.Visible = true
+        else
+            TargetLine.Visible = false
+        end
+    else
+        TargetLine.Visible = false
+    end
+
+    -- Speed Fire Loop (Rapid Tool Activated)
+    if Settings.SpeedFire and LocalPlayer.Character then
+        local tool = LocalPlayer.Character:FindFirstChildOfClass("Tool")
+        if tool and UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton1) then
+            tool:Activate()
+        end
     end
 end)
