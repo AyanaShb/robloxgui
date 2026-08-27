@@ -1,5 +1,5 @@
 -- ========================================================
--- DEAR IMGUI PREMIUM GRADIENT UI (V4.2 - ICON & JUMP FIX)
+-- DEAR IMGUI PREMIUM GRADIENT UI (V4.3 - FULL AIR JUMP FIX)
 -- "D3D MENU AMIN GANTENG"
 -- ========================================================
 
@@ -129,11 +129,11 @@ TargetLine.Visible = false
 _G.ImGuiV4_Line = TargetLine
 
 -- ==========================================
--- FLOATING TOGGLE ICON (MINI SIZE)
+-- FLOATING TOGGLE ICON (MINI SIZE 26x26)
 -- ==========================================
 local ToggleBtn = Instance.new("TextButton")
 ToggleBtn.Name = "ImGui_ToggleIcon"
-ToggleBtn.Size = UDim2.new(0, 26, 0, 26) -- Ukuran diperkecil ke 26x26 (separuh dari 50x50)
+ToggleBtn.Size = UDim2.new(0, 26, 0, 26)
 ToggleBtn.Position = UDim2.new(0.05, 0, 0.2, 0)
 ToggleBtn.BackgroundColor3 = Color3.fromRGB(25, 20, 40)
 ToggleBtn.BorderSizePixel = 0
@@ -223,7 +223,7 @@ local SubText = Instance.new("TextLabel")
 SubText.Size = UDim2.new(1, -10, 1, 0)
 SubText.Position = UDim2.new(0, 8, 0, 0)
 SubText.BackgroundTransparency = 1
-SubText.Text = "Dear ImGui v4.2 (Mini Icon & Jump Fix)"
+SubText.Text = "Dear ImGui v4.3 (Full Air Jump Fix)"
 SubText.Font = Enum.Font.Code
 SubText.TextSize = 11
 SubText.TextColor3 = Color3.fromRGB(150, 160, 180)
@@ -581,16 +581,38 @@ end
 CreateSlider(PlayerPage, "Speed Hack", 16, 150, 16, true, function(val) Settings.WalkSpeed = val end)
 CreateToggle(PlayerPage, "Multi Jump", true, function(state) Settings.MultiJump = state end)
 
--- FIXED MULTI JUMP (Hanya aktif saat menekan Tombol Lompat / Spacebar)
+-- UPDATED MULTI JUMP LOGIC
+local function DoExtraJump()
+    if not Settings.MultiJump then return end
+    local char = LocalPlayer.Character
+    if not char then return end
+    local hum = char:FindFirstChildOfClass("Humanoid")
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    if hum and hrp and hum:GetState() ~= Enum.HumanoidStateType.Dead then
+        hum:ChangeState(Enum.HumanoidStateType.Jumping)
+        hrp.AssemblyLinearVelocity = Vector3.new(hrp.AssemblyLinearVelocity.X, Settings.MultiJumpPower, hrp.AssemblyLinearVelocity.Z)
+    end
+end
+
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if input.KeyCode == Enum.KeyCode.Space or input.UserInputType == Enum.UserInputType.Touch then
+        local char = LocalPlayer.Character
+        if char then
+            local hum = char:FindFirstChildOfClass("Humanoid")
+            if hum and (hum:GetState() == Enum.HumanoidStateType.Freefall or hum:GetState() == Enum.HumanoidStateType.Jumping) then
+                DoExtraJump()
+            end
+        end
+    end
+end)
+
 UserInputService.JumpRequest:Connect(function()
     if Settings.MultiJump then
         local char = LocalPlayer.Character
         if char then
             local hum = char:FindFirstChildOfClass("Humanoid")
-            local hrp = char:FindFirstChild("HumanoidRootPart")
-            if hum and hrp then
-                hum:ChangeState(Enum.HumanoidStateType.Jumping)
-                hrp.AssemblyLinearVelocity = Vector3.new(hrp.AssemblyLinearVelocity.X, Settings.MultiJumpPower, hrp.AssemblyLinearVelocity.Z)
+            if hum and hum:GetState() == Enum.HumanoidStateType.Freefall then
+                DoExtraJump()
             end
         end
     end
