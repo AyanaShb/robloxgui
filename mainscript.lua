@@ -1,5 +1,5 @@
 -- ========================================================
--- DEAR IMGUI PREMIUM GRADIENT UI (V4.7 - FINAL FIX)
+-- DEAR IMGUI PREMIUM GRADIENT UI (V4.8 - WALLHACK & JUMP FIX)
 -- ========================================================
 
 local Players = game:GetService("Players")
@@ -13,13 +13,12 @@ local TweenService = game:GetService("TweenService")
 local LocalPlayer = Players.LocalPlayer
 local Camera = Workspace.CurrentCamera
 
--- Clean up instance lama
 if _G.ImGuiV4_ScreenGui then _G.ImGuiV4_ScreenGui:Destroy() end
 if _G.ImGuiV4_FOV then pcall(function() _G.ImGuiV4_FOV:Remove() end) end
 if _G.ImGuiV4_Line then pcall(function() _G.ImGuiV4_Line:Remove() end) end
 
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "ImGui_Gradient_Hub_V47"
+ScreenGui.Name = "ImGui_Gradient_Hub_V48"
 ScreenGui.ResetOnSpawn = false
 _G.ImGuiV4_ScreenGui = ScreenGui
 
@@ -73,41 +72,30 @@ local function ShowToast(text, isSuccess)
     Label.TextSize = 11
     Label.TextColor3 = Color3.fromRGB(240, 240, 240)
     Label.TextXAlignment = Enum.TextXAlignment.Left
-    Label.TextTransparency = 1
+    Label.Transparency = 1
     Label.Parent = Toast
 
     TweenService:Create(Toast, TweenInfo.new(0.3), {BackgroundTransparency = 0.1}):Play()
     TweenService:Create(Stroke, TweenInfo.new(0.3), {Transparency = 0}):Play()
-    TweenService:Create(Label, TweenInfo.new(0.3), {TextTransparency = 0}):Play()
+    TweenService:Create(Label, TweenInfo.new(0.3), {Transparency = 0}):Play()
 
     task.delay(2.5, function()
         local tweenOut = TweenService:Create(Toast, TweenInfo.new(0.4), {BackgroundTransparency = 1})
         TweenService:Create(Stroke, TweenInfo.new(0.4), {Transparency = 1}):Play()
-        TweenService:Create(Label, TweenInfo.new(0.4), {TextTransparency = 1}):Play()
+        TweenService:Create(Label, TweenInfo.new(0.4), {Transparency = 1}):Play()
         tweenOut:Play()
         tweenOut.Completed:Connect(function() Toast:Destroy() end)
     end)
 end
 
--- ==========================================
--- SETTINGS & STORAGE
--- ==========================================
-local DefaultLighting = {
-    ClockTime = Lighting.ClockTime,
-    Brightness = Lighting.Brightness,
-    OutdoorAmbient = Lighting.OutdoorAmbient
-}
-
 local Settings = {
     WalkSpeed = 16, MultiJump = false, MultiJumpPower = 50,
     Chams = false, ChamsColor = Color3.fromRGB(255, 0, 80), 
-    Noclip = false, AntiCrash = false, AntiKick = false, 
-    NightMode = false, DaylightMode = false,
+    Noclip = false, NightMode = false, DaylightMode = false,
     SilentAim = false, ShowFOV = false, FOVRadius = 150, 
     LineTarget = false, TargetPart = "Head"
 }
 
--- FOV & Target Line Drawings
 local FOVCircle = Drawing.new("Circle")
 FOVCircle.Thickness = 1.5
 FOVCircle.Color = Color3.fromRGB(0, 235, 255)
@@ -123,9 +111,6 @@ TargetLine.Transparency = 1
 TargetLine.Visible = false
 _G.ImGuiV4_Line = TargetLine
 
--- ==========================================
--- FLOATING TOGGLE ICON
--- ==========================================
 local ToggleBtn = Instance.new("TextButton")
 ToggleBtn.Name = "ImGui_ToggleIcon"
 ToggleBtn.Size = UDim2.new(0, 26, 0, 26)
@@ -158,9 +143,6 @@ BtnStroke.Color = Color3.fromRGB(0, 235, 255)
 BtnStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 BtnStroke.Parent = ToggleBtn
 
--- ==========================================
--- MAIN WINDOW UI
--- ==========================================
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
 MainFrame.Size = UDim2.new(0, 350, 0, 480)
@@ -218,7 +200,7 @@ local SubText = Instance.new("TextLabel")
 SubText.Size = UDim2.new(1, -10, 1, 0)
 SubText.Position = UDim2.new(0, 8, 0, 0)
 SubText.BackgroundTransparency = 1
-SubText.Text = "Dear ImGui v4.7 (Pure Bullet Silent Aim)"
+SubText.Text = "Dear ImGui v4.8 (Noclip & Jump Fixed)"
 SubText.Font = Enum.Font.Code
 SubText.TextSize = 11
 SubText.TextColor3 = Color3.fromRGB(150, 160, 180)
@@ -229,7 +211,6 @@ ToggleBtn.MouseButton1Click:Connect(function()
     MainFrame.Visible = not MainFrame.Visible
 end)
 
--- TABS SETUP
 local TabFrame = Instance.new("Frame")
 TabFrame.Size = UDim2.new(1, -12, 0, 26)
 TabFrame.Position = UDim2.new(0, 6, 0, 56)
@@ -321,9 +302,6 @@ for i, name in ipairs(tabs) do
     if i == 1 then SelectTab(name, Btn) end
 end
 
--- ==========================================
--- HELPER COMPONENTS
--- ==========================================
 local function CreateFeatureHeader(parent, titleText, isSupported)
     local Frame = Instance.new("Frame")
     Frame.Size = UDim2.new(1, 0, 0, 16)
@@ -569,42 +547,26 @@ local function CreateColorTable(parent, text, callback)
 end
 
 -- ==========================================
--- LOGIC IMPLEMENTATIONS
+-- LOGIC IMPLEMENTATIONS (FIXED & TESTED)
 -- ==========================================
 
--- 1. PLAYER TAB
+-- PLAYER TAB
 CreateSlider(PlayerPage, "Speed Hack", 16, 150, 16, true, function(val) Settings.WalkSpeed = val end)
 CreateToggle(PlayerPage, "Multi Jump", true, function(state) Settings.MultiJump = state end)
 
--- BASIC MULTI JUMP (STANDAR ORANG LAIN: DETEKSI TOMBOL LOMPAT + SET VELOCITY)
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
-    if not gameProcessed and Settings.MultiJump and input.KeyCode == Enum.KeyCode.Space then
+-- FIXED MULTI JUMP (STANDARD BYPASS VIA HUMANOID STATE & JUMP POWER)
+UserInputService.JumpRequest:Connect(function()
+    if Settings.MultiJump then
         local char = LocalPlayer.Character
         if char then
-            local hrp = char:FindFirstChild("HumanoidRootPart")
             local hum = char:FindFirstChildOfClass("Humanoid")
-            if hrp and hum and hum:GetState() ~= Enum.HumanoidStateType.Dead then
+            local hrp = char:FindFirstChild("HumanoidRootPart")
+            if hum and hrp then
                 hrp.AssemblyLinearVelocity = Vector3.new(hrp.AssemblyLinearVelocity.X, Settings.MultiJumpPower, hrp.AssemblyLinearVelocity.Z)
             end
         end
     end
 end)
-
--- SUPPORT MOBILE TOUCH JUMP UNTUK MULTI JUMP
-if UserInputService.TouchEnabled then
-    UserInputService.JumpRequest:Connect(function()
-        if Settings.MultiJump then
-            local char = LocalPlayer.Character
-            if char then
-                local hrp = char:FindFirstChild("HumanoidRootPart")
-                local hum = char:FindFirstChildOfClass("Humanoid")
-                if hrp and hum and hum:GetState() ~= Enum.HumanoidStateType.Dead then
-                    hrp.AssemblyLinearVelocity = Vector3.new(hrp.AssemblyLinearVelocity.X, Settings.MultiJumpPower, hrp.AssemblyLinearVelocity.Z)
-                end
-            end
-        end
-    end)
-end
 
 -- SOLID CHAMS
 local function ApplyChams(plr)
@@ -668,21 +630,26 @@ CreateColorTable(PlayerPage, "Chams Color Selector", function(col)
     end
 end)
 
--- NOCLIP NORMAL
-CreateToggle(PlayerPage, "Wall Hack (Noclip Normal)", true, function(state) Settings.Noclip = state end)
+-- FIXED NOCLIP / WALLHACK (FORCE CANCOLLIDE OFF PADA SELURUH BAGIAN KARAKTER)
+CreateToggle(PlayerPage, "Wall Hack (Noclip)", true, function(state) Settings.Noclip = state end)
 
 RunService.Stepped:Connect(function()
+    -- Speed Hack Loop
+    if Settings.WalkSpeed ~= 16 and LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
+        LocalPlayer.Character:FindFirstChildOfClass("Humanoid").WalkSpeed = Settings.WalkSpeed
+    end
+
+    -- Fixed Noclip Loop
     if Settings.Noclip and LocalPlayer.Character then
         for _, part in pairs(LocalPlayer.Character:GetDescendants()) do
             if part:IsA("BasePart") then
-                part.CanCanCollide = false
                 part.CanCollide = false
             end
         end
     end
 end)
 
--- 2. MISC TAB
+-- MISC TAB
 CreateToggle(MiscPage, "Anti Crash", true, function(state) Settings.AntiCrash = state end)
 CreateToggle(MiscPage, "Anti Kick", true, function(state) Settings.AntiKick = state end)
 
@@ -694,9 +661,9 @@ CreateToggle(MiscPage, "Night Mode", true, function(state)
         Lighting.Brightness = 0.2
         Lighting.OutdoorAmbient = Color3.fromRGB(20, 20, 40)
     else
-        Lighting.ClockTime = DefaultLighting.ClockTime
-        Lighting.Brightness = DefaultLighting.Brightness
-        Lighting.OutdoorAmbient = DefaultLighting.OutdoorAmbient
+        Lighting.ClockTime = 14
+        Lighting.Brightness = 1
+        Lighting.OutdoorAmbient = Color3.fromRGB(128, 128, 128)
     end
 end)
 
@@ -708,13 +675,13 @@ CreateToggle(MiscPage, "Daylight Mode", true, function(state)
         Lighting.Brightness = 3
         Lighting.OutdoorAmbient = Color3.fromRGB(255, 255, 255)
     else
-        Lighting.ClockTime = DefaultLighting.ClockTime
-        Lighting.Brightness = DefaultLighting.Brightness
-        Lighting.OutdoorAmbient = DefaultLighting.OutdoorAmbient
+        Lighting.ClockTime = 14
+        Lighting.Brightness = 1
+        Lighting.OutdoorAmbient = Color3.fromRGB(128, 128, 128)
     end
 end)
 
--- 3. GUN TAB (TRUE SILENT AIM: PELURU / RAYCAST MEMBELOK KE MUSUH, AIM CAMERA BEBAS)
+-- GUN TAB (TRUE SILENT AIM: PELURU / RAYCAST MEMBELOK KE MUSUH)
 CreateToggle(GunPage, "Silent Aim (Pure Bullet Redirect)", true, function(state) Settings.SilentAim = state end)
 CreateSelector(GunPage, "Target Part", {"Head", "Body"}, 1, function(selected) 
     Settings.TargetPart = selected == "Body" and "UpperTorso" or "Head"
@@ -750,7 +717,6 @@ local function GetClosestTarget()
     return closestTarget
 end
 
--- AMAN TANPA HOOK METAMETHOD GLOBAL, MENGGUNAKAN HOOK ENVIRONMENT LOKAL / RAYCAST OVERRIDE
 if hookmetamethod and getnamecallmethod then
     local oldNamecall
     oldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
@@ -777,12 +743,6 @@ if hookmetamethod and getnamecallmethod then
 end
 
 RunService.RenderStepped:Connect(function()
-    -- Speed Hack
-    if Settings.WalkSpeed ~= 16 and LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
-        LocalPlayer.Character:FindFirstChildOfClass("Humanoid").WalkSpeed = Settings.WalkSpeed
-    end
-
-    -- FOV & Line Drawings
     local center = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
     FOVCircle.Position = center
     FOVCircle.Radius = Settings.FOVRadius
