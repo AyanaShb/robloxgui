@@ -1,5 +1,5 @@
 -- ========================================================
--- DEAR IMGUI PREMIUM GRADIENT UI (V5.2 - PERFECT JUMP BUTTON FIX)
+-- DEAR IMGUI PREMIUM GRADIENT UI (V5.3 - MOBILE TOUCH JUMP FIX)
 -- ========================================================
 
 local Players = game:GetService("Players")
@@ -18,7 +18,7 @@ if _G.ImGuiV4_FOV then pcall(function() _G.ImGuiV4_FOV:Remove() end) end
 if _G.ImGuiV4_Line then pcall(function() _G.ImGuiV4_Line:Remove() end) end
 
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "ImGui_Gradient_Hub_V52"
+ScreenGui.Name = "ImGui_Gradient_Hub_V53"
 ScreenGui.ResetOnSpawn = false
 _G.ImGuiV4_ScreenGui = ScreenGui
 
@@ -197,7 +197,7 @@ local SubText = Instance.new("TextLabel")
 SubText.Size = UDim2.new(1, -10, 1, 0)
 SubText.Position = UDim2.new(0, 8, 0, 0)
 SubText.BackgroundTransparency = 1
-SubText.Text = "Dear ImGui v5.2 (Exact Jump Button Fix)"
+SubText.Text = "Dear ImGui v5.3 (Mobile Touch Button Fix)"
 SubText.Font = Enum.Font.Code
 SubText.TextSize = 11
 SubText.TextColor3 = Color3.fromRGB(150, 160, 180)
@@ -544,24 +544,62 @@ local function CreateColorTable(parent, text, callback)
 end
 
 -- ==========================================
--- LOGIC IMPLEMENTATIONS (JUMP BUTTON / JUMP REQUEST FIX)
+-- LOGIC IMPLEMENTATIONS (MOBILE TOUCH JUMP BUTTON HOOK)
 -- ==========================================
 
 CreateSlider(PlayerPage, "Speed Hack", 16, 150, 16, true, function(val) Settings.WalkSpeed = val end)
 CreateToggle(PlayerPage, "Multi Jump", true, function(state) Settings.MultiJump = state end)
 CreateSlider(PlayerPage, "Multi Jump Power", 30, 150, 50, true, function(val) Settings.MultiJumpPower = val end)
 
--- FIX UTAMA: Hanya mendeteksi tombol lompat (baik tombol lompat Roblox / Spasi keyboard)
-UserInputService.JumpRequest:Connect(function()
-    if Settings.MultiJump then
-        local char = LocalPlayer.Character
-        if char then
-            local hrp = char:FindFirstChild("HumanoidRootPart")
-            if hrp then
-                hrp.Velocity = Vector3.new(hrp.Velocity.X, Settings.MultiJumpPower, hrp.Velocity.Z)
+-- FIX UTAMA: Deteksi tombol lompat HP (TouchGui) + Spasi Keyboard secara spesifik
+local function SetupJumpDetection()
+    local char = LocalPlayer.Character
+    if not char then return end
+    local hum = char:FindFirstChildOfClass("Humanoid")
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    if not hum or not hrp then return end
+
+    -- Deteksi saat Humanoid melompat (termasuk tombol lompat HP & Spasi)
+    hum.StateChanged:Connect(function(old, new)
+        if Settings.MultiJump and new == Enum.HumanoidStateType.Jumping then
+            hrp.Velocity = Vector3.new(hrp.Velocity.X, Settings.MultiJumpPower, hrp.Velocity.Z)
+        end
+    end)
+end
+
+LocalPlayer.CharacterAdded:Connect(function(char)
+    char:WaitForChild("Humanoid")
+    task.delay(1, SetupJumpDetection)
+end)
+if LocalPlayer.Character then
+    task.spawn(SetupJumpDetection)
+end
+
+-- Backup Hook khusus TouchJumpButton di Mobile PlayerGui
+task.spawn(function()
+    pcall(function()
+        local playerGui = LocalPlayer:WaitForChild("PlayerGui", 5)
+        local touchGui = playerGui:WaitForChild("TouchGui", 5)
+        if touchGui then
+            local touchControlFrame = touchGui:WaitForChild("TouchControlFrame", 5)
+            if touchControlFrame then
+                local jumpButton = touchControlFrame:WaitForChild("JumpButton", 5)
+                if jumpButton then
+                    jumpButton.MouseButton1Down:Connect(function()
+                        if Settings.MultiJump then
+                            local char = LocalPlayer.Character
+                            if char then
+                                local hrp = char:FindFirstChild("HumanoidRootPart")
+                                if hrp then
+                                    hrp.Velocity = Vector3.new(hrp.Velocity.X, Settings.MultiJumpPower, hrp.Velocity.Z)
+                                end
+                            end
+                        end
+                    end)
+                end
             end
         end
-    end
+    end)
 end)
 
 local function ApplyChams(plr)
