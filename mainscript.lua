@@ -1,5 +1,5 @@
 -- ========================================================
--- DEAR IMGUI PREMIUM GRADIENT UI (V4.9 - RESTORED STANDARD)
+-- DEAR IMGUI PREMIUM GRADIENT UI (V5.0 - MULTI JUMP FIXED)
 -- ========================================================
 
 local Players = game:GetService("Players")
@@ -18,7 +18,7 @@ if _G.ImGuiV4_FOV then pcall(function() _G.ImGuiV4_FOV:Remove() end) end
 if _G.ImGuiV4_Line then pcall(function() _G.ImGuiV4_Line:Remove() end) end
 
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "ImGui_Gradient_Hub_V49"
+ScreenGui.Name = "ImGui_Gradient_Hub_V50"
 ScreenGui.ResetOnSpawn = false
 _G.ImGuiV4_ScreenGui = ScreenGui
 
@@ -197,7 +197,7 @@ local SubText = Instance.new("TextLabel")
 SubText.Size = UDim2.new(1, -10, 1, 0)
 SubText.Position = UDim2.new(0, 8, 0, 0)
 SubText.BackgroundTransparency = 1
-SubText.Text = "Dear ImGui v4.9 (Restored Standard)"
+SubText.Text = "Dear ImGui v5.0 (Multi Jump Override Fix)"
 SubText.Font = Enum.Font.Code
 SubText.TextSize = 11
 SubText.TextColor3 = Color3.fromRGB(150, 160, 180)
@@ -544,34 +544,23 @@ local function CreateColorTable(parent, text, callback)
 end
 
 -- ==========================================
--- LOGIC IMPLEMENTATIONS (RESTORED STANDARD)
+-- LOGIC IMPLEMENTATIONS (ULTIMATE MULTI JUMP & NOCLIP FIX)
 -- ==========================================
 
 CreateSlider(PlayerPage, "Speed Hack", 16, 150, 16, true, function(val) Settings.WalkSpeed = val end)
 CreateToggle(PlayerPage, "Multi Jump", true, function(state) Settings.MultiJump = state end)
+CreateSlider(PlayerPage, "Multi Jump Power", 30, 150, 50, true, function(val) Settings.MultiJumpPower = val end)
 
--- STANDAR MULTI JUMP MENGGUNAKAN JUMP REQUEST & INPUT BEGAN
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
-    if not gameProcessed and Settings.MultiJump and input.KeyCode == Enum.KeyCode.Space then
-        local char = LocalPlayer.Character
-        if char then
-            local hrp = char:FindFirstChild("HumanoidRootPart")
-            local hum = char:FindFirstChildOfClass("Humanoid")
-            if hrp and hum and hum:GetState() ~= Enum.HumanoidStateType.Dead then
-                hrp.AssemblyLinearVelocity = Vector3.new(hrp.AssemblyLinearVelocity.X, Settings.MultiJumpPower, hrp.AssemblyLinearVelocity.Z)
-            end
-        end
-    end
-end)
-
+-- MULTI JUMP FIX MENGGUNAKAN JUMPSTATE OVERRIDE & VELOCITY FORCE
 UserInputService.JumpRequest:Connect(function()
     if Settings.MultiJump then
         local char = LocalPlayer.Character
         if char then
-            local hrp = char:FindFirstChild("HumanoidRootPart")
             local hum = char:FindFirstChildOfClass("Humanoid")
-            if hrp and hum and hum:GetState() ~= Enum.HumanoidStateType.Dead then
-                hrp.AssemblyLinearVelocity = Vector3.new(hrp.AssemblyLinearVelocity.X, Settings.MultiJumpPower, hrp.AssemblyLinearVelocity.Z)
+            local hrp = char:FindFirstChild("HumanoidRootPart")
+            if hum and hrp then
+                hum:ChangeState(Enum.HumanoidStateType.Jumping)
+                hrp.Velocity = Vector3.new(hrp.Velocity.X, Settings.MultiJumpPower, hrp.Velocity.Z)
             end
         end
     end
@@ -638,7 +627,6 @@ CreateColorTable(PlayerPage, "Chams Color Selector", function(col)
     end
 end)
 
--- STANDAR NOCLIP (WALLHACK)
 CreateToggle(PlayerPage, "Wall Hack (Noclip)", true, function(state) Settings.Noclip = state end)
 
 RunService.Stepped:Connect(function()
@@ -666,9 +654,9 @@ CreateToggle(MiscPage, "Night Mode", true, function(state)
         Lighting.Brightness = 0.2
         Lighting.OutdoorAmbient = Color3.fromRGB(20, 20, 40)
     else
-        Lighting.ClockTime = DefaultLighting.ClockTime
-        Lighting.Brightness = DefaultLighting.Brightness
-        Lighting.OutdoorAmbient = DefaultLighting.OutdoorAmbient
+        Lighting.ClockTime = 14
+        Lighting.Brightness = 1
+        Lighting.OutdoorAmbient = Color3.fromRGB(128, 128, 128)
     end
 end)
 
@@ -680,9 +668,9 @@ CreateToggle(MiscPage, "Daylight Mode", true, function(state)
         Lighting.Brightness = 3
         Lighting.OutdoorAmbient = Color3.fromRGB(255, 255, 255)
     else
-        Lighting.ClockTime = DefaultLighting.ClockTime
-        Lighting.Brightness = DefaultLighting.Brightness
-        Lighting.OutdoorAmbient = DefaultLighting.OutdoorAmbient
+        Lighting.ClockTime = 14
+        Lighting.Brightness = 1
+        Lighting.OutdoorAmbient = Color3.fromRGB(128, 128, 128)
     end
 end)
 
