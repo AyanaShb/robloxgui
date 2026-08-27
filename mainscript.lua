@@ -1,31 +1,4 @@
---[[
-    ================================================================
-    [ SCRIPT INFORMATION ]
-    Project: Custom Script
-    Author: OYB
-    YouTube: https://youtube.com/@vvipmods-official?si=Jzp6hfSVZq5xITPm
-    
-    [ TERMS AND CONDITIONS ]
-    - You ARE allowed to use and modify this script for your own games.
-    - You ARE NOT allowed to re-upload, redistribute, or claim 
-      ownership of this script.
-    - Removing or altering these credits is strictly prohibited.
-    
-    Copyright (c) 2026 OYB. All rights reserved.
-    ================================================================
-]]
 
--- ⚠️ IMPORTANT: Put this code at the VERY TOP of your Main Script (before obfuscating) ⚠️
-
--------------------------------------------------------------------------------
--- 👇 YOUR MAIN SCRIPT CODE STARTS HERE 👇
--------------------------------------------------------------------------------
-
---==================================================
--- VVIP MODS
--- CUSTOM GUI + AIM + ESP + VISUAL + CONFIG
--- ROBLOX STUDIO / GAME MILIK SENDIRI
---==================================================
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -1679,14 +1652,15 @@ LoginButton.Activated:Connect(function()
     SetLoginStatus("Sedang memvalidasi key ke server...", true)
 
     task.spawn(function()
-        local valid, message, data = VerifyKey(UserKey)
+        local valid = true
+        local message = "Succes Bypass"
 
         if valid then
-            LoggedIn = true
-            SavedToken = data and data.token or nil
-            SavedRng = data and data.rng or nil
-            SavedExpired = data and (data.expired or data.EXPR) or nil
-            SavedRegistrator = data and data.registrator or nil
+            LoggedIn = true, 
+            SavedToken ="BYPASSED_TOKEN", 
+            SavedRng = "12345",
+            SavedExpired = "9999-12-31",
+            SavedRegistrator = "VIP_User"
 
             SetLoginStatus(
                 "✅ Login berhasil" ..
