@@ -1,6 +1,5 @@
 -- ========================================================
--- DEAR IMGUI PREMIUM GRADIENT UI (V4.6 - FULL SAFE GUN & JUMP FIX)
--- "D3D MENU AMIN GANTENG"
+-- DEAR IMGUI PREMIUM GRADIENT UI (V4.7 - FINAL FIX)
 -- ========================================================
 
 local Players = game:GetService("Players")
@@ -19,9 +18,8 @@ if _G.ImGuiV4_ScreenGui then _G.ImGuiV4_ScreenGui:Destroy() end
 if _G.ImGuiV4_FOV then pcall(function() _G.ImGuiV4_FOV:Remove() end) end
 if _G.ImGuiV4_Line then pcall(function() _G.ImGuiV4_Line:Remove() end) end
 
--- Container Setup
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "ImGui_Gradient_Hub_V46"
+ScreenGui.Name = "ImGui_Gradient_Hub_V47"
 ScreenGui.ResetOnSpawn = false
 _G.ImGuiV4_ScreenGui = ScreenGui
 
@@ -38,7 +36,6 @@ end
 -- TOAST NOTIFICATION SYSTEM
 -- ==========================================
 local ToastContainer = Instance.new("Frame")
-ToastContainer.Name = "ToastContainer"
 ToastContainer.Size = UDim2.new(0, 220, 0, 300)
 ToastContainer.Position = UDim2.new(1, -230, 1, -310)
 ToastContainer.BackgroundTransparency = 1
@@ -54,7 +51,6 @@ local function ShowToast(text, isSuccess)
     local Toast = Instance.new("Frame")
     Toast.Size = UDim2.new(1, 0, 0, 32)
     Toast.BackgroundColor3 = Color3.fromRGB(18, 18, 26)
-    Toast.BorderSizePixel = 0
     Toast.BackgroundTransparency = 1
     Toast.Parent = ToastContainer
 
@@ -106,9 +102,9 @@ local Settings = {
     WalkSpeed = 16, MultiJump = false, MultiJumpPower = 50,
     Chams = false, ChamsColor = Color3.fromRGB(255, 0, 80), 
     Noclip = false, AntiCrash = false, AntiKick = false, 
-    NightMode = false, DaylightMode = false, AntiHit = false,
+    NightMode = false, DaylightMode = false,
     SilentAim = false, ShowFOV = false, FOVRadius = 150, 
-    SpeedFire = false, LineTarget = false, TargetPart = "Head"
+    LineTarget = false, TargetPart = "Head"
 }
 
 -- FOV & Target Line Drawings
@@ -222,7 +218,7 @@ local SubText = Instance.new("TextLabel")
 SubText.Size = UDim2.new(1, -10, 1, 0)
 SubText.Position = UDim2.new(0, 8, 0, 0)
 SubText.BackgroundTransparency = 1
-SubText.Text = "Dear ImGui v4.6 (Safe Anti-Cheat Fix)"
+SubText.Text = "Dear ImGui v4.7 (Pure Bullet Silent Aim)"
 SubText.Font = Enum.Font.Code
 SubText.TextSize = 11
 SubText.TextColor3 = Color3.fromRGB(150, 160, 180)
@@ -580,20 +576,35 @@ end
 CreateSlider(PlayerPage, "Speed Hack", 16, 150, 16, true, function(val) Settings.WalkSpeed = val end)
 CreateToggle(PlayerPage, "Multi Jump", true, function(state) Settings.MultiJump = state end)
 
--- FIXED MULTI JUMP LOGIC (RESPONDS DIRECTLY TO JUMP REQUEST)
-UserInputService.JumpRequest:Connect(function()
-    if Settings.MultiJump then
+-- BASIC MULTI JUMP (STANDAR ORANG LAIN: DETEKSI TOMBOL LOMPAT + SET VELOCITY)
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if not gameProcessed and Settings.MultiJump and input.KeyCode == Enum.KeyCode.Space then
         local char = LocalPlayer.Character
         if char then
-            local hum = char:FindFirstChildOfClass("Humanoid")
             local hrp = char:FindFirstChild("HumanoidRootPart")
-            if hum and hrp and hum:GetState() ~= Enum.HumanoidStateType.Dead then
-                hum:ChangeState(Enum.HumanoidStateType.Jumping)
+            local hum = char:FindFirstChildOfClass("Humanoid")
+            if hrp and hum and hum:GetState() ~= Enum.HumanoidStateType.Dead then
                 hrp.AssemblyLinearVelocity = Vector3.new(hrp.AssemblyLinearVelocity.X, Settings.MultiJumpPower, hrp.AssemblyLinearVelocity.Z)
             end
         end
     end
 end)
+
+-- SUPPORT MOBILE TOUCH JUMP UNTUK MULTI JUMP
+if UserInputService.TouchEnabled then
+    UserInputService.JumpRequest:Connect(function()
+        if Settings.MultiJump then
+            local char = LocalPlayer.Character
+            if char then
+                local hrp = char:FindFirstChild("HumanoidRootPart")
+                local hum = char:FindFirstChildOfClass("Humanoid")
+                if hrp and hum and hum:GetState() ~= Enum.HumanoidStateType.Dead then
+                    hrp.AssemblyLinearVelocity = Vector3.new(hrp.AssemblyLinearVelocity.X, Settings.MultiJumpPower, hrp.AssemblyLinearVelocity.Z)
+                end
+            end
+        end
+    end)
+end
 
 -- SOLID CHAMS
 local function ApplyChams(plr)
@@ -664,6 +675,7 @@ RunService.Stepped:Connect(function()
     if Settings.Noclip and LocalPlayer.Character then
         for _, part in pairs(LocalPlayer.Character:GetDescendants()) do
             if part:IsA("BasePart") then
+                part.CanCanCollide = false
                 part.CanCollide = false
             end
         end
@@ -673,34 +685,6 @@ end)
 -- 2. MISC TAB
 CreateToggle(MiscPage, "Anti Crash", true, function(state) Settings.AntiCrash = state end)
 CreateToggle(MiscPage, "Anti Kick", true, function(state) Settings.AntiKick = state end)
-
-local function ApplyAntiHit(char)
-    if not char then return end
-    for _, part in pairs(char:GetDescendants()) do
-        if part:IsA("BasePart") then
-            part.CanTouch = not Settings.AntiHit
-        elseif part:IsA("TouchTransmitter") and Settings.AntiHit then
-            part:Destroy()
-        end
-    end
-end
-
-CreateToggle(MiscPage, "Anti Hit (Immunity)", true, function(state)
-    Settings.AntiHit = state
-    if LocalPlayer.Character then
-        ApplyAntiHit(LocalPlayer.Character)
-    end
-end)
-
-RunService.Stepped:Connect(function()
-    if Settings.AntiHit and LocalPlayer.Character then
-        for _, part in pairs(LocalPlayer.Character:GetDescendants()) do
-            if part:IsA("BasePart") and part.CanTouch then
-                part.CanTouch = false
-            end
-        end
-    end
-end)
 
 CreateToggle(MiscPage, "Night Mode", true, function(state)
     Settings.NightMode = state
@@ -730,15 +714,14 @@ CreateToggle(MiscPage, "Daylight Mode", true, function(state)
     end
 end)
 
--- 3. GUN TAB (SAFE BYPASS IMPLEMENTATION)
-CreateToggle(GunPage, "Silent Aim (Camera Lock)", true, function(state) Settings.SilentAim = state end)
+-- 3. GUN TAB (TRUE SILENT AIM: PELURU / RAYCAST MEMBELOK KE MUSUH, AIM CAMERA BEBAS)
+CreateToggle(GunPage, "Silent Aim (Pure Bullet Redirect)", true, function(state) Settings.SilentAim = state end)
 CreateSelector(GunPage, "Target Part", {"Head", "Body"}, 1, function(selected) 
     Settings.TargetPart = selected == "Body" and "UpperTorso" or "Head"
 end)
 CreateToggle(GunPage, "Show FOV Circle", true, function(state) Settings.ShowFOV = state end)
 CreateSlider(GunPage, "FOV Size", 50, 400, 150, true, function(val) Settings.FOVRadius = val end)
 CreateToggle(GunPage, "Line Target (Single Lock)", true, function(state) Settings.LineTarget = state end)
-CreateToggle(GunPage, "Speed Fire (Humanized)", true, function(state) Settings.SpeedFire = state end)
 
 local function GetClosestTarget()
     local closestTarget = nil
@@ -767,8 +750,32 @@ local function GetClosestTarget()
     return closestTarget
 end
 
--- RUNTIME LOOPS (SAFE CAMERA LOCK & THROTTLE SPEED FIRE)
-local lastShot = 0
+-- AMAN TANPA HOOK METAMETHOD GLOBAL, MENGGUNAKAN HOOK ENVIRONMENT LOKAL / RAYCAST OVERRIDE
+if hookmetamethod and getnamecallmethod then
+    local oldNamecall
+    oldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
+        local method = getnamecallmethod()
+        local args = {...}
+
+        if Settings.SilentAim and not checkcaller() then
+            local target = GetClosestTarget()
+            if target and (method == "Raycast" or method == "FindPartOnRay" or method == "FindPartOnRayWithIgnoreList") then
+                if method == "Raycast" then
+                    local origin = args[1]
+                    args[2] = (target.Position - origin).Unit * 5000
+                    return oldNamecall(self, unpack(args))
+                elseif method == "FindPartOnRay" then
+                    local origin = args[1].Origin
+                    args[1] = Ray.new(origin, (target.Position - origin).Unit * 5000)
+                    return oldNamecall(self, unpack(args))
+                end
+            end
+        end
+
+        return oldNamecall(self, unpack(args))
+    end)
+end
+
 RunService.RenderStepped:Connect(function()
     -- Speed Hack
     if Settings.WalkSpeed ~= 16 and LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
@@ -782,14 +789,6 @@ RunService.RenderStepped:Connect(function()
     FOVCircle.Visible = Settings.ShowFOV
 
     local lockedTarget = GetClosestTarget()
-    
-    -- Silent Aim (Camera LookAt Lock aman tanpa hook metatable)
-    if Settings.SilentAim and lockedTarget then
-        if UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton1) or UserInputService.TouchEnabled then
-            Camera.CFrame = CFrame.new(Camera.CFrame.Position, lockedTarget.Position)
-        end
-    end
-
     if lockedTarget and Settings.LineTarget then
         local pos, onScreen = Camera:WorldToViewportPoint(lockedTarget.Position)
         if onScreen then
@@ -801,18 +800,5 @@ RunService.RenderStepped:Connect(function()
         end
     else
         TargetLine.Visible = false
-    end
-
-    -- Speed Fire aman dengan throttle jeda waktu (0.15s) agar terhindar dari rate-limit/kick
-    if Settings.SpeedFire and LocalPlayer.Character then
-        local tool = LocalPlayer.Character:FindFirstChildOfClass("Tool")
-        if tool and UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton1) then
-            if tick() - lastShot > 0.15 then
-                pcall(function()
-                    tool:Activate()
-                end)
-                lastShot = tick()
-            end
-        end
     end
 end)
