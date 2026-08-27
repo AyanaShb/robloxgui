@@ -1,5 +1,5 @@
 -- ========================================================
--- DEAR IMGUI PREMIUM GRADIENT UI WITH TOAST NOTIFICATIONS
+-- DEAR IMGUI PREMIUM GRADIENT UI (V2 - FIXED & TOGGLE SWITCH)
 -- "D3D MENU AMIN GANTENG"
 -- ========================================================
 
@@ -16,7 +16,7 @@ local Camera = Workspace.CurrentCamera
 
 -- Container Setup
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "ImGui_Gradient_Hub"
+ScreenGui.Name = "ImGui_Gradient_Hub_V2"
 ScreenGui.ResetOnSpawn = false
 
 if syn and syn.protect_gui then
@@ -74,12 +74,10 @@ local function ShowToast(text, isSuccess)
     Label.TextTransparency = 1
     Label.Parent = Toast
 
-    -- Animate Fade In
     TweenService:Create(Toast, TweenInfo.new(0.3), {BackgroundTransparency = 0.1}):Play()
     TweenService:Create(Stroke, TweenInfo.new(0.3), {Transparency = 0}):Play()
     TweenService:Create(Label, TweenInfo.new(0.3), {TextTransparency = 0}):Play()
 
-    -- Auto Dismiss after 2.5 seconds
     task.delay(2.5, function()
         local tweenOut = TweenService:Create(Toast, TweenInfo.new(0.4), {BackgroundTransparency = 1})
         TweenService:Create(Stroke, TweenInfo.new(0.4), {Transparency = 1}):Play()
@@ -92,8 +90,14 @@ local function ShowToast(text, isSuccess)
 end
 
 -- ==========================================
--- STATE STORAGE
+-- STATE STORAGE & INITIAL LIGHTING
 -- ==========================================
+local DefaultLighting = {
+    ClockTime = Lighting.ClockTime,
+    Brightness = Lighting.Brightness,
+    OutdoorAmbient = Lighting.OutdoorAmbient
+}
+
 local Settings = {
     WalkSpeed = 16, MultiJump = false, Chams = false, 
     ChamsColor = Color3.fromRGB(0, 255, 180), NoFallDamage = false, 
@@ -105,7 +109,7 @@ local Settings = {
 }
 
 -- ==========================================
--- FLOATING ICON (BOLD X TOGGLE)
+-- FLOATING TOGGLE ICON (BOLD X LOGO)
 -- ==========================================
 local ToggleBtn = Instance.new("TextButton")
 ToggleBtn.Name = "ImGui_ToggleIcon"
@@ -226,7 +230,6 @@ UIListTab.SortOrder = Enum.SortOrder.LayoutOrder
 UIListTab.Padding = UDim.new(0, 5)
 UIListTab.Parent = TabFrame
 
--- Content Container
 local ContentFrame = Instance.new("Frame")
 ContentFrame.Size = UDim2.new(1, -12, 1, -90)
 ContentFrame.Position = UDim2.new(0, 6, 0, 84)
@@ -307,19 +310,16 @@ for i, name in ipairs(tabs) do
     Corner.CornerRadius = UDim.new(0, 5)
     Corner.Parent = Btn
     
-    Btn.MouseButton1Click:Connect(function()
-        SelectTab(name, Btn)
-    end)
-    
+    Btn.MouseButton1Click:Connect(function() SelectTab(name, Btn) end)
     if i == 1 then SelectTab(name, Btn) end
 end
 
 -- ==========================================
--- UI HELPERS (WITH TOAST INTEGRATION)
+-- NEW UI HELPERS (WITH ROUND SLIDER TOGGLE SWITCH)
 -- ==========================================
 local function CreateFeatureHeader(parent, titleText, isSupported)
     local Frame = Instance.new("Frame")
-    Frame.Size = UDim2.new(1, 0, 0, 18)
+    Frame.Size = UDim2.new(1, 0, 0, 16)
     Frame.BackgroundTransparency = 1
     Frame.Parent = parent
 
@@ -354,33 +354,63 @@ end
 local function CreateToggle(parent, text, isSupported, callback)
     CreateFeatureHeader(parent, text, isSupported)
     
-    local Button = Instance.new("TextButton")
-    Button.Size = UDim2.new(1, 0, 0, 24)
-    Button.BackgroundColor3 = Color3.fromRGB(22, 22, 32)
-    Button.BorderSizePixel = 0
-    Button.Text = "  [ ] " .. text
-    Button.Font = Enum.Font.Code
-    Button.TextSize = 12
-    Button.TextColor3 = Color3.fromRGB(200, 200, 220)
-    Button.TextXAlignment = Enum.TextXAlignment.Left
-    Button.Parent = parent
+    local Container = Instance.new("Frame")
+    Container.Size = UDim2.new(1, 0, 0, 26)
+    Container.BackgroundColor3 = Color3.fromRGB(22, 22, 32)
+    Container.BorderSizePixel = 0
+    Container.Parent = parent
 
-    local Corner = Instance.new("UICorner")
-    Corner.CornerRadius = UDim.new(0, 4)
-    Corner.Parent = Button
+    local ContainerCorner = Instance.new("UICorner")
+    ContainerCorner.CornerRadius = UDim.new(0, 4)
+    ContainerCorner.Parent = Container
+
+    local FeatureName = Instance.new("TextLabel")
+    FeatureName.Size = UDim2.new(0.7, 0, 1, 0)
+    FeatureName.Position = UDim2.new(0, 8, 0, 0)
+    FeatureName.BackgroundTransparency = 1
+    FeatureName.Text = text
+    FeatureName.Font = Enum.Font.Code
+    FeatureName.TextSize = 12
+    FeatureName.TextColor3 = Color3.fromRGB(200, 200, 220)
+    FeatureName.TextXAlignment = Enum.TextXAlignment.Left
+    FeatureName.Parent = Container
+
+    -- Slider Button Switch (Bulat) di kanan
+    local SwitchTrack = Instance.new("TextButton")
+    SwitchTrack.Size = UDim2.new(0, 42, 0, 20)
+    SwitchTrack.Position = UDim2.new(1, -48, 0.5, -10)
+    SwitchTrack.BackgroundColor3 = Color3.fromRGB(40, 40, 55)
+    SwitchTrack.Text = ""
+    SwitchTrack.AutoButtonColor = false
+    SwitchTrack.Parent = Container
+
+    local TrackCorner = Instance.new("UICorner")
+    TrackCorner.CornerRadius = UDim.new(1, 0)
+    TrackCorner.Parent = SwitchTrack
+
+    local SwitchKnob = Instance.new("Frame")
+    SwitchKnob.Size = UDim2.new(0, 16, 0, 16)
+    SwitchKnob.Position = UDim2.new(0, 2, 0.5, -8)
+    SwitchKnob.BackgroundColor3 = Color3.fromRGB(180, 180, 200)
+    SwitchKnob.BorderSizePixel = 0
+    SwitchKnob.Parent = SwitchTrack
+
+    local KnobCorner = Instance.new("UICorner")
+    KnobCorner.CornerRadius = UDim.new(1, 0)
+    KnobCorner.Parent = SwitchKnob
 
     local enabled = false
-    Button.MouseButton1Click:Connect(function()
+    SwitchTrack.MouseButton1Click:Connect(function()
         enabled = not enabled
         if enabled then
-            Button.Text = "  [X] " .. text
-            Button.TextColor3 = Color3.fromRGB(0, 255, 200)
-            Button.BackgroundColor3 = Color3.fromRGB(35, 30, 60)
+            TweenService:Create(SwitchKnob, TweenInfo.new(0.2), {Position = UDim2.new(1, -18, 0.5, -8), BackgroundColor3 = Color3.fromRGB(255, 255, 255)}):Play()
+            TweenService:Create(SwitchTrack, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(0, 200, 255)}):Play()
+            FeatureName.TextColor3 = Color3.fromRGB(0, 255, 200)
             ShowToast(text .. " Enabled", true)
         else
-            Button.Text = "  [ ] " .. text
-            Button.TextColor3 = Color3.fromRGB(200, 200, 220)
-            Button.BackgroundColor3 = Color3.fromRGB(22, 22, 32)
+            TweenService:Create(SwitchKnob, TweenInfo.new(0.2), {Position = UDim2.new(0, 2, 0.5, -8), BackgroundColor3 = Color3.fromRGB(180, 180, 200)}):Play()
+            TweenService:Create(SwitchTrack, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(40, 40, 55)}):Play()
+            FeatureName.TextColor3 = Color3.fromRGB(200, 200, 220)
             ShowToast(text .. " Disabled", false)
         end
         callback(enabled)
@@ -467,12 +497,22 @@ local function CreateSlider(parent, text, min, max, default, isSupported, callba
 end
 
 -- ==========================================
--- FEATURE REGISTRATION
+-- FEATURE IMPLEMENTATIONS & FIXED LOGIC
 -- ==========================================
 
--- PLAYER TAB
+-- 1. PLAYER TAB
 CreateSlider(PlayerPage, "Speed Hack", 16, 150, 16, true, function(val) Settings.WalkSpeed = val end)
+
 CreateToggle(PlayerPage, "Multi Jump", true, function(state) Settings.MultiJump = state end)
+
+-- FIXED: Multi Jump Logic
+UserInputService.JumpRequest:Connect(function()
+    if Settings.MultiJump and LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
+        local hum = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+        hum:ChangeState(Enum.HumanoidStateType.Jumping)
+    end
+end)
+
 CreateToggle(PlayerPage, "Chams (Wall ESP)", true, function(state)
     Settings.Chams = state
     for _, plr in pairs(Players:GetPlayers()) do
@@ -490,39 +530,69 @@ CreateToggle(PlayerPage, "Chams (Wall ESP)", true, function(state)
         end
     end
 end)
+
 CreateToggle(PlayerPage, "No Fall Damage", false, function(state) Settings.NoFallDamage = state end)
+
 CreateToggle(PlayerPage, "Wall Hack (Noclip Ground-Safe)", true, function(state) Settings.Noclip = state end)
+
+-- FIXED: Wall Hack / Noclip Logic (Noclip tanpa jatuh dari lantai)
+RunService.Stepped:Connect(function()
+    if Settings.Noclip and LocalPlayer.Character then
+        for _, v in pairs(LocalPlayer.Character:GetDescendants()) do
+            if v:IsA("BasePart") then
+                v.CanCollide = false
+            end
+        end
+    end
+end)
+
 CreateSlider(PlayerPage, "Size Hack", 1, 10, 1, false, function(val) Settings.CharacterSize = val end)
 
--- MISC TAB
+-- 2. MISC TAB
 CreateToggle(MiscPage, "Anti Crash", true, function(state) Settings.AntiCrash = state end)
 CreateToggle(MiscPage, "Anti Kick", true, function(state) Settings.AntiKick = state end)
-CreateToggle(MiscPage, "Night Mode", true, function(state) Lighting.TimeOfDay = state and "00:00:00" or "14:00:00" end)
-CreateToggle(MiscPage, "Daylight Mode", true, function(state) Lighting.TimeOfDay = state and "12:00:00" or "00:00:00" end)
+
+-- FIXED: Lighting Logic (Night Mode & Daylight Mode)
+CreateToggle(MiscPage, "Night Mode", true, function(state)
+    Settings.NightMode = state
+    if state then
+        Settings.DaylightMode = false
+        Lighting.ClockTime = 0
+        Lighting.Brightness = 0.2
+        Lighting.OutdoorAmbient = Color3.fromRGB(20, 20, 40)
+        Lighting.GlobalShadows = true
+    else
+        Lighting.ClockTime = DefaultLighting.ClockTime
+        Lighting.Brightness = DefaultLighting.Brightness
+        Lighting.OutdoorAmbient = DefaultLighting.OutdoorAmbient
+    end
+end)
+
+CreateToggle(MiscPage, "Daylight Mode", true, function(state)
+    Settings.DaylightMode = state
+    if state then
+        Settings.NightMode = false
+        Lighting.ClockTime = 14
+        Lighting.Brightness = 3
+        Lighting.OutdoorAmbient = Color3.fromRGB(255, 255, 255)
+        Lighting.GlobalShadows = false
+    else
+        Lighting.ClockTime = DefaultLighting.ClockTime
+        Lighting.Brightness = DefaultLighting.Brightness
+        Lighting.OutdoorAmbient = DefaultLighting.OutdoorAmbient
+    end
+end)
+
 CreateToggle(MiscPage, "Anti Hit", false, function(state) Settings.AntiHit = state end)
 
--- GUN TAB
+-- 3. GUN TAB
 CreateToggle(GunPage, "Silent Aim", true, function(state) Settings.SilentAim = state end)
 CreateToggle(GunPage, "Show FOV", true, function(state) Settings.ShowFOV = state end)
 CreateToggle(GunPage, "Speed Fire", true, function(state) Settings.SpeedFire = state end)
 CreateToggle(GunPage, "Unlimited Ammo", false, function(state) Settings.UnlimitedAmmo = state end)
 CreateToggle(GunPage, "Line Target", true, function(state) Settings.LineTarget = state end)
 
--- RUNTIME LOOPS
-UserInputService.JumpRequest:Connect(function()
-    if Settings.MultiJump and LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
-        LocalPlayer.Character:FindFirstChildOfClass("Humanoid"):ChangeState(Enum.HumanoidStateType.Jumping)
-    end
-end)
-
-RunService.Stepped:Connect(function()
-    if Settings.Noclip and LocalPlayer.Character then
-        for _, v in pairs(LocalPlayer.Character:GetDescendants()) do
-            if v:IsA("BasePart") and v.Name ~= "HumanoidRootPart" then v.CanCollide = false end
-        end
-    end
-end)
-
+-- RUNTIME LOOPS (SPEED)
 RunService.RenderStepped:Connect(function()
     if Settings.WalkSpeed ~= 16 and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
         LocalPlayer.Character.Humanoid.WalkSpeed = Settings.WalkSpeed
