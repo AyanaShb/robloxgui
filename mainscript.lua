@@ -1,5 +1,5 @@
 -- ========================================================
--- DEAR IMGUI PREMIUM GRADIENT UI (V4.5 - FULL WALLBANG & NOCLIP FIX)
+-- DEAR IMGUI PREMIUM GRADIENT UI (V4.6 - FULL SAFE GUN & JUMP FIX)
 -- "D3D MENU AMIN GANTENG"
 -- ========================================================
 
@@ -21,7 +21,7 @@ if _G.ImGuiV4_Line then pcall(function() _G.ImGuiV4_Line:Remove() end) end
 
 -- Container Setup
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "ImGui_Gradient_Hub_V4"
+ScreenGui.Name = "ImGui_Gradient_Hub_V46"
 ScreenGui.ResetOnSpawn = false
 _G.ImGuiV4_ScreenGui = ScreenGui
 
@@ -107,9 +107,8 @@ local Settings = {
     Chams = false, ChamsColor = Color3.fromRGB(255, 0, 80), 
     Noclip = false, AntiCrash = false, AntiKick = false, 
     NightMode = false, DaylightMode = false, AntiHit = false,
-    SilentAim = false, Wallbang = false, ShowFOV = false, 
-    FOVRadius = 150, SpeedFire = false, LineTarget = false, 
-    TargetPart = "Head"
+    SilentAim = false, ShowFOV = false, FOVRadius = 150, 
+    SpeedFire = false, LineTarget = false, TargetPart = "Head"
 }
 
 -- FOV & Target Line Drawings
@@ -223,7 +222,7 @@ local SubText = Instance.new("TextLabel")
 SubText.Size = UDim2.new(1, -10, 1, 0)
 SubText.Position = UDim2.new(0, 8, 0, 0)
 SubText.BackgroundTransparency = 1
-SubText.Text = "Dear ImGui v4.5 (Full Wallbang Fix)"
+SubText.Text = "Dear ImGui v4.6 (Safe Anti-Cheat Fix)"
 SubText.Font = Enum.Font.Code
 SubText.TextSize = 11
 SubText.TextColor3 = Color3.fromRGB(150, 160, 180)
@@ -581,23 +580,18 @@ end
 CreateSlider(PlayerPage, "Speed Hack", 16, 150, 16, true, function(val) Settings.WalkSpeed = val end)
 CreateToggle(PlayerPage, "Multi Jump", true, function(state) Settings.MultiJump = state end)
 
--- MULTI JUMP (CLEAN - JUMP BUTTON ONLY)
-local function DoExtraJump()
-    if not Settings.MultiJump then return end
-    local char = LocalPlayer.Character
-    if not char then return end
-    local hum = char:FindFirstChildOfClass("Humanoid")
-    local hrp = char:FindFirstChild("HumanoidRootPart")
-    
-    if hum and hrp and hum:GetState() ~= Enum.HumanoidStateType.Dead then
-        hum:ChangeState(Enum.HumanoidStateType.Jumping)
-        hrp.AssemblyLinearVelocity = Vector3.new(hrp.AssemblyLinearVelocity.X, Settings.MultiJumpPower, hrp.AssemblyLinearVelocity.Z)
-    end
-end
-
+-- FIXED MULTI JUMP LOGIC (RESPONDS DIRECTLY TO JUMP REQUEST)
 UserInputService.JumpRequest:Connect(function()
     if Settings.MultiJump then
-        DoExtraJump()
+        local char = LocalPlayer.Character
+        if char then
+            local hum = char:FindFirstChildOfClass("Humanoid")
+            local hrp = char:FindFirstChild("HumanoidRootPart")
+            if hum and hrp and hum:GetState() ~= Enum.HumanoidStateType.Dead then
+                hum:ChangeState(Enum.HumanoidStateType.Jumping)
+                hrp.AssemblyLinearVelocity = Vector3.new(hrp.AssemblyLinearVelocity.X, Settings.MultiJumpPower, hrp.AssemblyLinearVelocity.Z)
+            end
+        end
     end
 end)
 
@@ -663,7 +657,7 @@ CreateColorTable(PlayerPage, "Chams Color Selector", function(col)
     end
 end)
 
--- WALL HACK (NORMAL NOCLIP MURNI)
+-- NOCLIP NORMAL
 CreateToggle(PlayerPage, "Wall Hack (Noclip Normal)", true, function(state) Settings.Noclip = state end)
 
 RunService.Stepped:Connect(function()
@@ -680,7 +674,6 @@ end)
 CreateToggle(MiscPage, "Anti Crash", true, function(state) Settings.AntiCrash = state end)
 CreateToggle(MiscPage, "Anti Kick", true, function(state) Settings.AntiKick = state end)
 
--- ANTI HIT (IMMUNITY ENHANCED)
 local function ApplyAntiHit(char)
     if not char then return end
     for _, part in pairs(char:GetDescendants()) do
@@ -737,20 +730,18 @@ CreateToggle(MiscPage, "Daylight Mode", true, function(state)
     end
 end)
 
--- 3. GUN TAB
-CreateToggle(GunPage, "Silent Aim", true, function(state) Settings.SilentAim = state end)
+-- 3. GUN TAB (SAFE BYPASS IMPLEMENTATION)
+CreateToggle(GunPage, "Silent Aim (Camera Lock)", true, function(state) Settings.SilentAim = state end)
 CreateSelector(GunPage, "Target Part", {"Head", "Body"}, 1, function(selected) 
     Settings.TargetPart = selected == "Body" and "UpperTorso" or "Head"
 end)
-CreateToggle(GunPage, "Wallbang (Tembus Tembok)", true, function(state) Settings.Wallbang = state end)
 CreateToggle(GunPage, "Show FOV Circle", true, function(state) Settings.ShowFOV = state end)
 CreateSlider(GunPage, "FOV Size", 50, 400, 150, true, function(val) Settings.FOVRadius = val end)
 CreateToggle(GunPage, "Line Target (Single Lock)", true, function(state) Settings.LineTarget = state end)
-CreateToggle(GunPage, "Speed Fire (Rapid Shot)", true, function(state) Settings.SpeedFire = state end)
+CreateToggle(GunPage, "Speed Fire (Humanized)", true, function(state) Settings.SpeedFire = state end)
 
--- TARGET FINDER
 local function GetClosestTarget()
-    local closestPart = nil
+    local closestTarget = nil
     local maxDist = Settings.FOVRadius
     local screenCenter = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
 
@@ -758,7 +749,7 @@ local function GetClosestTarget()
         if plr ~= LocalPlayer and plr.Character and plr.Character:FindFirstChildOfClass("Humanoid") then
             if plr.Character.Humanoid.Health > 0 then
                 local partName = Settings.TargetPart
-                local targetPart = plr.Character:FindFirstChild(partName) or plr.Character:FindFirstChild("HumanoidRootPart") or plr.Character:FindFirstChild("Head")
+                local targetPart = plr.Character:FindFirstChild(partName) or plr.Character:FindFirstChild("HumanoidRootPart")
                 
                 if targetPart then
                     local pos, onScreen = Camera:WorldToViewportPoint(targetPart.Position)
@@ -766,111 +757,39 @@ local function GetClosestTarget()
                         local dist = (Vector2.new(pos.X, pos.Y) - screenCenter).Magnitude
                         if dist < maxDist then
                             maxDist = dist
-                            closestPart = targetPart
+                            closestTarget = targetPart
                         end
                     end
                 end
             end
         end
     end
-    return closestPart
+    return closestTarget
 end
 
--- DYNAMIC IGNORE LIST UNTUK WALLBANG
-local function GetIgnoreList()
-    local ignore = {LocalPlayer.Character, Camera}
-    if Settings.Wallbang then
-        for _, obj in pairs(Workspace:GetChildren()) do
-            if obj ~= Workspace.CurrentCamera and not Players:GetPlayerFromCharacter(obj) then
-                table.insert(ignore, obj)
-            end
-        end
-    end
-    return ignore
-end
-
--- ADVANCED SILENT AIM & WALLBANG HOOKS
-if hookmetamethod then
-    -- 1. Namecall Hook (Raycasts & Target Checks)
-    local oldNamecall
-    oldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
-        local method = getnamecallmethod()
-        local args = {...}
-
-        if Settings.SilentAim then
-            local targetPart = GetClosestTarget()
-            if targetPart then
-                if method == "Raycast" then
-                    local origin = args[1]
-                    args[2] = (targetPart.Position - origin).Unit * 10000
-                    
-                    if Settings.Wallbang then
-                        local rayParams = args[3] or RaycastParams.new()
-                        rayParams.FilterType = Enum.RaycastFilterType.Exclude
-                        rayParams.FilterDescendantsInstances = GetIgnoreList()
-                        args[3] = rayParams
-                    end
-                    return oldNamecall(self, unpack(args))
-
-                elseif method == "FindPartOnRayWithIgnoreList" or method == "FindPartOnRayWithWhitelist" or method == "FindPartOnRay" then
-                    local origin = args[1].Origin
-                    args[1] = Ray.new(origin, (targetPart.Position - origin).Unit * 10000)
-                    
-                    if Settings.Wallbang then
-                        args[2] = GetIgnoreList()
-                    end
-                    return oldNamecall(self, unpack(args))
-
-                elseif method == "ScreenPointToRay" or method == "ViewportPointToRay" then
-                    local pos = Camera:WorldToScreenPoint(targetPart.Position)
-                    args[1] = pos.X
-                    args[2] = pos.Y
-                    return oldNamecall(self, unpack(args))
-                end
-            end
-        end
-
-        return oldNamecall(self, unpack(args))
-    end)
-
-    -- 2. Index Hook (Mouse.Hit / Mouse.Target Override)
-    local oldIndex
-    oldIndex = hookmetamethod(game, "__index", function(self, key)
-        if Settings.SilentAim and not checkcaller() then
-            if self:IsA("Mouse") and (key == "Hit" or key == "Target") then
-                local targetPart = GetClosestTarget()
-                if targetPart then
-                    if key == "Hit" then
-                        return targetPart.CFrame
-                    elseif key == "Target" then
-                        return targetPart
-                    end
-                end
-            end
-        end
-        return oldIndex(self, key)
-    end)
-end
-
--- RUNTIME LOOPS
+-- RUNTIME LOOPS (SAFE CAMERA LOCK & THROTTLE SPEED FIRE)
+local lastShot = 0
 RunService.RenderStepped:Connect(function()
     -- Speed Hack
     if Settings.WalkSpeed ~= 16 and LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
         LocalPlayer.Character:FindFirstChildOfClass("Humanoid").WalkSpeed = Settings.WalkSpeed
     end
 
-    -- FOV Circle
+    -- FOV & Line Drawings
     local center = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
-    if Settings.ShowFOV then
-        FOVCircle.Position = center
-        FOVCircle.Radius = Settings.FOVRadius
-        FOVCircle.Visible = true
-    else
-        FOVCircle.Visible = false
+    FOVCircle.Position = center
+    FOVCircle.Radius = Settings.FOVRadius
+    FOVCircle.Visible = Settings.ShowFOV
+
+    local lockedTarget = GetClosestTarget()
+    
+    -- Silent Aim (Camera LookAt Lock aman tanpa hook metatable)
+    if Settings.SilentAim and lockedTarget then
+        if UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton1) or UserInputService.TouchEnabled then
+            Camera.CFrame = CFrame.new(Camera.CFrame.Position, lockedTarget.Position)
+        end
     end
 
-    -- Target Line
-    local lockedTarget = GetClosestTarget()
     if lockedTarget and Settings.LineTarget then
         local pos, onScreen = Camera:WorldToViewportPoint(lockedTarget.Position)
         if onScreen then
@@ -884,11 +803,16 @@ RunService.RenderStepped:Connect(function()
         TargetLine.Visible = false
     end
 
-    -- Speed Fire
+    -- Speed Fire aman dengan throttle jeda waktu (0.15s) agar terhindar dari rate-limit/kick
     if Settings.SpeedFire and LocalPlayer.Character then
         local tool = LocalPlayer.Character:FindFirstChildOfClass("Tool")
         if tool and UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton1) then
-            tool:Activate()
+            if tick() - lastShot > 0.15 then
+                pcall(function()
+                    tool:Activate()
+                end)
+                lastShot = tick()
+            end
         end
     end
 end)
