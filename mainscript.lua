@@ -1,5 +1,5 @@
 -- ========================================================
--- DEAR IMGUI PREMIUM GRADIENT UI (V4.8 - WALLHACK & JUMP FIX)
+-- DEAR IMGUI PREMIUM GRADIENT UI (V4.9 - RESTORED STANDARD)
 -- ========================================================
 
 local Players = game:GetService("Players")
@@ -18,7 +18,7 @@ if _G.ImGuiV4_FOV then pcall(function() _G.ImGuiV4_FOV:Remove() end) end
 if _G.ImGuiV4_Line then pcall(function() _G.ImGuiV4_Line:Remove() end) end
 
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "ImGui_Gradient_Hub_V48"
+ScreenGui.Name = "ImGui_Gradient_Hub_V49"
 ScreenGui.ResetOnSpawn = false
 _G.ImGuiV4_ScreenGui = ScreenGui
 
@@ -31,9 +31,6 @@ else
     ScreenGui.Parent = CoreGui
 end
 
--- ==========================================
--- TOAST NOTIFICATION SYSTEM
--- ==========================================
 local ToastContainer = Instance.new("Frame")
 ToastContainer.Size = UDim2.new(0, 220, 0, 300)
 ToastContainer.Position = UDim2.new(1, -230, 1, -310)
@@ -77,12 +74,12 @@ local function ShowToast(text, isSuccess)
 
     TweenService:Create(Toast, TweenInfo.new(0.3), {BackgroundTransparency = 0.1}):Play()
     TweenService:Create(Stroke, TweenInfo.new(0.3), {Transparency = 0}):Play()
-    TweenService:Create(Label, TweenInfo.new(0.3), {Transparency = 0}):Play()
+    TweenService:Create(Label, TweenInfo.new(0.3), {TextTransparency = 0}):Play()
 
     task.delay(2.5, function()
         local tweenOut = TweenService:Create(Toast, TweenInfo.new(0.4), {BackgroundTransparency = 1})
         TweenService:Create(Stroke, TweenInfo.new(0.4), {Transparency = 1}):Play()
-        TweenService:Create(Label, TweenInfo.new(0.4), {Transparency = 1}):Play()
+        TweenService:Create(Label, TweenInfo.new(0.4), {TextTransparency = 1}):Play()
         tweenOut:Play()
         tweenOut.Completed:Connect(function() Toast:Destroy() end)
     end)
@@ -200,7 +197,7 @@ local SubText = Instance.new("TextLabel")
 SubText.Size = UDim2.new(1, -10, 1, 0)
 SubText.Position = UDim2.new(0, 8, 0, 0)
 SubText.BackgroundTransparency = 1
-SubText.Text = "Dear ImGui v4.8 (Noclip & Jump Fixed)"
+SubText.Text = "Dear ImGui v4.9 (Restored Standard)"
 SubText.Font = Enum.Font.Code
 SubText.TextSize = 11
 SubText.TextColor3 = Color3.fromRGB(150, 160, 180)
@@ -547,28 +544,39 @@ local function CreateColorTable(parent, text, callback)
 end
 
 -- ==========================================
--- LOGIC IMPLEMENTATIONS (FIXED & TESTED)
+-- LOGIC IMPLEMENTATIONS (RESTORED STANDARD)
 -- ==========================================
 
--- PLAYER TAB
 CreateSlider(PlayerPage, "Speed Hack", 16, 150, 16, true, function(val) Settings.WalkSpeed = val end)
 CreateToggle(PlayerPage, "Multi Jump", true, function(state) Settings.MultiJump = state end)
 
--- FIXED MULTI JUMP (STANDARD BYPASS VIA HUMANOID STATE & JUMP POWER)
-UserInputService.JumpRequest:Connect(function()
-    if Settings.MultiJump then
+-- STANDAR MULTI JUMP MENGGUNAKAN JUMP REQUEST & INPUT BEGAN
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if not gameProcessed and Settings.MultiJump and input.KeyCode == Enum.KeyCode.Space then
         local char = LocalPlayer.Character
         if char then
-            local hum = char:FindFirstChildOfClass("Humanoid")
             local hrp = char:FindFirstChild("HumanoidRootPart")
-            if hum and hrp then
+            local hum = char:FindFirstChildOfClass("Humanoid")
+            if hrp and hum and hum:GetState() ~= Enum.HumanoidStateType.Dead then
                 hrp.AssemblyLinearVelocity = Vector3.new(hrp.AssemblyLinearVelocity.X, Settings.MultiJumpPower, hrp.AssemblyLinearVelocity.Z)
             end
         end
     end
 end)
 
--- SOLID CHAMS
+UserInputService.JumpRequest:Connect(function()
+    if Settings.MultiJump then
+        local char = LocalPlayer.Character
+        if char then
+            local hrp = char:FindFirstChild("HumanoidRootPart")
+            local hum = char:FindFirstChildOfClass("Humanoid")
+            if hrp and hum and hum:GetState() ~= Enum.HumanoidStateType.Dead then
+                hrp.AssemblyLinearVelocity = Vector3.new(hrp.AssemblyLinearVelocity.X, Settings.MultiJumpPower, hrp.AssemblyLinearVelocity.Z)
+            end
+        end
+    end
+end)
+
 local function ApplyChams(plr)
     if plr == LocalPlayer then return end
     local function UpdateHighlight(char)
@@ -630,16 +638,14 @@ CreateColorTable(PlayerPage, "Chams Color Selector", function(col)
     end
 end)
 
--- FIXED NOCLIP / WALLHACK (FORCE CANCOLLIDE OFF PADA SELURUH BAGIAN KARAKTER)
+-- STANDAR NOCLIP (WALLHACK)
 CreateToggle(PlayerPage, "Wall Hack (Noclip)", true, function(state) Settings.Noclip = state end)
 
 RunService.Stepped:Connect(function()
-    -- Speed Hack Loop
     if Settings.WalkSpeed ~= 16 and LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
         LocalPlayer.Character:FindFirstChildOfClass("Humanoid").WalkSpeed = Settings.WalkSpeed
     end
 
-    -- Fixed Noclip Loop
     if Settings.Noclip and LocalPlayer.Character then
         for _, part in pairs(LocalPlayer.Character:GetDescendants()) do
             if part:IsA("BasePart") then
@@ -649,7 +655,6 @@ RunService.Stepped:Connect(function()
     end
 end)
 
--- MISC TAB
 CreateToggle(MiscPage, "Anti Crash", true, function(state) Settings.AntiCrash = state end)
 CreateToggle(MiscPage, "Anti Kick", true, function(state) Settings.AntiKick = state end)
 
@@ -661,9 +666,9 @@ CreateToggle(MiscPage, "Night Mode", true, function(state)
         Lighting.Brightness = 0.2
         Lighting.OutdoorAmbient = Color3.fromRGB(20, 20, 40)
     else
-        Lighting.ClockTime = 14
-        Lighting.Brightness = 1
-        Lighting.OutdoorAmbient = Color3.fromRGB(128, 128, 128)
+        Lighting.ClockTime = DefaultLighting.ClockTime
+        Lighting.Brightness = DefaultLighting.Brightness
+        Lighting.OutdoorAmbient = DefaultLighting.OutdoorAmbient
     end
 end)
 
@@ -675,13 +680,12 @@ CreateToggle(MiscPage, "Daylight Mode", true, function(state)
         Lighting.Brightness = 3
         Lighting.OutdoorAmbient = Color3.fromRGB(255, 255, 255)
     else
-        Lighting.ClockTime = 14
-        Lighting.Brightness = 1
-        Lighting.OutdoorAmbient = Color3.fromRGB(128, 128, 128)
+        Lighting.ClockTime = DefaultLighting.ClockTime
+        Lighting.Brightness = DefaultLighting.Brightness
+        Lighting.OutdoorAmbient = DefaultLighting.OutdoorAmbient
     end
 end)
 
--- GUN TAB (TRUE SILENT AIM: PELURU / RAYCAST MEMBELOK KE MUSUH)
 CreateToggle(GunPage, "Silent Aim (Pure Bullet Redirect)", true, function(state) Settings.SilentAim = state end)
 CreateSelector(GunPage, "Target Part", {"Head", "Body"}, 1, function(selected) 
     Settings.TargetPart = selected == "Body" and "UpperTorso" or "Head"
