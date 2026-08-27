@@ -1,5 +1,5 @@
 -- ========================================================
--- DEAR IMGUI PREMIUM GRADIENT UI (V4.1 - MULTI-FIX EDITION)
+-- DEAR IMGUI PREMIUM GRADIENT UI (V4.2 - ICON & JUMP FIX)
 -- "D3D MENU AMIN GANTENG"
 -- ========================================================
 
@@ -14,7 +14,7 @@ local TweenService = game:GetService("TweenService")
 local LocalPlayer = Players.LocalPlayer
 local Camera = Workspace.CurrentCamera
 
--- Pembersihan objek lama jika script di-run ulang (Anti-Overlap)
+-- Clean up instance lama jika script di-run ulang
 if _G.ImGuiV4_ScreenGui then _G.ImGuiV4_ScreenGui:Destroy() end
 if _G.ImGuiV4_FOV then _G.ImGuiV4_FOV:Remove() end
 if _G.ImGuiV4_Line then _G.ImGuiV4_Line:Remove() end
@@ -129,17 +129,17 @@ TargetLine.Visible = false
 _G.ImGuiV4_Line = TargetLine
 
 -- ==========================================
--- FLOATING TOGGLE ICON
+-- FLOATING TOGGLE ICON (MINI SIZE)
 -- ==========================================
 local ToggleBtn = Instance.new("TextButton")
 ToggleBtn.Name = "ImGui_ToggleIcon"
-ToggleBtn.Size = UDim2.new(0, 50, 0, 50)
+ToggleBtn.Size = UDim2.new(0, 26, 0, 26) -- Ukuran diperkecil ke 26x26 (separuh dari 50x50)
 ToggleBtn.Position = UDim2.new(0.05, 0, 0.2, 0)
 ToggleBtn.BackgroundColor3 = Color3.fromRGB(25, 20, 40)
 ToggleBtn.BorderSizePixel = 0
 ToggleBtn.Text = "X"
 ToggleBtn.Font = Enum.Font.SourceSansBold
-ToggleBtn.TextSize = 28
+ToggleBtn.TextSize = 14
 ToggleBtn.TextColor3 = Color3.fromRGB(0, 235, 255)
 ToggleBtn.Active = true
 ToggleBtn.Draggable = true
@@ -154,11 +154,11 @@ BtnGradient.Rotation = 45
 BtnGradient.Parent = ToggleBtn
 
 local BtnCorner = Instance.new("UICorner")
-BtnCorner.CornerRadius = UDim.new(0, 10)
+BtnCorner.CornerRadius = UDim.new(0, 6)
 BtnCorner.Parent = ToggleBtn
 
 local BtnStroke = Instance.new("UIStroke")
-BtnStroke.Thickness = 2
+BtnStroke.Thickness = 1.5
 BtnStroke.Color = Color3.fromRGB(0, 235, 255)
 BtnStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 BtnStroke.Parent = ToggleBtn
@@ -223,7 +223,7 @@ local SubText = Instance.new("TextLabel")
 SubText.Size = UDim2.new(1, -10, 1, 0)
 SubText.Position = UDim2.new(0, 8, 0, 0)
 SubText.BackgroundTransparency = 1
-SubText.Text = "Dear ImGui v4.1 (Universal Fix Edition)"
+SubText.Text = "Dear ImGui v4.2 (Mini Icon & Jump Fix)"
 SubText.Font = Enum.Font.Code
 SubText.TextSize = 11
 SubText.TextColor3 = Color3.fromRGB(150, 160, 180)
@@ -574,17 +574,16 @@ local function CreateColorTable(parent, text, callback)
 end
 
 -- ==========================================
--- LOGIC IMPLEMENTATIONS (PERBAIKAN LENGKAP)
+-- LOGIC IMPLEMENTATIONS
 -- ==========================================
 
 -- 1. PLAYER TAB
 CreateSlider(PlayerPage, "Speed Hack", 16, 150, 16, true, function(val) Settings.WalkSpeed = val end)
 CreateToggle(PlayerPage, "Multi Jump", true, function(state) Settings.MultiJump = state end)
 
--- FIXED MULTI JUMP (Universal Spacebar Detector)
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
-    if gameProcessed then return end
-    if Settings.MultiJump and (input.KeyCode == Enum.KeyCode.Space or input.UserInputType == Enum.UserInputType.Touch) then
+-- FIXED MULTI JUMP (Hanya aktif saat menekan Tombol Lompat / Spacebar)
+UserInputService.JumpRequest:Connect(function()
+    if Settings.MultiJump then
         local char = LocalPlayer.Character
         if char then
             local hum = char:FindFirstChildOfClass("Humanoid")
@@ -673,14 +672,13 @@ end)
 CreateToggle(MiscPage, "Anti Crash", true, function(state) Settings.AntiCrash = state end)
 CreateToggle(MiscPage, "Anti Kick", true, function(state) Settings.AntiKick = state end)
 
--- FIXED ANTI HIT (Hitbox Bypass / CanTouch Disabler for Chameleon & Paintball Maps)
 CreateToggle(MiscPage, "Anti Hit (Immunity)", true, function(state)
     Settings.AntiHit = state
     local char = LocalPlayer.Character
     if char then
         for _, v in pairs(char:GetChildren()) do
             if v:IsA("BasePart") then
-                v.CanTouch = not state -- Mencegah registrasi peluru cat / projectile touch event
+                v.CanTouch = not state
             end
         end
     end
@@ -763,7 +761,7 @@ local function GetClosestTarget()
     return closestPart
 end
 
--- FIXED UNIVERSAL SILENT AIM & ADVANCED WALLBANG HOOK
+-- UNIVERSAL SILENT AIM & WALLBANG HOOK
 local oldNamecall
 oldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
     local method = getnamecallmethod()
@@ -773,10 +771,7 @@ oldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
         local targetPart = GetClosestTarget()
         if targetPart then
             if method == "Raycast" then
-                -- Ubah arah raycast agar mengunci target
                 args[2] = (targetPart.Position - args[1]).Unit * 2000
-                
-                -- WALLBANG FIX: Hapus filter tembok/lingkungan dari RaycastParams
                 if Settings.Wallbang then
                     local rayParams = args[3] or RaycastParams.new()
                     rayParams.FilterType = Enum.RaycastFilterType.Include
@@ -784,12 +779,9 @@ oldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
                     args[3] = rayParams
                 end
                 return oldNamecall(self, unpack(args))
-                
             elseif method == "FindPartOnRayWithIgnoreList" or method == "FindPartOnRay" then
                 local origin = args[1].Origin
                 args[1] = Ray.new(origin, (targetPart.Position - origin).Unit * 2000)
-                
-                -- WALLBANG FIX: Mengabaikan semua objek kecuali karakter target
                 if Settings.Wallbang then
                     local ignoreList = {}
                     for _, v in pairs(Workspace:GetChildren()) do
@@ -806,12 +798,10 @@ oldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
     return oldNamecall(self, ...)
 end)
 
--- WALLBANG PELURU FISIK / PAINTBALL BULLETS (Bypass Collision Part Peluru)
 Workspace.ChildAdded:Connect(function(child)
     if Settings.Wallbang then
         task.wait()
         if child:IsA("BasePart") and not child:IsDescendantOf(LocalPlayer.Character) then
-            -- Mencegah peluru hancur saat menyentuh tembok
             child.CanCollide = false
         end
     end
