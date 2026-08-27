@@ -1,4 +1,50 @@
+--[[
+    ================================================================
+    [ SCRIPT INFORMATION ]
+    Project: Custom Script
+    Author: OYB
+    YouTube: https://youtube.com/@vvipmods-official?si=Jzp6hfSVZq5xITPm
+    
+    [ TERMS AND CONDITIONS ]
+    - You ARE allowed to use and modify this script for your own games.
+    - You ARE NOT allowed to re-upload, redistribute, or claim 
+      ownership of this script.
+    - Removing or altering these credits is strictly prohibited.
+    
+    Copyright (c) 2026 OYB. All rights reserved.
+    ================================================================
+]]
 
+-- ⚠️ IMPORTANT: Put this code at the VERY TOP of your Main Script (before obfuscating) ⚠️
+
+local ProtectionConfig = {
+    -- 🔴 CRITICAL: This MUST exactly match the 'Secret' value in your Key System's Config!
+    -- If your Key System has: Secret = "Test"
+    -- Then this must also be: SecretKey = "Test"
+    SecretKey = "1234",
+    
+    -- The name of your Hub (shown in the kick message if they try to bypass)
+    HubName = "VVIP MODS"
+}
+
+-- Anti-Bypass Logic: Checks if the Key System successfully set the global variable
+if not _G[ProtectionConfig.SecretKey] then
+    local player = game:GetService("Players").LocalPlayer
+    if player then
+        player:Kick("\n🛡️ Unauthorized Execution 🛡️\n\nPlease use the official Key System to run " .. ProtectionConfig.HubName)
+    end
+    return -- Stops the rest of the script from loading!
+end
+
+-------------------------------------------------------------------------------
+-- 👇 YOUR MAIN SCRIPT CODE STARTS HERE 👇
+-------------------------------------------------------------------------------
+
+--==================================================
+-- VVIP MODS
+-- CUSTOM GUI + AIM + ESP + VISUAL + CONFIG
+-- ROBLOX STUDIO / GAME MILIK SENDIRI
+--==================================================
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -156,420 +202,6 @@ Target = "All",
 	-- CONFIG
 	AutoLoad = false,
 }
-
--- ==========================================
--- KONFIGURASI API (diambil dari script.lua)
--- ==========================================
-
-local API_URL = "https://api-vvipmods.com/api/v5/roblox"
-
--- Body request yang dikirim ke API:
--- {
---     "member_key": "KEY_USER",
---     "serial": "DEVICE_ID"
--- }
-
-local API_KEY_FIELD = "member_key"
-local API_DEVICE_FIELD = "serial"
-
--- Secret token sesuai PHP:
--- md5($member_key . $serial . 'VVIPMODS')
-
-local TOKEN_SECRET = "VVIPMODS"
-
--- ==========================================
--- PURE LUA MD5 FALLBACK (diambil dari script.lua)
--- ==========================================
-
-local function PureLuaMD5(message)
-    if not bit32 then
-        return nil
-    end
-
-    local bit = bit32
-    local band = bit.band
-    local bor = bit.bor
-    local bxor = bit.bxor
-    local bnot = bit.bnot
-    local lrotate = bit.lrotate
-    local rshift = bit.rshift
-
-    local MOD = 4294967296
-
-    local function add32(...)
-        local sum = 0
-        local args = {...}
-
-        for i = 1, #args do
-            sum = (sum + args[i]) % MOD
-        end
-
-        return sum
-    end
-
-    local function leWord(n)
-        local b1 = band(n, 255)
-        local b2 = band(rshift(n, 8), 255)
-        local b3 = band(rshift(n, 16), 255)
-        local b4 = band(rshift(n, 24), 255)
-
-        return string.char(b1, b2, b3, b4)
-    end
-
-    local function wordToHex(n)
-        local b1 = band(n, 255)
-        local b2 = band(rshift(n, 8), 255)
-        local b3 = band(rshift(n, 16), 255)
-        local b4 = band(rshift(n, 24), 255)
-
-        return string.format("%02x%02x%02x%02x", b1, b2, b3, b4)
-    end
-
-    local originalLength = #message
-    local bitLength = originalLength * 8
-
-    message = message .. string.char(128)
-
-    while (#message % 64) ~= 56 do
-        message = message .. string.char(0)
-    end
-
-    local lowBits = bitLength % MOD
-    local highBits = math.floor(bitLength / MOD)
-
-    message = message .. leWord(lowBits) .. leWord(highBits)
-
-    local s = {
-        7, 12, 17, 22,
-        7, 12, 17, 22,
-        7, 12, 17, 22,
-        7, 12, 17, 22,
-
-        5, 9, 14, 20,
-        5, 9, 14, 20,
-        5, 9, 14, 20,
-        5, 9, 14, 20,
-
-        4, 11, 16, 23,
-        4, 11, 16, 23,
-        4, 11, 16, 23,
-        4, 11, 16, 23,
-
-        6, 10, 15, 21,
-        6, 10, 15, 21,
-        6, 10, 15, 21,
-        6, 10, 15, 21
-    }
-
-    local K = {}
-
-    for i = 1, 64 do
-        K[i] = math.floor(math.abs(math.sin(i)) * MOD)
-    end
-
-    local a0 = 0x67452301
-    local b0 = 0xefcdab89
-    local c0 = 0x98badcfe
-    local d0 = 0x10325476
-
-    for chunkStart = 1, #message, 64 do
-        local M = {}
-
-        for i = 0, 15 do
-            local index = chunkStart + (i * 4)
-            local b1, b2, b3, b4 = string.byte(message, index, index + 3)
-
-            M[i] =
-                (b1 or 0) +
-                ((b2 or 0) * 256) +
-                ((b3 or 0) * 65536) +
-                ((b4 or 0) * 16777216)
-        end
-
-        local A = a0
-        local B = b0
-        local C = c0
-        local D = d0
-
-        for i = 0, 63 do
-            local F
-            local g
-
-            if i <= 15 then
-                F = bor(band(B, C), band(bnot(B), D))
-                g = i
-            elseif i <= 31 then
-                F = bor(band(D, B), band(bnot(D), C))
-                g = (5 * i + 1) % 16
-            elseif i <= 47 then
-                F = bxor(B, C, D)
-                g = (3 * i + 5) % 16
-            else
-                F = bxor(C, bor(B, bnot(D)))
-                g = (7 * i) % 16
-            end
-
-            F = add32(F, A, K[i + 1], M[g])
-
-            A = D
-            D = C
-            C = B
-            B = add32(B, lrotate(F, s[i + 1]))
-        end
-
-        a0 = add32(a0, A)
-        b0 = add32(b0, B)
-        c0 = add32(c0, C)
-        d0 = add32(d0, D)
-    end
-
-    return wordToHex(a0) .. wordToHex(b0) .. wordToHex(c0) .. wordToHex(d0)
-end
-
--- ==========================================
--- GENERATE MD5 (diambil dari script.lua)
--- ==========================================
-
-local function GenerateMD5(text)
-    text = tostring(text)
-
-    local result = nil
-
-    pcall(function()
-        if crypt and crypt.hash then
-            result = crypt.hash(text, "md5")
-        end
-    end)
-
-    if result and type(result) == "string" and #result >= 32 then
-        return string.lower(result)
-    end
-
-    pcall(function()
-        if crypt and crypt.hash then
-            result = crypt.hash("md5", text)
-        end
-    end)
-
-    if result and type(result) == "string" and #result >= 32 then
-        return string.lower(result)
-    end
-
-    pcall(function()
-        if syn and syn.crypt and syn.crypt.hash then
-            result = syn.crypt.hash(text, "md5")
-        end
-    end)
-
-    if result and type(result) == "string" and #result >= 32 then
-        return string.lower(result)
-    end
-
-    pcall(function()
-        if hash then
-            result = hash("md5", text)
-        end
-    end)
-
-    if result and type(result) == "string" and #result >= 32 then
-        return string.lower(result)
-    end
-
-    pcall(function()
-        if hash then
-            result = hash(text, "md5")
-        end
-    end)
-
-    if result and type(result) == "string" and #result >= 32 then
-        return string.lower(result)
-    end
-
-    result = PureLuaMD5(text)
-
-    if result and type(result) == "string" and #result >= 32 then
-        return string.lower(result)
-    end
-
-    return nil
-end
-
--- ==========================================
--- DEVICE ID / HWID (diambil dari script.lua)
--- ==========================================
-
-local function GetDeviceId()
-    local deviceId = nil
-
-    pcall(function()
-        if typeof(gethwid) == "function" then
-            deviceId = gethwid()
-        elseif typeof(get_hwid) == "function" then
-            deviceId = get_hwid()
-        end
-    end)
-
-    if not deviceId or deviceId == "" then
-        deviceId = tostring(LocalPlayer.UserId)
-    end
-
-    return tostring(deviceId)
-end
-
--- ==========================================
--- HTTP REQUEST WRAPPER (diambil dari script.lua)
--- ==========================================
-
-local function SendHttpRequest(options)
-    if syn and syn.request then
-        return syn.request(options)
-    elseif http and http.request then
-        return http.request(options)
-    elseif request then
-        return request(options)
-    elseif http_request then
-        return http_request(options)
-    else
-        return HttpService:RequestAsync(options)
-    end
-end
-
--- ==========================================
--- VALIDASI TOKEN DARI API (diambil dari script.lua)
--- ==========================================
-
-local function ValidateApiToken(memberKey, serial, apiToken)
-    if not memberKey or memberKey == "" then
-        return false, "Member key kosong."
-    end
-
-    if not serial or serial == "" then
-        return false, "Serial/device kosong."
-    end
-
-    if not apiToken or apiToken == "" then
-        return false, "Token API kosong."
-    end
-
-    local rawToken = tostring(memberKey) .. tostring(serial) .. TOKEN_SECRET
-    local generatedToken = GenerateMD5(rawToken)
-
-    if not generatedToken then
-        return false, "Gagal generate MD5 token."
-    end
-
-    generatedToken = string.lower(tostring(generatedToken))
-    apiToken = string.lower(tostring(apiToken))
-
-    if generatedToken == apiToken then
-        return true, "Token valid."
-    end
-
-    return false, "Token tidak cocok."
-end
-
--- ==========================================
--- VALIDASI KEY KE API (diambil dari script.lua)
--- ==========================================
-
-local function VerifyKey(inputKey)
-    if not inputKey or inputKey == "" then
-        return false, "Key tidak boleh kosong.", nil
-    end
-
-    local deviceId = GetDeviceId()
-
-    local payload = {}
-    payload[API_KEY_FIELD] = tostring(inputKey)
-    payload[API_DEVICE_FIELD] = tostring(deviceId)
-
-    local success, result = pcall(function()
-        return SendHttpRequest({
-            Url = API_URL,
-            Method = "POST",
-            Headers = {
-                ["Content-Type"] = "application/json"
-            },
-            Body = HttpService:JSONEncode(payload)
-        })
-    end)
-
-    if not success then
-        return false, "Gagal menghubungi API.", nil
-    end
-
-    if not result then
-        return false, "Response API kosong.", nil
-    end
-
-    local statusCode = result.StatusCode or result.status_code or result.Status or 0
-    local body = result.Body or result.body or ""
-
-    local requestSuccess = false
-
-    if result.Success == true then
-        requestSuccess = true
-    elseif tonumber(statusCode) and tonumber(statusCode) >= 200 and tonumber(statusCode) < 300 then
-        requestSuccess = true
-    end
-
-    if not requestSuccess then
-        return false, "HTTP Error: " .. tostring(statusCode), nil
-    end
-
-    if body == "" then
-        return false, "Body API kosong.", nil
-    end
-
-    local decoded = nil
-    local decodeSuccess = pcall(function()
-        decoded = HttpService:JSONDecode(body)
-    end)
-
-    if not decodeSuccess or type(decoded) ~= "table" then
-        return false, "Format JSON API tidak valid.", nil
-    end
-
-    -- Response sukses:
-    -- {
-    --     "status": true,
-    --     "data": {
-    --         "token": "...",
-    --         "rng": 1783530307,
-    --         "expired": "...",
-    --         "EXPR": "...",
-    --         "registrator": "Muslim"
-    --     }
-    -- }
-
-    if decoded.status == true then
-        local data = decoded.data
-
-        if not data or type(data) ~= "table" then
-            return false, "Data API tidak ditemukan.", nil
-        end
-
-        if not data.token then
-            return false, "Token API tidak ditemukan.", nil
-        end
-
-        local tokenValid, tokenMessage = ValidateApiToken(inputKey, deviceId, data.token)
-
-        if not tokenValid then
-            return false, tokenMessage, nil
-        end
-
-        return true, "Login berhasil.", data
-    end
-
-    -- Response gagal:
-    -- {
-    --     "status": false,
-    --     "reason": "DEVICE IS NOT CORRECT"
-    -- }
-
-    return false, decoded.reason or "Key tidak valid.", nil
-end
 
 
 
@@ -1581,7 +1213,7 @@ local LoginInfo = Instance.new("TextLabel")
 LoginInfo.Size = UDim2.new(1, -24, 0, 34)
 LoginInfo.Position = UDim2.fromOffset(12, 45)
 LoginInfo.BackgroundTransparency = 1
-LoginInfo.Text = "Masukkan key VVIP kamu untuk membuka menu."
+LoginInfo.Text = "Isi apa saja pada kolom di bawah, lalu tekan LOGIN."
 LoginInfo.TextColor3 = COLORS.SubText
 LoginInfo.Font = Enum.Font.Gotham
 LoginInfo.TextSize = 10
@@ -1642,25 +1274,19 @@ LoginButton.Activated:Connect(function()
 
     UserKey = tostring(KeyBox.Text or "")
 
-    if UserKey == "" then
-        SetLoginStatus("❌ Key tidak boleh kosong.", false)
-        return
-    end
-
     LoginButton.Text = "⏳ MEMERIKSA..."
     LoginButton.Active = false
-    SetLoginStatus("Sedang memvalidasi key ke server...", true)
+    SetLoginStatus("Membuka menu...", true)
 
     task.spawn(function()
-        local valid = true
-        local message = "Succes Bypass"
+        local valid, message, data = VerifyKey(UserKey)
 
         if valid then
-            LoggedIn = true, 
-            SavedToken ="BYPASSED_TOKEN", 
-            SavedRng = "12345",
-            SavedExpired = "9999-12-31",
-            SavedRegistrator = "VIP_User"
+            LoggedIn = true
+            SavedToken = nil
+            SavedRng = nil
+            SavedExpired = nil
+            SavedRegistrator = "Local"
 
             SetLoginStatus(
                 "✅ Login berhasil" ..
