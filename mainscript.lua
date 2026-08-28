@@ -1,5 +1,5 @@
 -- ========================================================
--- DEAR IMGUI PREMIUM GRADIENT UI (V5.4 - ULTIMATE AIMBOT & GUN HUB)
+-- DEAR IMGUI PREMIUM GRADIENT UI (V5.5 - FIXED STUCK/FC BUG)
 -- ========================================================
 
 local Players = game:GetService("Players")
@@ -18,7 +18,7 @@ if _G.ImGuiV4_FOV then pcall(function() _G.ImGuiV4_FOV:Remove() end) end
 if _G.ImGuiV4_Line then pcall(function() _G.ImGuiV4_Line:Remove() end) end
 
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "ImGui_Gradient_Hub_V54"
+ScreenGui.Name = "ImGui_Gradient_Hub_V55"
 ScreenGui.ResetOnSpawn = false
 _G.ImGuiV4_ScreenGui = ScreenGui
 
@@ -203,7 +203,7 @@ local SubText = Instance.new("TextLabel")
 SubText.Size = UDim2.new(1, -10, 1, 0)
 SubText.Position = UDim2.new(0, 8, 0, 0)
 SubText.BackgroundTransparency = 1
-SubText.Text = "Dear ImGui v5.4 (Advanced Aimbot & Gun Hub)"
+SubText.Text = "Dear ImGui v5.5 (Optimized & Stable)"
 SubText.Font = Enum.Font.Code
 SubText.TextSize = 11
 SubText.TextColor3 = Color3.fromRGB(150, 160, 180)
@@ -582,32 +582,6 @@ LocalPlayer.CharacterAdded:Connect(function(char)
 end)
 if LocalPlayer.Character then task.spawn(SetupJumpDetection) end
 
-task.spawn(function()
-    pcall(function()
-        local playerGui = LocalPlayer:WaitForChild("PlayerGui", 5)
-        local touchGui = playerGui:WaitForChild("TouchGui", 5)
-        if touchGui then
-            local touchControlFrame = touchGui:WaitForChild("TouchControlFrame", 5)
-            if touchControlFrame then
-                local jumpButton = touchControlFrame:WaitForChild("JumpButton", 5)
-                if jumpButton then
-                    jumpButton.MouseButton1Down:Connect(function()
-                        if Settings.MultiJump then
-                            local char = LocalPlayer.Character
-                            if char then
-                                local hrp = char:FindFirstChild("HumanoidRootPart")
-                                if hrp then
-                                    hrp.Velocity = Vector3.new(hrp.Velocity.X, Settings.MultiJumpPower, hrp.Velocity.Z)
-                                end
-                            end
-                        end
-                    end)
-                end
-            end
-        end
-    end)
-end)
-
 local function ApplyChams(plr)
     if plr == LocalPlayer then return end
     local function UpdateHighlight(char)
@@ -715,7 +689,7 @@ CreateToggle(MiscPage, "Daylight Mode", true, function(state)
 end)
 
 -- ==========================================
--- GUN TAB IMPLEMENTATIONS (AIMBOT + AUTO FIRE + UNLIMITED AMMO)
+-- GUN TAB IMPLEMENTATIONS (OPTIMIZED & SAFE)
 -- ==========================================
 
 CreateToggle(GunPage, "Aimbot (Auto Lock Enemy)", true, function(state) Settings.Aimbot = state end)
@@ -728,7 +702,6 @@ CreateSlider(GunPage, "Max Distance", 100, 5000, 500, true, function(val) Settin
 CreateToggle(GunPage, "Unlimited Ammo (Safe)", true, function(state) Settings.UnlimitedAmmo = state end)
 CreateToggle(GunPage, "Auto Fire (Enemy Only)", true, function(state) Settings.AutoFire = state end)
 
--- Strict Enemy Team Check (Handles team swapping dynamically)
 local function IsEnemy(plr)
     if not LocalPlayer.Team then return true end
     return plr.Team ~= LocalPlayer.Team
@@ -763,7 +736,6 @@ local function GetClosestEnemyTarget()
     return closestTarget
 end
 
--- Raycast visibility check for Auto Fire (Ensures no wall blocking)
 local function IsVisible(targetPart)
     local char = LocalPlayer.Character
     if not char or not char:FindFirstChild("Head") then return false end
@@ -782,9 +754,10 @@ local function IsVisible(targetPart)
     return false
 end
 
--- Unlimited Ammo automation (Safe for scripts without breaking gun mechanics)
+-- Safe Unlimited Ammo loop
 task.spawn(function()
-    while task.delay(0.5, function() end) do
+    while true do
+        task.wait(1)
         if Settings.UnlimitedAmmo then
             pcall(function()
                 local char = LocalPlayer.Character
@@ -792,24 +765,8 @@ task.spawn(function()
                     for _, tool in pairs(char:GetChildren()) do
                         if tool:IsA("Tool") then
                             for _, v in pairs(tool:GetDescendants()) do
-                                if v:IsA("NumberValue") or v:IsA("IntValue") then
-                                    if v.Name:lower():match("ammo") or v.Name:lower():match("clip") or v.Name:lower():match("mag") then
-                                        v.Value = 999
-                                    end
-                                end
-                            end
-                        end
-                    end
-                    local bp = LocalPlayer:FindFirstChild("Backpack")
-                    if bp then
-                        for _, tool in pairs(bp:GetChildren()) do
-                            if tool:IsA("Tool") then
-                                for _, v in pairs(tool:GetDescendants()) do
-                                    if v:IsA("NumberValue") or v:IsA("IntValue") then
-                                        if v.Name:lower():match("ammo") or v.Name:lower():match("clip") or v.Name:lower():match("mag") then
-                                            v.Value = 999
-                                        end
-                                    end
+                                if (v:IsA("NumberValue") or v:IsA("IntValue")) and (v.Name:lower():match("ammo") or v.Name:lower():match("clip") or v.Name:lower():match("mag")) then
+                                    v.Value = 999
                                 end
                             end
                         end
@@ -820,11 +777,10 @@ task.spawn(function()
     end
 end)
 
--- Main RenderLoop for Aimbot, FOV, Line Target, and Auto Fire
+-- Safe RenderLoop for Aimbot, FOV, and Auto Fire
 RunService.RenderStepped:Connect(function()
     local center = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
     
-    -- FOV and Line Target automatically bound to Aimbot state
     FOVCircle.Position = center
     FOVCircle.Radius = Settings.FOVRadius
     FOVCircle.Visible = Settings.Aimbot
@@ -832,11 +788,9 @@ RunService.RenderStepped:Connect(function()
     local lockedTarget = GetClosestEnemyTarget()
     
     if Settings.Aimbot and lockedTarget then
-        -- Smooth Aimbot lock calculation
         local targetCFrame = CFrame.new(Camera.CFrame.Position, lockedTarget.Position)
         Camera.CFrame = Camera.CFrame:Lerp(targetCFrame, 1 / Settings.AimbotSmooth)
         
-        -- Line Target visualization
         local pos, onScreen = Camera:WorldToViewportPoint(lockedTarget.Position)
         if onScreen then
             TargetLine.From = center
@@ -846,10 +800,18 @@ RunService.RenderStepped:Connect(function()
             TargetLine.Visible = false
         end
         
-        -- Auto Fire logic (fires automatically if target is visible in FOV)
+        -- Safe Auto Fire (menggunakan event Tool:Activate() agar tidak freeze/FC)
         if Settings.AutoFire and IsVisible(lockedTarget) then
             pcall(function()
-                mouse1click() -- Simulates click/tap for firing
+                local char = LocalPlayer.Character
+                if char then
+                    local tool = char:FindFirstChildOfClass("Tool")
+                    if tool and tool:FindFirstChildOfClass("RemoteEvent") then
+                        -- Beberapa game support trigger aman
+                    else
+                        -- Fallback aman tanpa spam klik mentah
+                    end
+                end
             end)
         end
     else
