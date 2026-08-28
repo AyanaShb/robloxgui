@@ -1,5 +1,5 @@
 -- ========================================================
--- DEAR IMGUI PREMIUM GRADIENT UI (V6.3 - SAFE UI PARENT)
+-- DEAR IMGUI PREMIUM GRADIENT UI (V6.4 - FULL SCRIPT)
 -- ========================================================
 
 local Players = game:GetService("Players")
@@ -42,7 +42,7 @@ end
 local safeParent = GetSafeParent()
 
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "ImGui_Gradient_Hub_V63"
+ScreenGui.Name = "ImGui_Gradient_Hub_V64"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.DisplayOrder = 9999
 ScreenGui.Parent = safeParent
@@ -113,7 +113,7 @@ local Settings = {
     SpeedHack = false, WalkSpeed = 30, MultiJump = false, MultiJumpPower = 50,
     Chams = false, ChamsColor = Color3.fromRGB(255, 0, 80), GlowColor = Color3.fromRGB(0, 235, 255), 
     Noclip = false, NightMode = false, DaylightMode = false, AntiCrash = false, AntiKick = false, AutoBypass = false,
-    Aimbot = false, FOVRadius = 150, AimDistance = 500, AimSmoothness = 25, TargetPart = "Head"
+    Aimbot = false, SilentAim = false, NoRecoil = false, FOVRadius = 150, AimDistance = 500, AimSmoothness = 25, TargetPart = "Head"
 }
 
 local FOVCircle = Drawing.new("Circle")
@@ -220,7 +220,7 @@ local SubText = Instance.new("TextLabel")
 SubText.Size = UDim2.new(1, -10, 1, 0)
 SubText.Position = UDim2.new(0, 8, 0, 0)
 SubText.BackgroundTransparency = 1
-SubText.Text = "Dear ImGui v6.3 (Safe Parent)"
+SubText.Text = "Dear ImGui v6.4 (Full Features)"
 SubText.Font = Enum.Font.Code
 SubText.TextSize = 11
 SubText.TextColor3 = Color3.fromRGB(150, 160, 180)
@@ -567,7 +567,7 @@ local function CreateColorTable(parent, text, callback)
 end
 
 -- ==========================================
--- LOGIC IMPLEMENTATIONS
+-- LOGIC IMPLEMENTATIONS (PLAYER & MISC)
 -- ==========================================
 
 CreateToggle(PlayerPage, "Speed Hack", true, function(state) Settings.SpeedHack = state end)
@@ -722,9 +722,6 @@ end)
 CreateToggle(MiscPage, "Anti Crash", true, function(state) Settings.AntiCrash = state end)
 CreateToggle(MiscPage, "Anti Kick", true, function(state) Settings.AntiKick = state end)
 
--- ==========================================
--- AUTO BYPASS ANTI-CHEAT (TOGGLEABLE)
--- ==========================================
 CreateToggle(MiscPage, "Auto Bypass", true, function(state)
     Settings.AutoBypass = state
     if state then
@@ -760,37 +757,6 @@ CreateToggle(MiscPage, "Auto Bypass", true, function(state)
                             return nil
                         end
                     end)
-                end
-                for _, tableName in ipairs({"_G", "shared"}) do
-                    pcall(function()
-                        local target = getgenv()[tableName]
-                        if target and type(target) == "table" then
-                            for key, _ in pairs(target) do
-                                local strKey = tostring(key):lower()
-                                if strKey:find("signature") or strKey:find("checksum") or strKey:find("hash") then
-                                    target[key] = nil
-                                end
-                            end
-                        end
-                    end)
-                end
-                for _, remote in ipairs(ReplicatedStorage:GetDescendants()) do
-                    if remote:IsA("RemoteEvent") or remote:IsA("RemoteFunction") then
-                        local name = remote.Name:lower()
-                        if name:find("handshake") or name:find("validate") or name:find("verify") or name:find("integrity") or name:find("anti") then
-                            pcall(function()
-                                if remote:IsA("RemoteEvent") then
-                                    remote.FireServer = function(...)
-                                        return true
-                                    end
-                                elseif remote:IsA("RemoteFunction") then
-                                    remote.InvokeServer = function(...)
-                                        return true
-                                    end
-                                end
-                            end)
-                        end
-                    end
                 end
             end)
         end)
@@ -859,10 +825,13 @@ CreateToggle(MiscPage, "Daylight Mode", true, function(state)
 end)
 
 -- ==========================================
--- ADVANCED AIMBOT (LOBBY GUARD & REAL-TIME TEAM CHECK)
+-- GUN MENU UI (AIMBOT, SILENT AIM, NO RECOIL)
 -- ==========================================
 
 CreateToggle(GunPage, "Aimbot (Auto Target Lock)", true, function(state) Settings.Aimbot = state end)
+CreateToggle(GunPage, "Silent Aim", true, function(state) Settings.SilentAim = state end)
+CreateToggle(GunPage, "No Recoil", true, function(state) Settings.NoRecoil = state end)
+
 CreateSelector(GunPage, "Target Part", {"Head", "Body"}, 1, function(selected) 
     Settings.TargetPart = selected == "Body" and "UpperTorso" or "Head"
 end)
@@ -931,6 +900,36 @@ local function GetClosestTarget()
     return closestTarget
 end
 
+-- ==========================================
+-- GUN LOGIC: AIMBOT, SILENT AIM, & NO RECOIL
+-- ==========================================
+
+local oldNamecall
+oldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
+    local method = getnamecallmethod()
+    local args = {...}
+    
+    if Settings.SilentAim and not IsInLobby() then
+        if method == "FireServer" or method == "InvokeServer" or method == "Raycast" then
+            local targetPart = GetClosestTarget()
+            if targetPart then
+                for i, v in ipairs(args) do
+                    if typeof(v) == "Vector3" then
+                        local camPos = Camera.CFrame.Position
+                        if (v - camPos).Magnitude < 500 then
+                            args[i] = targetPart.Position
+                        end
+                    elseif typeof(v) == "CFrame" then
+                        args[i] = CFrame.new(v.Position, targetPart.Position)
+                    end
+                end
+            end
+        end
+    end
+    
+    return oldNamecall(self, unpack(args))
+end)
+
 RunService.RenderStepped:Connect(function()
     local center = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
     
@@ -954,5 +953,22 @@ RunService.RenderStepped:Connect(function()
         end
     else
         TargetLine.Visible = false
+    end
+
+    if Settings.NoRecoil and not IsInLobby() then
+        pcall(function()
+            local char = LocalPlayer.Character
+            if char then
+                for _, child in pairs(char:GetDescendants()) do
+                    if child:IsA("Folder") and (child.Name:lower():find("recoil") or child.Name:lower():find("gunanim")) then
+                        child:Destroy()
+                    end
+                end
+                local cameraShaker = Camera:FindFirstChild("CameraShaker")
+                if cameraShaker then
+                    cameraShaker.Enabled = false
+                end
+            end
+        end)
     end
 end)
