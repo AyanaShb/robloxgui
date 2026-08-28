@@ -1,5 +1,5 @@
 -- ========================================================
--- DEAR IMGUI PREMIUM GRADIENT UI (V6.4 - FULL SCRIPT)
+-- DEAR IMGUI PREMIUM GRADIENT UI (V6.5 - FULL SCRIPT WITH FISHING)
 -- ========================================================
 
 local Players = game:GetService("Players")
@@ -42,7 +42,7 @@ end
 local safeParent = GetSafeParent()
 
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "ImGui_Gradient_Hub_V64"
+ScreenGui.Name = "ImGui_Gradient_Hub_V65"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.DisplayOrder = 9999
 ScreenGui.Parent = safeParent
@@ -113,7 +113,8 @@ local Settings = {
     SpeedHack = false, WalkSpeed = 30, MultiJump = false, MultiJumpPower = 50,
     Chams = false, ChamsColor = Color3.fromRGB(255, 0, 80), GlowColor = Color3.fromRGB(0, 235, 255), 
     Noclip = false, NightMode = false, DaylightMode = false, AntiCrash = false, AntiKick = false, AutoBypass = false,
-    Aimbot = false, SilentAim = false, NoRecoil = false, FOVRadius = 150, AimDistance = 500, AimSmoothness = 25, TargetPart = "Head"
+    Aimbot = false, SilentAim = false, NoRecoil = false, FOVRadius = 150, AimDistance = 500, AimSmoothness = 25, TargetPart = "Head",
+    AutoRareFish = false, InstantCatch = false
 }
 
 local FOVCircle = Drawing.new("Circle")
@@ -220,7 +221,7 @@ local SubText = Instance.new("TextLabel")
 SubText.Size = UDim2.new(1, -10, 1, 0)
 SubText.Position = UDim2.new(0, 8, 0, 0)
 SubText.BackgroundTransparency = 1
-SubText.Text = "Dear ImGui v6.4 (Full Features)"
+SubText.Text = "Dear ImGui v6.5 (Full + Fishing)"
 SubText.Font = Enum.Font.Code
 SubText.TextSize = 11
 SubText.TextColor3 = Color3.fromRGB(150, 160, 180)
@@ -240,7 +241,7 @@ TabFrame.Parent = MainFrame
 local UIListTab = Instance.new("UIListLayout")
 UIListTab.FillDirection = Enum.FillDirection.Horizontal
 UIListTab.SortOrder = Enum.SortOrder.LayoutOrder
-UIListTab.Padding = UDim.new(0, 5)
+UIListTab.Padding = UDim.new(0, 4)
 UIListTab.Parent = TabFrame
 
 local ContentFrame = Instance.new("Frame")
@@ -279,6 +280,7 @@ end
 local PlayerPage = CreatePage("PLAYER")
 local MiscPage = CreatePage("MISC")
 local GunPage = CreatePage("GUN")
+local FishingPage = CreatePage("FISHING")
 
 local function SelectTab(tabName, btn)
     for name, page in pairs(Pages) do
@@ -302,15 +304,15 @@ local function SelectTab(tabName, btn)
     Grad.Parent = btn
 end
 
-local tabs = {"PLAYER", "MISC", "GUN"}
+local tabs = {"PLAYER", "MISC", "GUN", "FISHING"}
 for i, name in ipairs(tabs) do
     local Btn = Instance.new("TextButton")
-    Btn.Size = UDim2.new(0.32, 0, 1, 0)
+    Btn.Size = UDim2.new(0.235, 0, 1, 0)
     Btn.BackgroundColor3 = Color3.fromRGB(24, 24, 36)
     Btn.BorderSizePixel = 0
     Btn.Text = name
     Btn.Font = Enum.Font.Code
-    Btn.TextSize = 12
+    Btn.TextSize = 11
     Btn.TextColor3 = Color3.fromRGB(160, 160, 180)
     Btn.Parent = TabFrame
     
@@ -702,7 +704,7 @@ RunService.Stepped:Connect(function()
     local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
     if hum then
         if Settings.SpeedHack then
-            hum.WalkSpeed = Settings.WalkSpeed
+            hum.WalkSpeed = Settings.SpeedHack and Settings.WalkSpeed or 16
         else
             if hum.WalkSpeed == Settings.WalkSpeed then
                 hum.WalkSpeed = 16
@@ -839,6 +841,13 @@ CreateSlider(GunPage, "Aim FOV Size", 50, 400, 150, true, function(val) Settings
 CreateSlider(GunPage, "Aim Distance", 100, 2000, 500, true, function(val) Settings.AimDistance = val end)
 CreateSlider(GunPage, "Aim Smoothness", 1, 50, 25, true, function(val) Settings.AimSmoothness = val end)
 
+-- ==========================================
+-- FISHING MENU UI (AUTO RARE FISH & INSTANT CATCH)
+-- ==========================================
+
+CreateToggle(FishingPage, "Auto Rare Fish", true, function(state) Settings.AutoRareFish = state end)
+CreateToggle(FishingPage, "Instant Catch", true, function(state) Settings.InstantCatch = state end)
+
 local function IsInLobby()
     local char = LocalPlayer.Character
     if not char then return true end
@@ -901,7 +910,7 @@ local function GetClosestTarget()
 end
 
 -- ==========================================
--- GUN LOGIC: AIMBOT, SILENT AIM, & NO RECOIL
+-- GLOBAL HOOKMETAMETHOD (GUN & FISHING)
 -- ==========================================
 
 local oldNamecall
@@ -909,6 +918,7 @@ oldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
     local method = getnamecallmethod()
     local args = {...}
     
+    -- Silent Aim Logic
     if Settings.SilentAim and not IsInLobby() then
         if method == "FireServer" or method == "InvokeServer" or method == "Raycast" then
             local targetPart = GetClosestTarget()
@@ -921,6 +931,30 @@ oldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
                         end
                     elseif typeof(v) == "CFrame" then
                         args[i] = CFrame.new(v.Position, targetPart.Position)
+                    end
+                end
+            end
+        end
+    end
+
+    -- Fishing Logic: Auto Rare Fish & Instant Catch
+    if (Settings.AutoRareFish or Settings.InstantCatch) and not IsInLobby() then
+        local remoteName = self.Name:lower()
+        if remoteName:find("fish") or remoteName:find("catch") or remoteName:find("reel") or remoteName:find("reward") then
+            if method == "FireServer" or method == "InvokeServer" then
+                for i, v in ipairs(args) do
+                    if type(v) == "string" then
+                        local lowerVal = v:lower()
+                        if Settings.AutoRareFish and (lowerVal == "common" or lowerVal == "uncommon" or lowerVal == "rare") then
+                            args[i] = "Legendary"
+                        end
+                    elseif type(v) == "table" then
+                        if Settings.AutoRareFish and v.Rarity then
+                            v.Rarity = "Legendary"
+                        end
+                        if Settings.InstantCatch and v.Progress then
+                            v.Progress = 100
+                        end
                     end
                 end
             end
