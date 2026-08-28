@@ -1,5 +1,5 @@
 -- ========================================================
--- DEAR IMGUI PREMIUM GRADIENT UI (V6.1 - TOP CENTER TOAST)
+-- DEAR IMGUI PREMIUM GRADIENT UI (V6.2 - FIXED & READY)
 -- ========================================================
 
 local Players = game:GetService("Players")
@@ -21,7 +21,7 @@ if _G.ImGuiV4_FOV then pcall(function() _G.ImGuiV4_FOV:Remove() end) end
 if _G.ImGuiV4_Line then pcall(function() _G.ImGuiV4_Line:Remove() end) end
 
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "ImGui_Gradient_Hub_V61"
+ScreenGui.Name = "ImGui_Gradient_Hub_V62"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.DisplayOrder = 1
 _G.ImGuiV4_ScreenGui = ScreenGui
@@ -35,7 +35,6 @@ else
     ScreenGui.Parent = CoreGui
 end
 
--- ScreenGui khusus untuk Toast agar berada di lapisan paling atas (di atas menu utama)
 local ToastScreenGui = Instance.new("ScreenGui")
 ToastScreenGui.Name = "ImGui_ToastOverlay"
 ToastScreenGui.ResetOnSpawn = false
@@ -53,7 +52,7 @@ end
 
 local ToastContainer = Instance.new("Frame")
 ToastContainer.Size = UDim2.new(0, 260, 0, 200)
-ToastContainer.Position = UDim2.new(0.5, -130, 0, 15) -- Tengah layar bagian paling atas
+ToastContainer.Position = UDim2.new(0.5, -130, 0, 15)
 ToastContainer.BackgroundTransparency = 1
 ToastContainer.Parent = ToastScreenGui
 
@@ -216,7 +215,7 @@ local SubText = Instance.new("TextLabel")
 SubText.Size = UDim2.new(1, -10, 1, 0)
 SubText.Position = UDim2.new(0, 8, 0, 0)
 SubText.BackgroundTransparency = 1
-SubText.Text = "Dear ImGui v6.1 (Top Center Toast)"
+SubText.Text = "Dear ImGui v6.2 (Fixed)"
 SubText.Font = Enum.Font.Code
 SubText.TextSize = 11
 SubText.TextColor3 = Color3.fromRGB(150, 160, 180)
@@ -793,7 +792,6 @@ CreateToggle(MiscPage, "Auto Bypass", true, function(state)
     end
 end)
 
--- Simpan nilai asli dari lampu ruangan (Original Brightness) agar bisa dikembalikan dengan akurat
 local OriginalLightValues = {}
 for _, obj in pairs(Workspace:GetDescendants()) do
     if obj:IsA("PointLight") or obj:IsA("SurfaceLight") or obj:IsA("SpotLight") then
@@ -931,7 +929,7 @@ end
 RunService.RenderStepped:Connect(function()
     local center = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
     
-    .local activeCheck = Settings.Aimbot and not IsInLobby()
+    local activeCheck = Settings.Aimbot and not IsInLobby()
     FOVCircle.Position = center
     FOVCircle.Radius = Settings.FOVRadius
     FOVCircle.Visible = activeCheck
