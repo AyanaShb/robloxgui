@@ -1,5 +1,5 @@
 -- ========================================================
--- DEAR IMGUI PREMIUM GRADIENT UI (V6.2 - FIXED & READY)
+-- DEAR IMGUI PREMIUM GRADIENT UI (V6.3 - SAFE UI PARENT)
 -- ========================================================
 
 local Players = game:GetService("Players")
@@ -20,35 +20,40 @@ if _G.ImGuiV4_ToastGui then _G.ImGuiV4_ToastGui:Destroy() end
 if _G.ImGuiV4_FOV then pcall(function() _G.ImGuiV4_FOV:Remove() end) end
 if _G.ImGuiV4_Line then pcall(function() _G.ImGuiV4_Line:Remove() end) end
 
-local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "ImGui_Gradient_Hub_V62"
-ScreenGui.ResetOnSpawn = false
-ScreenGui.DisplayOrder = 1
-_G.ImGuiV4_ScreenGui = ScreenGui
-
-if syn and syn.protect_gui then
-    syn.protect_gui(ScreenGui)
-    ScreenGui.Parent = CoreGui
-elseif gethui then
-    ScreenGui.Parent = gethui()
-else
-    ScreenGui.Parent = CoreGui
+local function GetSafeParent()
+    if gethui then
+        local success, parent = pcall(gethui)
+        if success and parent then return parent end
+    end
+    if syn and syn.protect_gui then
+        local success, parent = pcall(function()
+            local gui = Instance.new("Folder")
+            syn.protect_gui(gui)
+            gui:Destroy()
+            return CoreGui
+        end)
+        if success and parent then return parent end
+    end
+    local playerGui = LocalPlayer:FindFirstChildOfClass("PlayerGui")
+    if playerGui then return playerGui end
+    return CoreGui
 end
+
+local safeParent = GetSafeParent()
+
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "ImGui_Gradient_Hub_V63"
+ScreenGui.ResetOnSpawn = false
+ScreenGui.DisplayOrder = 9999
+ScreenGui.Parent = safeParent
+_G.ImGuiV4_ScreenGui = ScreenGui
 
 local ToastScreenGui = Instance.new("ScreenGui")
 ToastScreenGui.Name = "ImGui_ToastOverlay"
 ToastScreenGui.ResetOnSpawn = false
-ToastScreenGui.DisplayOrder = 999
+ToastScreenGui.DisplayOrder = 10000
+ToastScreenGui.Parent = safeParent
 _G.ImGuiV4_ToastGui = ToastScreenGui
-
-if syn and syn.protect_gui then
-    syn.protect_gui(ToastScreenGui)
-    ToastScreenGui.Parent = CoreGui
-elseif gethui then
-    ToastScreenGui.Parent = gethui()
-else
-    ToastScreenGui.Parent = CoreGui
-end
 
 local ToastContainer = Instance.new("Frame")
 ToastContainer.Size = UDim2.new(0, 260, 0, 200)
@@ -128,11 +133,11 @@ _G.ImGuiV4_Line = TargetLine
 
 local ToggleBtn = Instance.new("TextButton")
 ToggleBtn.Name = "ImGui_ToggleIcon"
-ToggleBtn.Size = UDim2.new(0, 26, 0, 26)
+ToggleBtn.Size = UDim2.new(0, 36, 0, 36)
 ToggleBtn.Position = UDim2.new(0.05, 0, 0.2, 0)
 ToggleBtn.BackgroundColor3 = Color3.fromRGB(25, 20, 40)
 ToggleBtn.BorderSizePixel = 0
-ToggleBtn.Text = "X"
+ToggleBtn.Text = "UI"
 ToggleBtn.Font = Enum.Font.SourceSansBold
 ToggleBtn.TextSize = 14
 ToggleBtn.TextColor3 = Color3.fromRGB(0, 235, 255)
@@ -149,7 +154,7 @@ BtnGradient.Rotation = 45
 BtnGradient.Parent = ToggleBtn
 
 local BtnCorner = Instance.new("UICorner")
-BtnCorner.CornerRadius = UDim.new(0, 6)
+BtnCorner.CornerRadius = UDim.new(0, 8)
 BtnCorner.Parent = ToggleBtn
 
 local BtnStroke = Instance.new("UIStroke")
@@ -215,7 +220,7 @@ local SubText = Instance.new("TextLabel")
 SubText.Size = UDim2.new(1, -10, 1, 0)
 SubText.Position = UDim2.new(0, 8, 0, 0)
 SubText.BackgroundTransparency = 1
-SubText.Text = "Dear ImGui v6.2 (Fixed)"
+SubText.Text = "Dear ImGui v6.3 (Safe Parent)"
 SubText.Font = Enum.Font.Code
 SubText.TextSize = 11
 SubText.TextColor3 = Color3.fromRGB(150, 160, 180)
