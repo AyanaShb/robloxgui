@@ -1,5 +1,5 @@
 -- ========================================================
--- DEAR IMGUI PREMIUM GRADIENT UI (V6.4 - ABSOLUTE FINAL FIX)
+-- DEAR IMGUI PREMIUM GRADIENT UI (V5.3 - MOBILE TOUCH JUMP FIX)
 -- ========================================================
 
 local Players = game:GetService("Players")
@@ -18,7 +18,7 @@ if _G.ImGuiV4_FOV then pcall(function() _G.ImGuiV4_FOV:Remove() end) end
 if _G.ImGuiV4_Line then pcall(function() _G.ImGuiV4_Line:Remove() end) end
 
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "ImGui_Gradient_Hub_V64"
+ScreenGui.Name = "ImGui_Gradient_Hub_V53"
 ScreenGui.ResetOnSpawn = false
 _G.ImGuiV4_ScreenGui = ScreenGui
 
@@ -32,15 +32,13 @@ else
 end
 
 local ToastContainer = Instance.new("Frame")
-ToastContainer.Size = UDim2.new(0, 300, 0, 100)
-ToastContainer.Position = UDim2.new(0.5, -150, 0, 10)
+ToastContainer.Size = UDim2.new(0, 220, 0, 300)
+ToastContainer.Position = UDim2.new(1, -230, 1, -310)
 ToastContainer.BackgroundTransparency = 1
-ToastContainer.ZIndex = 9999
 ToastContainer.Parent = ScreenGui
 
 local ToastLayout = Instance.new("UIListLayout")
-ToastLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
-ToastLayout.VerticalAlignment = Enum.VerticalAlignment.Top
+ToastLayout.VerticalAlignment = Enum.VerticalAlignment.Bottom
 ToastLayout.SortOrder = Enum.SortOrder.LayoutOrder
 ToastLayout.Padding = UDim.new(0, 6)
 ToastLayout.Parent = ToastContainer
@@ -50,7 +48,6 @@ local function ShowToast(text, isSuccess)
     Toast.Size = UDim2.new(1, 0, 0, 32)
     Toast.BackgroundColor3 = Color3.fromRGB(18, 18, 26)
     Toast.BackgroundTransparency = 1
-    Toast.ZIndex = 10000
     Toast.Parent = ToastContainer
 
     local Corner = Instance.new("UICorner")
@@ -65,15 +62,14 @@ local function ShowToast(text, isSuccess)
 
     local Label = Instance.new("TextLabel")
     Label.Size = UDim2.new(1, -12, 1, 0)
-    Label.Position = UDim2.new(0, 6, 0, 0)
+    Label.Position = UDim2.new(0, 8, 0, 0)
     Label.BackgroundTransparency = 1
     Label.Text = text
     Label.Font = Enum.Font.Code
     Label.TextSize = 11
     Label.TextColor3 = Color3.fromRGB(240, 240, 240)
-    Label.TextXAlignment = Enum.TextXAlignment.Center
+    Label.TextXAlignment = Enum.TextXAlignment.Left
     Label.Transparency = 1
-    Label.ZIndex = 10001
     Label.Parent = Toast
 
     TweenService:Create(Toast, TweenInfo.new(0.3), {BackgroundTransparency = 0.1}):Play()
@@ -93,13 +89,8 @@ local Settings = {
     WalkSpeed = 16, MultiJump = false, MultiJumpPower = 50,
     Chams = false, ChamsColor = Color3.fromRGB(255, 0, 80), 
     Noclip = false, NightMode = false, DaylightMode = false,
-    Aimbot = false,
-    TargetPart = "Head",
-    AimbotSmooth = 3,
-    FOVRadius = 150,
-    MaxDistance = 500,
-    UnlimitedAmmo = false,
-    AutoFire = false
+    SilentAim = false, ShowFOV = false, FOVRadius = 150, 
+    LineTarget = false, TargetPart = "Head"
 }
 
 local FOVCircle = Drawing.new("Circle")
@@ -157,7 +148,6 @@ MainFrame.BackgroundColor3 = Color3.fromRGB(18, 18, 26)
 MainFrame.BorderSizePixel = 0
 MainFrame.Active = true
 MainFrame.Draggable = true
-MainFrame.ZIndex = 100
 MainFrame.Parent = ScreenGui
 
 local MainCorner = Instance.new("UICorner")
@@ -207,7 +197,7 @@ local SubText = Instance.new("TextLabel")
 SubText.Size = UDim2.new(1, -10, 1, 0)
 SubText.Position = UDim2.new(0, 8, 0, 0)
 SubText.BackgroundTransparency = 1
-SubText.Text = "Dear ImGui v6.4 (Clean & Stable)"
+SubText.Text = "Dear ImGui v5.3 (Mobile Touch Button Fix)"
 SubText.Font = Enum.Font.Code
 SubText.TextSize = 11
 SubText.TextColor3 = Color3.fromRGB(150, 160, 180)
@@ -219,14 +209,20 @@ ToggleBtn.MouseButton1Click:Connect(function()
 end)
 
 local TabFrame = Instance.new("Frame")
-TabFrame.Size = UDim2.new(1, -12, 0, 24)
-TabFrame.Position = UDim2.new(0, 6, 0, 58)
+TabFrame.Size = UDim2.new(1, -12, 0, 26)
+TabFrame.Position = UDim2.new(0, 6, 0, 56)
 TabFrame.BackgroundTransparency = 1
 TabFrame.Parent = MainFrame
 
+local UIListTab = Instance.new("UIListLayout")
+UIListTab.FillDirection = Enum.FillDirection.Horizontal
+UIListTab.SortOrder = Enum.SortOrder.LayoutOrder
+UIListTab.Padding = UDim.new(0, 5)
+UIListTab.Parent = TabFrame
+
 local ContentFrame = Instance.new("Frame")
 ContentFrame.Size = UDim2.new(1, -12, 1, -90)
-ContentFrame.Position = UDim2.new(0, 6, 0, 86)
+ContentFrame.Position = UDim2.new(0, 6, 0, 84)
 ContentFrame.BackgroundColor3 = Color3.fromRGB(14, 14, 20)
 ContentFrame.BorderSizePixel = 0
 ContentFrame.Parent = MainFrame
@@ -287,7 +283,6 @@ local tabs = {"PLAYER", "MISC", "GUN"}
 for i, name in ipairs(tabs) do
     local Btn = Instance.new("TextButton")
     Btn.Size = UDim2.new(0.32, 0, 1, 0)
-    Btn.Position = UDim2.new((i - 1) * 0.34, 0, 0, 0)
     Btn.BackgroundColor3 = Color3.fromRGB(24, 24, 36)
     Btn.BorderSizePixel = 0
     Btn.Text = name
@@ -297,7 +292,7 @@ for i, name in ipairs(tabs) do
     Btn.Parent = TabFrame
     
     local Corner = Instance.new("UICorner")
-    Corner.CornerRadius = UDim.new(0, 4)
+    Corner.CornerRadius = UDim.new(0, 5)
     Corner.Parent = Btn
     
     Btn.MouseButton1Click:Connect(function() SelectTab(name, Btn) end)
@@ -306,17 +301,17 @@ end
 
 local function CreateFeatureHeader(parent, titleText, isSupported)
     local Frame = Instance.new("Frame")
-    Frame.Size = UDim2.new(1, 0, 0, 18)
+    Frame.Size = UDim2.new(1, 0, 0, 16)
     Frame.BackgroundTransparency = 1
     Frame.Parent = parent
 
     local Title = Instance.new("TextLabel")
     Title.Size = UDim2.new(0.65, 0, 1, 0)
     Title.BackgroundTransparency = 1
-    Title.Text = titleText
-    Title.Font = Enum.Font.FredokaOne
+    Title.Text = "▼ " .. titleText
+    Title.Font = Enum.Font.Code
     Title.TextSize = 11
-    Title.TextColor3 = Color3.fromRGB(255, 220, 50)
+    Title.TextColor3 = Color3.fromRGB(0, 210, 255)
     Title.TextXAlignment = Enum.TextXAlignment.Left
     Title.Parent = Frame
 
@@ -325,7 +320,7 @@ local function CreateFeatureHeader(parent, titleText, isSupported)
     Tag.Position = UDim2.new(0.65, 0, 0, 0)
     Tag.BackgroundTransparency = 1
     Tag.Font = Enum.Font.Code
-    Tag.TextSize = 9
+    Tag.TextSize = 10
     Tag.TextXAlignment = Enum.TextXAlignment.Right
     Tag.Parent = Frame
 
@@ -548,25 +543,63 @@ local function CreateColorTable(parent, text, callback)
     end
 end
 
+-- ==========================================
+-- LOGIC IMPLEMENTATIONS (MOBILE TOUCH JUMP BUTTON HOOK)
+-- ==========================================
+
 CreateSlider(PlayerPage, "Speed Hack", 16, 150, 16, true, function(val) Settings.WalkSpeed = val end)
 CreateToggle(PlayerPage, "Multi Jump", true, function(state) Settings.MultiJump = state end)
 CreateSlider(PlayerPage, "Multi Jump Power", 30, 150, 50, true, function(val) Settings.MultiJumpPower = val end)
 
-UserInputService.JumpRequest:Connect(function()
-    if Settings.MultiJump then
-        local char = LocalPlayer.Character
-        if char then
-            local hum = char:FindFirstChildOfClass("Humanoid")
-            if hum then
-                hum:ChangeState(Enum.HumanoidStateType.Jumping)
-                if hum.JumpPower > 0 then
-                    hum.JumpPower = Settings.MultiJumpPower
-                elseif hum.UseJumpPower == false then
-                    hum.JumpHeight = Settings.MultiJumpPower / 3
+-- FIX UTAMA: Deteksi tombol lompat HP (TouchGui) + Spasi Keyboard secara spesifik
+local function SetupJumpDetection()
+    local char = LocalPlayer.Character
+    if not char then return end
+    local hum = char:FindFirstChildOfClass("Humanoid")
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    if not hum or not hrp then return end
+
+    -- Deteksi saat Humanoid melompat (termasuk tombol lompat HP & Spasi)
+    hum.StateChanged:Connect(function(old, new)
+        if Settings.MultiJump and new == Enum.HumanoidStateType.Jumping then
+            hrp.Velocity = Vector3.new(hrp.Velocity.X, Settings.MultiJumpPower, hrp.Velocity.Z)
+        end
+    end)
+end
+
+LocalPlayer.CharacterAdded:Connect(function(char)
+    char:WaitForChild("Humanoid")
+    task.delay(1, SetupJumpDetection)
+end)
+if LocalPlayer.Character then
+    task.spawn(SetupJumpDetection)
+end
+
+-- Backup Hook khusus TouchJumpButton di Mobile PlayerGui
+task.spawn(function()
+    pcall(function()
+        local playerGui = LocalPlayer:WaitForChild("PlayerGui", 5)
+        local touchGui = playerGui:WaitForChild("TouchGui", 5)
+        if touchGui then
+            local touchControlFrame = touchGui:WaitForChild("TouchControlFrame", 5)
+            if touchControlFrame then
+                local jumpButton = touchControlFrame:WaitForChild("JumpButton", 5)
+                if jumpButton then
+                    jumpButton.MouseButton1Down:Connect(function()
+                        if Settings.MultiJump then
+                            local char = LocalPlayer.Character
+                            if char then
+                                local hrp = char:FindFirstChild("HumanoidRootPart")
+                                if hrp then
+                                    hrp.Velocity = Vector3.new(hrp.Velocity.X, Settings.MultiJumpPower, hrp.Velocity.Z)
+                                end
+                            end
+                        end
+                    end)
                 end
             end
         end
-    end
+    end)
 end)
 
 local function ApplyChams(plr)
@@ -583,11 +616,13 @@ local function ApplyChams(plr)
             hl.FillColor = Settings.ChamsColor
             hl.FillTransparency = 0
             hl.OutlineColor = Color3.fromRGB(255, 255, 255)
+            hl.OutlineTransparency = 0
             hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
         else
             if hl then hl:Destroy() end
         end
     end
+
     if plr.Character then UpdateHighlight(plr.Character) end
     plr.CharacterAdded:Connect(UpdateHighlight)
 end
@@ -630,13 +665,6 @@ end)
 
 CreateToggle(PlayerPage, "Wall Hack (Noclip)", true, function(state) Settings.Noclip = state end)
 
-local DefaultLighting = {
-    ClockTime = Lighting.ClockTime,
-    Brightness = Lighting.Brightness,
-    OutdoorAmbient = Lighting.OutdoorAmbient,
-    GlobalShadows = Lighting.GlobalShadows
-}
-
 RunService.Stepped:Connect(function()
     if Settings.WalkSpeed ~= 16 and LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
         LocalPlayer.Character:FindFirstChildOfClass("Humanoid").WalkSpeed = Settings.WalkSpeed
@@ -649,22 +677,6 @@ RunService.Stepped:Connect(function()
             end
         end
     end
-
-    if Settings.NightMode then
-        Lighting.ClockTime = 0
-        Lighting.Brightness = 0.2
-        Lighting.OutdoorAmbient = Color3.fromRGB(20, 20, 40)
-    elseif Settings.DaylightMode then
-        Lighting.ClockTime = 12
-        Lighting.Brightness = 3
-        Lighting.OutdoorAmbient = Color3.fromRGB(255, 255, 255)
-        Lighting.GlobalShadows = false
-    else
-        Lighting.ClockTime = DefaultLighting.ClockTime
-        Lighting.Brightness = DefaultLighting.Brightness
-        Lighting.OutdoorAmbient = DefaultLighting.OutdoorAmbient
-        Lighting.GlobalShadows = DefaultLighting.GlobalShadows
-    end
 end)
 
 CreateToggle(MiscPage, "Anti Crash", true, function(state) Settings.AntiCrash = state end)
@@ -672,49 +684,58 @@ CreateToggle(MiscPage, "Anti Kick", true, function(state) Settings.AntiKick = st
 
 CreateToggle(MiscPage, "Night Mode", true, function(state)
     Settings.NightMode = state
-    if state then Settings.DaylightMode = false end
+    if state then
+        Settings.DaylightMode = false
+        Lighting.ClockTime = 0
+        Lighting.Brightness = 0.2
+        Lighting.OutdoorAmbient = Color3.fromRGB(20, 20, 40)
+    else
+        Lighting.ClockTime = 14
+        Lighting.Brightness = 1
+        Lighting.OutdoorAmbient = Color3.fromRGB(128, 128, 128)
+    end
 end)
 
 CreateToggle(MiscPage, "Daylight Mode", true, function(state)
     Settings.DaylightMode = state
-    if state then Settings.NightMode = false end
+    if state then
+        Settings.NightMode = false
+        Lighting.ClockTime = 14
+        Lighting.Brightness = 3
+        Lighting.OutdoorAmbient = Color3.fromRGB(255, 255, 255)
+    else
+        Lighting.ClockTime = 14
+        Lighting.Brightness = 1
+        Lighting.OutdoorAmbient = Color3.fromRGB(128, 128, 128)
+    end
 end)
 
-CreateToggle(GunPage, "Aimbot (Auto Lock Enemy)", true, function(state) Settings.Aimbot = state end)
+CreateToggle(GunPage, "Silent Aim (Pure Bullet Redirect)", true, function(state) Settings.SilentAim = state end)
 CreateSelector(GunPage, "Target Part", {"Head", "Body"}, 1, function(selected) 
     Settings.TargetPart = selected == "Body" and "UpperTorso" or "Head"
 end)
-CreateSlider(GunPage, "Aimbot Smoothness", 1, 15, 3, true, function(val) Settings.AimbotSmooth = val end)
+CreateToggle(GunPage, "Show FOV Circle", true, function(state) Settings.ShowFOV = state end)
 CreateSlider(GunPage, "FOV Size", 50, 400, 150, true, function(val) Settings.FOVRadius = val end)
-CreateSlider(GunPage, "Max Distance", 100, 5000, 500, true, function(val) Settings.MaxDistance = val end)
-CreateToggle(GunPage, "Unlimited Ammo (Safe)", true, function(state) Settings.UnlimitedAmmo = state end)
-CreateToggle(GunPage, "Auto Fire (Enemy Only)", true, function(state) Settings.AutoFire = state end)
+CreateToggle(GunPage, "Line Target (Single Lock)", true, function(state) Settings.LineTarget = state end)
 
-local function IsEnemy(plr)
-    if not LocalPlayer.Team then return true end
-    return plr.Team ~= LocalPlayer.Team
-end
-
-local function GetClosestEnemyTarget()
+local function GetClosestTarget()
     local closestTarget = nil
     local maxDist = Settings.FOVRadius
     local screenCenter = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
 
     for _, plr in pairs(Players:GetPlayers()) do
-        if plr ~= LocalPlayer and IsEnemy(plr) and plr.Character and plr.Character:FindFirstChildOfClass("Humanoid") then
+        if plr ~= LocalPlayer and plr.Character and plr.Character:FindFirstChildOfClass("Humanoid") then
             if plr.Character.Humanoid.Health > 0 then
-                local targetPart = plr.Character:FindFirstChild(Settings.TargetPart) or plr.Character:FindFirstChild("HumanoidRootPart")
+                local partName = Settings.TargetPart
+                local targetPart = plr.Character:FindFirstChild(partName) or plr.Character:FindFirstChild("HumanoidRootPart")
                 
                 if targetPart then
-                    local distFromPlayer = (targetPart.Position - Camera.CFrame.Position).Magnitude
-                    if distFromPlayer <= Settings.MaxDistance then
-                        local pos, onScreen = Camera:WorldToViewportPoint(targetPart.Position)
-                        if onScreen then
-                            local dist = (Vector2.new(pos.X, pos.Y) - screenCenter).Magnitude
-                            if dist < maxDist then
-                                maxDist = dist
-                                closestTarget = targetPart
-                            end
+                    local pos, onScreen = Camera:WorldToViewportPoint(targetPart.Position)
+                    if onScreen then
+                        local dist = (Vector2.new(pos.X, pos.Y) - screenCenter).Magnitude
+                        if dist < maxDist then
+                            maxDist = dist
+                            closestTarget = targetPart
                         end
                     end
                 end
@@ -724,41 +745,39 @@ local function GetClosestEnemyTarget()
     return closestTarget
 end
 
-task.spawn(function()
-    while true do
-        task.wait(1)
-        if Settings.UnlimitedAmmo then
-            pcall(function()
-                local char = LocalPlayer.Character
-                if char then
-                    for _, tool in pairs(char:GetChildren()) do
-                        if tool:IsA("Tool") then
-                            for _, v in pairs(tool:GetDescendants()) do
-                                if (v:IsA("NumberValue") or v:IsA("IntValue")) and (v.Name:lower():match("ammo") or v.Name:lower():match("clip") or v.Name:lower():match("mag")) then
-                                    v.Value = 999
-                                end
-                            end
-                        end
-                    end
+if hookmetamethod and getnamecallmethod then
+    local oldNamecall
+    oldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
+        local method = getnamecallmethod()
+        local args = {...}
+
+        if Settings.SilentAim and not checkcaller() then
+            local target = GetClosestTarget()
+            if target and (method == "Raycast" or method == "FindPartOnRay" or method == "FindPartOnRayWithIgnoreList") then
+                if method == "Raycast" then
+                    local origin = args[1]
+                    args[2] = (target.Position - origin).Unit * 5000
+                    return oldNamecall(self, unpack(args))
+                elseif method == "FindPartOnRay" then
+                    local origin = args[1].Origin
+                    args[1] = Ray.new(origin, (target.Position - origin).Unit * 5000)
+                    return oldNamecall(self, unpack(args))
                 end
-            end)
+            end
         end
-    end
-end)
+
+        return oldNamecall(self, unpack(args))
+    end)
+end
 
 RunService.RenderStepped:Connect(function()
     local center = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
-    
     FOVCircle.Position = center
     FOVCircle.Radius = Settings.FOVRadius
-    FOVCircle.Visible = Settings.Aimbot
+    FOVCircle.Visible = Settings.ShowFOV
 
-    local lockedTarget = GetClosestEnemyTarget()
-    
-    if Settings.Aimbot and lockedTarget then
-        local targetCFrame = CFrame.new(Camera.CFrame.Position, lockedTarget.Position)
-        Camera.CFrame = Camera.CFrame:Lerp(targetCFrame, 1 / Settings.AimbotSmooth)
-        
+    local lockedTarget = GetClosestTarget()
+    if lockedTarget and Settings.LineTarget then
         local pos, onScreen = Camera:WorldToViewportPoint(lockedTarget.Position)
         if onScreen then
             TargetLine.From = center
