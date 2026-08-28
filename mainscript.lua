@@ -1,5 +1,5 @@
 -- ========================================================
--- DEAR IMGUI PREMIUM GRADIENT UI (V6.1 - FULL FIX MULTI-JUMP & LIGHTING)
+-- DEAR IMGUI PREMIUM GRADIENT UI (V6.2 - FIXED & CLEANED)
 -- ========================================================
 
 local Players = game:GetService("Players")
@@ -18,7 +18,7 @@ if _G.ImGuiV4_FOV then pcall(function() _G.ImGuiV4_FOV:Remove() end) end
 if _G.ImGuiV4_Line then pcall(function() _G.ImGuiV4_Line:Remove() end) end
 
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "ImGui_Gradient_Hub_V61"
+ScreenGui.Name = "ImGui_Gradient_Hub_V62"
 ScreenGui.ResetOnSpawn = false
 _G.ImGuiV4_ScreenGui = ScreenGui
 
@@ -32,13 +32,15 @@ else
 end
 
 local ToastContainer = Instance.new("Frame")
-ToastContainer.Size = UDim2.new(0, 220, 0, 300)
-ToastContainer.Position = UDim2.new(1, -230, 1, -310)
+ToastContainer.Size = UDim2.new(0, 300, 0, 100)
+ToastContainer.Position = UDim2.new(0.5, -150, 0, 10)
 ToastContainer.BackgroundTransparency = 1
+ToastContainer.ZIndex = 9999
 ToastContainer.Parent = ScreenGui
 
 local ToastLayout = Instance.new("UIListLayout")
-ToastLayout.VerticalAlignment = Enum.VerticalAlignment.Bottom
+ToastLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+ToastLayout.VerticalAlignment = Enum.VerticalAlignment.Top
 ToastLayout.SortOrder = Enum.SortOrder.LayoutOrder
 ToastLayout.Padding = UDim.new(0, 6)
 ToastLayout.Parent = ToastContainer
@@ -48,6 +50,7 @@ local function ShowToast(text, isSuccess)
     Toast.Size = UDim2.new(1, 0, 0, 32)
     Toast.BackgroundColor3 = Color3.fromRGB(18, 18, 26)
     Toast.BackgroundTransparency = 1
+    Toast.ZIndex = 10000
     Toast.Parent = ToastContainer
 
     local Corner = Instance.new("UICorner")
@@ -62,14 +65,15 @@ local function ShowToast(text, isSuccess)
 
     local Label = Instance.new("TextLabel")
     Label.Size = UDim2.new(1, -12, 1, 0)
-    Label.Position = UDim2.new(0, 8, 0, 0)
+    Label.Position = UDim2.new(0, 6, 0, 0)
     Label.BackgroundTransparency = 1
     Label.Text = text
     Label.Font = Enum.Font.Code
     Label.TextSize = 11
     Label.TextColor3 = Color3.fromRGB(240, 240, 240)
-    Label.TextXAlignment = Enum.TextXAlignment.Left
+    Label.TextXAlignment = Enum.TextXAlignment.Center
     Label.Transparency = 1
+    Label.ZIndex = 10001
     Label.Parent = Toast
 
     TweenService:Create(Toast, TweenInfo.new(0.3), {BackgroundTransparency = 0.1}):Play()
@@ -153,6 +157,7 @@ MainFrame.BackgroundColor3 = Color3.fromRGB(18, 18, 26)
 MainFrame.BorderSizePixel = 0
 MainFrame.Active = true
 MainFrame.Draggable = true
+MainFrame.ZIndex = 100
 MainFrame.Parent = ScreenGui
 
 local MainCorner = Instance.new("UICorner")
@@ -202,7 +207,7 @@ local SubText = Instance.new("TextLabel")
 SubText.Size = UDim2.new(1, -10, 1, 0)
 SubText.Position = UDim2.new(0, 8, 0, 0)
 SubText.BackgroundTransparency = 1
-SubText.Text = "Dear ImGui v6.1 (Independent Lighting & Classic Jump)"
+SubText.Text = "Dear ImGui v6.2 (Fixed Lighting & Multi-Jump)"
 SubText.Font = Enum.Font.Code
 SubText.TextSize = 11
 SubText.TextColor3 = Color3.fromRGB(150, 160, 180)
@@ -213,9 +218,6 @@ ToggleBtn.MouseButton1Click:Connect(function()
     MainFrame.Visible = not MainFrame.Visible
 end)
 
--- ==========================================
--- 3 TOP TABS (PLAYER, MISC, GUN)
--- ==========================================
 local TabFrame = Instance.new("Frame")
 TabFrame.Size = UDim2.new(1, -12, 0, 24)
 TabFrame.Position = UDim2.new(0, 6, 0, 58)
@@ -302,10 +304,6 @@ for i, name in ipairs(tabs) do
     if i == 1 then SelectTab(name, Btn) end
 end
 
--- ==========================================
--- FEATURE UI BUILDERS
--- ==========================================
-
 local function CreateFeatureHeader(parent, titleText, isSupported)
     local Frame = Instance.new("Frame")
     Frame.Size = UDim2.new(1, 0, 0, 18)
@@ -315,7 +313,7 @@ local function CreateFeatureHeader(parent, titleText, isSupported)
     local Title = Instance.new("TextLabel")
     Title.Size = UDim2.new(0.65, 0, 1, 0)
     Title.BackgroundTransparency = 1
-    Title.Text = "⚡ " .. titleText
+    Title.Text = titleText
     Title.Font = Enum.Font.FredokaOne
     Title.TextSize = 11
     Title.TextColor3 = Color3.fromRGB(255, 220, 50)
@@ -550,24 +548,23 @@ local function CreateColorTable(parent, text, callback)
     end
 end
 
--- ==========================================
--- PLAYER & MISC IMPLEMENTATIONS (FIXED & INDEPENDENT)
--- ==========================================
-
 CreateSlider(PlayerPage, "Speed Hack", 16, 150, 16, true, function(val) Settings.WalkSpeed = val end)
 CreateToggle(PlayerPage, "Multi Jump", true, function(state) Settings.MultiJump = state end)
 CreateSlider(PlayerPage, "Multi Jump Power", 30, 150, 50, true, function(val) Settings.MultiJumpPower = val end)
 
--- FIXED MULTI JUMP: METODE KLASIK (JUMPPOWER / JUMPHEIGHT)
+-- FIXED MULTI JUMP: Menggunakan Hook JumpRequest & Humanoid State/JumpPower langsung
 UserInputService.JumpRequest:Connect(function()
     if Settings.MultiJump then
         local char = LocalPlayer.Character
         if char then
             local hum = char:FindFirstChildOfClass("Humanoid")
             if hum then
-                -- Loncat pakai Jump() bawaan Roblox, dijamin mulus & work di semua game
                 hum:ChangeState(Enum.HumanoidStateType.Jumping)
-                hum.JumpPower = Settings.MultiJumpPower
+                if hum.JumpPower > 0 then
+                    hum.JumpPower = Settings.MultiJumpPower
+                elseif hum.UseJumpPower == false then
+                    hum.JumpHeight = Settings.MultiJumpPower / 3
+                end
             end
         end
     end
@@ -634,6 +631,14 @@ end)
 
 CreateToggle(PlayerPage, "Wall Hack (Noclip)", true, function(state) Settings.Noclip = state end)
 
+-- Simpan nilai default pencahayaan game asli agar bisa dikembalikan saat fitur dimatikan
+local DefaultLighting = {
+    ClockTime = Lighting.ClockTime,
+    Brightness = Lighting.Brightness,
+    OutdoorAmbient = Lighting.OutdoorAmbient,
+    GlobalShadows = Lighting.GlobalShadows
+}
+
 RunService.Stepped:Connect(function()
     if Settings.WalkSpeed ~= 16 and LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
         LocalPlayer.Character:FindFirstChildOfClass("Humanoid").WalkSpeed = Settings.WalkSpeed
@@ -647,38 +652,36 @@ RunService.Stepped:Connect(function()
         end
     end
 
-    -- FIXED LIGHTING: NIGHT MODE & DAYLIGHT MODE BERJALAN TERPISAH DAN MANDIRI
+    -- FIXED LIGHTING: Logika mandiri & aman untuk Night Mode / Daylight Mode dengan reset yang benar
     if Settings.NightMode then
         Lighting.ClockTime = 0
         Lighting.Brightness = 0.2
         Lighting.OutdoorAmbient = Color3.fromRGB(20, 20, 40)
-    end
-
-    if Settings.DaylightMode then
+    elseif Settings.DaylightMode then
         Lighting.ClockTime = 12
         Lighting.Brightness = 3
         Lighting.OutdoorAmbient = Color3.fromRGB(255, 255, 255)
         Lighting.GlobalShadows = false
-    elseif not Settings.NightMode and not Settings.DaylightMode then
-        Lighting.GlobalShadows = true
+    else
+        Lighting.ClockTime = DefaultLighting.ClockTime
+        Lighting.Brightness = DefaultLighting.Brightness
+        Lighting.OutdoorAmbient = DefaultLighting.OutdoorAmbient
+        Lighting.GlobalShadows = DefaultLighting.GlobalShadows
     end
 end)
 
 CreateToggle(MiscPage, "Anti Crash", true, function(state) Settings.AntiCrash = state end)
 CreateToggle(MiscPage, "Anti Kick", true, function(state) Settings.AntiKick = state end)
 
--- FIXED: TOGGLE NIGHT MODE & DAYLIGHT MODE SEKARANG BENAR-BENAR TERPISAH (TIDAK SALING MATIKAN)
 CreateToggle(MiscPage, "Night Mode", true, function(state)
     Settings.NightMode = state
+    if state then Settings.DaylightMode = false end
 end)
 
 CreateToggle(MiscPage, "Daylight Mode", true, function(state)
     Settings.DaylightMode = state
+    if state then Settings.NightMode = false end
 end)
-
--- ==========================================
--- GUN TAB IMPLEMENTATIONS
--- ==========================================
 
 CreateToggle(GunPage, "Aimbot (Auto Lock Enemy)", true, function(state) Settings.Aimbot = state end)
 CreateSelector(GunPage, "Target Part", {"Head", "Body"}, 1, function(selected) 
@@ -729,7 +732,6 @@ task.spawn(function()
         task.wait(1)
         if Settings.UnlimitedAmmo then
             pcall(function()
-                val = 999
                 local char = LocalPlayer.Character
                 if char then
                     for _, tool in pairs(char:GetChildren()) do
