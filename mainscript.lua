@@ -1,5 +1,5 @@
 -- ========================================================
--- DEAR IMGUI PREMIUM GRADIENT UI (V5.8 - FULL INDOOR GLOW CHAMS)
+-- DEAR IMGUI PREMIUM GRADIENT UI (V6.0 - AUTO BYPASS ADDED)
 -- ========================================================
 
 local Players = game:GetService("Players")
@@ -9,6 +9,8 @@ local Lighting = game:GetService("Lighting")
 local Workspace = game:GetService("Workspace")
 local CoreGui = game:GetService("CoreGui")
 local TweenService = game:GetService("TweenService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local ScriptContext = game:GetService("ScriptContext")
 
 local LocalPlayer = Players.LocalPlayer
 local Camera = Workspace.CurrentCamera
@@ -18,7 +20,7 @@ if _G.ImGuiV4_FOV then pcall(function() _G.ImGuiV4_FOV:Remove() end) end
 if _G.ImGuiV4_Line then pcall(function() _G.ImGuiV4_Line:Remove() end) end
 
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "ImGui_Gradient_Hub_V58"
+ScreenGui.Name = "ImGui_Gradient_Hub_V60"
 ScreenGui.ResetOnSpawn = false
 _G.ImGuiV4_ScreenGui = ScreenGui
 
@@ -88,7 +90,7 @@ end
 local Settings = {
     SpeedHack = false, WalkSpeed = 30, MultiJump = false, MultiJumpPower = 50,
     Chams = false, ChamsColor = Color3.fromRGB(255, 0, 80), GlowColor = Color3.fromRGB(0, 235, 255), 
-    Noclip = false, NightMode = false, DaylightMode = false, AntiCrash = false, AntiKick = false,
+    Noclip = false, NightMode = false, DaylightMode = false, AntiCrash = false, AntiKick = false, AutoBypass = false,
     Aimbot = false, FOVRadius = 150, AimDistance = 500, AimSmoothness = 25, TargetPart = "Head"
 }
 
@@ -196,7 +198,7 @@ local SubText = Instance.new("TextLabel")
 SubText.Size = UDim2.new(1, -10, 1, 0)
 SubText.Position = UDim2.new(0, 8, 0, 0)
 SubText.BackgroundTransparency = 1
-SubText.Text = "Dear ImGui v5.8 (Full Indoor Glow & Lighting)"
+SubText.Text = "Dear ImGui v6.0 (Auto Bypass Added)"
 SubText.Font = Enum.Font.Code
 SubText.TextSize = 11
 SubText.TextColor3 = Color3.fromRGB(150, 160, 180)
@@ -698,14 +700,102 @@ end)
 CreateToggle(MiscPage, "Anti Crash", true, function(state) Settings.AntiCrash = state end)
 CreateToggle(MiscPage, "Anti Kick", true, function(state) Settings.AntiKick = state end)
 
--- Fungsi untuk memaksa pencahayaan ruangan tertutup ikut berubah
+-- ==========================================
+-- AUTO BYPASS ANTI-CHEAT (TOGGLEABLE)
+-- ==========================================
+CreateToggle(MiscPage, "Auto Bypass", true, function(state)
+    Settings.AutoBypass = state
+    if state then
+        task.spawn(function()
+            pcall(function()
+                if setreadonly then
+                    pcall(function()
+                        setreadonly(getrenv(), false)
+                        setreadonly(getreg(), false)
+                        setreadonly(getgc(), false)
+                    end)
+                end
+                if make_writeable then
+                    pcall(function()
+                        make_writeable(getreg())
+                    end)
+                end
+                if detour_function then
+                    detour_function = function(...)
+                        return true
+                    end
+                end
+                if getconnections then
+                    pcall(function()
+                        for _, connection in ipairs(getconnections(ScriptContext.Error)) do
+                            connection:Disable()
+                        end
+                    end)
+                end
+                if getcallingscript then
+                    pcall(function()
+                        getcallingscript = function()
+                            return nil
+                        end
+                    end)
+                end
+                for _, tableName in ipairs({"_G", "shared"}) do
+                    pcall(function()
+                        local target = getgenv()[tableName]
+                        if target and type(target) == "table" then
+                            for key, _ in pairs(target) do
+                                local strKey = tostring(key):lower()
+                                if strKey:find("signature") or strKey:find("checksum") or strKey:find("hash") then
+                                    target[key] = nil
+                                end
+                            end
+                        end
+                    end)
+                end
+                for _, remote in ipairs(ReplicatedStorage:GetDescendants()) do
+                    if remote:IsA("RemoteEvent") or remote:IsA("RemoteFunction") then
+                        local name = remote.Name:lower()
+                        if name:find("handshake") or name:find("validate") or name:find("verify") or name:find("integrity") or name:find("anti") then
+                            pcall(function()
+                                if remote:IsA("RemoteEvent") then
+                                    remote.FireServer = function(...)
+                                        return true
+                                    end
+                                elseif remote:IsA("RemoteFunction") then
+                                    remote.InvokeServer = function(...)
+                                        return true
+                                    end
+                                end
+                            end)
+                        end
+                    end
+                end
+            end)
+        end)
+    end
+end)
+
+-- Simpan nilai asli dari lampu ruangan (Original Brightness) agar bisa dikembalikan dengan akurat
+local OriginalLightValues = {}
+for _, obj in pairs(Workspace:GetDescendants()) do
+    if obj:IsA("PointLight") or obj:IsA("SurfaceLight") or obj:IsA("SpotLight") then
+        OriginalLightValues[obj] = obj.Brightness
+    end
+end
+
+Workspace.DescendantAdded:Connect(function(obj)
+    if obj:IsA("PointLight") or obj:IsA("SurfaceLight") or obj:IsA("SpotLight") then
+        OriginalLightValues[obj] = obj.Brightness
+    end
+end)
+
 local function SetIndoorLighting(isNight)
-    for _, obj in pairs(Workspace:GetDescendants()) do
-        if obj:IsA("PointLight") or obj:IsA("SurfaceLight") or obj:IsA("SpotLight") then
+    for obj, origBrightness in pairs(OriginalLightValues) do
+        if obj and obj.Parent then
             if isNight then
-                obj.Brightness = obj.Brightness * 0.2
+                obj.Brightness = origBrightness * 0.2
             else
-                obj.Brightness = obj.Brightness * 2.0
+                obj.Brightness = origBrightness 
             end
         end
     end
@@ -743,6 +833,7 @@ CreateToggle(MiscPage, "Daylight Mode", true, function(state)
         Lighting.Brightness = 1
         Lighting.OutdoorAmbient = Color3.fromRGB(128, 128, 128)
         Lighting.GlobalShadows = true
+        SetIndoorLighting(false)
     end
 end)
 
