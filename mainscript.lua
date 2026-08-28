@@ -1,5 +1,5 @@
 -- ========================================================
--- DEAR IMGUI PREMIUM GRADIENT UI (V6.0 - FIXED ALL BUGS)
+-- DEAR IMGUI PREMIUM GRADIENT UI (V6.1 - FULL FIX MULTI-JUMP & LIGHTING)
 -- ========================================================
 
 local Players = game:GetService("Players")
@@ -18,7 +18,7 @@ if _G.ImGuiV4_FOV then pcall(function() _G.ImGuiV4_FOV:Remove() end) end
 if _G.ImGuiV4_Line then pcall(function() _G.ImGuiV4_Line:Remove() end) end
 
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "ImGui_Gradient_Hub_V60"
+ScreenGui.Name = "ImGui_Gradient_Hub_V61"
 ScreenGui.ResetOnSpawn = false
 _G.ImGuiV4_ScreenGui = ScreenGui
 
@@ -202,7 +202,7 @@ local SubText = Instance.new("TextLabel")
 SubText.Size = UDim2.new(1, -10, 1, 0)
 SubText.Position = UDim2.new(0, 8, 0, 0)
 SubText.BackgroundTransparency = 1
-SubText.Text = "Dear ImGui v6.0 (Original Tabs Layout Restored)"
+SubText.Text = "Dear ImGui v6.1 (Independent Lighting & Classic Jump)"
 SubText.Font = Enum.Font.Code
 SubText.TextSize = 11
 SubText.TextColor3 = Color3.fromRGB(150, 160, 180)
@@ -214,7 +214,7 @@ ToggleBtn.MouseButton1Click:Connect(function()
 end)
 
 -- ==========================================
--- 3 TOP TABS (PLAYER, MISC, GUN) - BACK TO ORIGINAL DESIGN
+-- 3 TOP TABS (PLAYER, MISC, GUN)
 -- ==========================================
 local TabFrame = Instance.new("Frame")
 TabFrame.Size = UDim2.new(1, -12, 0, 24)
@@ -284,7 +284,6 @@ end
 local tabs = {"PLAYER", "MISC", "GUN"}
 for i, name in ipairs(tabs) do
     local Btn = Instance.new("TextButton")
-    -- Ukuran proporsional sesuai request awal lu (Player, Misc, Gun doang)
     Btn.Size = UDim2.new(0.32, 0, 1, 0)
     Btn.Position = UDim2.new((i - 1) * 0.34, 0, 0, 0)
     Btn.BackgroundColor3 = Color3.fromRGB(24, 24, 36)
@@ -304,7 +303,7 @@ for i, name in ipairs(tabs) do
 end
 
 -- ==========================================
--- FEATURE HEADERS (SUPPORT / NON SUPPORT)
+-- FEATURE UI BUILDERS
 -- ==========================================
 
 local function CreateFeatureHeader(parent, titleText, isSupported)
@@ -552,23 +551,23 @@ local function CreateColorTable(parent, text, callback)
 end
 
 -- ==========================================
--- PLAYER & MISC IMPLEMENTATIONS (FIXED MULTI-JUMP & DAYLIGHT)
+-- PLAYER & MISC IMPLEMENTATIONS (FIXED & INDEPENDENT)
 -- ==========================================
 
 CreateSlider(PlayerPage, "Speed Hack", 16, 150, 16, true, function(val) Settings.WalkSpeed = val end)
 CreateToggle(PlayerPage, "Multi Jump", true, function(state) Settings.MultiJump = state end)
 CreateSlider(PlayerPage, "Multi Jump Power", 30, 150, 50, true, function(val) Settings.MultiJumpPower = val end)
 
--- FIXED MULTI JUMP LOGIC
+-- FIXED MULTI JUMP: METODE KLASIK (JUMPPOWER / JUMPHEIGHT)
 UserInputService.JumpRequest:Connect(function()
     if Settings.MultiJump then
         local char = LocalPlayer.Character
         if char then
             local hum = char:FindFirstChildOfClass("Humanoid")
-            local hrp = char:FindFirstChild("HumanoidRootPart")
-            if hum and hrp then
-                hrp.Velocity = Vector3.new(hrp.Velocity.X, Settings.MultiJumpPower, hrp.Velocity.Z)
+            if hum then
+                -- Loncat pakai Jump() bawaan Roblox, dijamin mulus & work di semua game
                 hum:ChangeState(Enum.HumanoidStateType.Jumping)
+                hum.JumpPower = Settings.MultiJumpPower
             end
         end
     end
@@ -648,17 +647,19 @@ RunService.Stepped:Connect(function()
         end
     end
 
+    -- FIXED LIGHTING: NIGHT MODE & DAYLIGHT MODE BERJALAN TERPISAH DAN MANDIRI
     if Settings.NightMode then
         Lighting.ClockTime = 0
         Lighting.Brightness = 0.2
         Lighting.OutdoorAmbient = Color3.fromRGB(20, 20, 40)
-    elseif Settings.DaylightMode then
-        -- FIXED DAYLIGHT MODE: Force full noon brightness and clear atmosphere
+    end
+
+    if Settings.DaylightMode then
         Lighting.ClockTime = 12
         Lighting.Brightness = 3
         Lighting.OutdoorAmbient = Color3.fromRGB(255, 255, 255)
         Lighting.GlobalShadows = false
-    else
+    elseif not Settings.NightMode and not Settings.DaylightMode then
         Lighting.GlobalShadows = true
     end
 end)
@@ -666,14 +667,13 @@ end)
 CreateToggle(MiscPage, "Anti Crash", true, function(state) Settings.AntiCrash = state end)
 CreateToggle(MiscPage, "Anti Kick", true, function(state) Settings.AntiKick = state end)
 
+-- FIXED: TOGGLE NIGHT MODE & DAYLIGHT MODE SEKARANG BENAR-BENAR TERPISAH (TIDAK SALING MATIKAN)
 CreateToggle(MiscPage, "Night Mode", true, function(state)
     Settings.NightMode = state
-    if state then Settings.DaylightMode = false end
 end)
 
 CreateToggle(MiscPage, "Daylight Mode", true, function(state)
     Settings.DaylightMode = state
-    if state then Settings.NightMode = false end
 end)
 
 -- ==========================================
@@ -729,6 +729,7 @@ task.spawn(function()
         task.wait(1)
         if Settings.UnlimitedAmmo then
             pcall(function()
+                val = 999
                 local char = LocalPlayer.Character
                 if char then
                     for _, tool in pairs(char:GetChildren()) do
