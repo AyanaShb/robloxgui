@@ -1,5 +1,5 @@
 -- ========================================================
--- DEAR IMGUI PREMIUM GRADIENT UI (V5.9 - PERFECT TAB HEADERS)
+-- DEAR IMGUI PREMIUM GRADIENT UI (V6.0 - FIXED ALL BUGS)
 -- ========================================================
 
 local Players = game:GetService("Players")
@@ -18,7 +18,7 @@ if _G.ImGuiV4_FOV then pcall(function() _G.ImGuiV4_FOV:Remove() end) end
 if _G.ImGuiV4_Line then pcall(function() _G.ImGuiV4_Line:Remove() end) end
 
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "ImGui_Gradient_Hub_V59"
+ScreenGui.Name = "ImGui_Gradient_Hub_V60"
 ScreenGui.ResetOnSpawn = false
 _G.ImGuiV4_ScreenGui = ScreenGui
 
@@ -202,7 +202,7 @@ local SubText = Instance.new("TextLabel")
 SubText.Size = UDim2.new(1, -10, 1, 0)
 SubText.Position = UDim2.new(0, 8, 0, 0)
 SubText.BackgroundTransparency = 1
-SubText.Text = "Dear ImGui v5.9 (Fixed Tab Headers)"
+SubText.Text = "Dear ImGui v6.0 (Original Tabs Layout Restored)"
 SubText.Font = Enum.Font.Code
 SubText.TextSize = 11
 SubText.TextColor3 = Color3.fromRGB(150, 160, 180)
@@ -214,23 +214,17 @@ ToggleBtn.MouseButton1Click:Connect(function()
 end)
 
 -- ==========================================
--- 3 TOP TABS (PLAYER, MISC, GUN) - RESTORED
+-- 3 TOP TABS (PLAYER, MISC, GUN) - BACK TO ORIGINAL DESIGN
 -- ==========================================
 local TabFrame = Instance.new("Frame")
-TabFrame.Size = UDim2.new(1, -12, 0, 28)
-TabFrame.Position = UDim2.new(0, 6, 0, 56)
+TabFrame.Size = UDim2.new(1, -12, 0, 24)
+TabFrame.Position = UDim2.new(0, 6, 0, 58)
 TabFrame.BackgroundTransparency = 1
 TabFrame.Parent = MainFrame
 
-local UIListTab = Instance.new("UIListLayout")
-UIListTab.FillDirection = Enum.FillDirection.Horizontal
-UIListTab.SortOrder = Enum.SortOrder.LayoutOrder
-UIListTab.Padding = UDim.new(0, 6)
-UIListTab.Parent = TabFrame
-
 local ContentFrame = Instance.new("Frame")
-ContentFrame.Size = UDim2.new(1, -12, 1, -92)
-ContentFrame.Position = UDim2.new(0, 6, 0, 88)
+ContentFrame.Size = UDim2.new(1, -12, 1, -90)
+ContentFrame.Position = UDim2.new(0, 6, 0, 86)
 ContentFrame.BackgroundColor3 = Color3.fromRGB(14, 14, 20)
 ContentFrame.BorderSizePixel = 0
 ContentFrame.Parent = MainFrame
@@ -290,7 +284,9 @@ end
 local tabs = {"PLAYER", "MISC", "GUN"}
 for i, name in ipairs(tabs) do
     local Btn = Instance.new("TextButton")
+    -- Ukuran proporsional sesuai request awal lu (Player, Misc, Gun doang)
     Btn.Size = UDim2.new(0.32, 0, 1, 0)
+    Btn.Position = UDim2.new((i - 1) * 0.34, 0, 0, 0)
     Btn.BackgroundColor3 = Color3.fromRGB(24, 24, 36)
     Btn.BorderSizePixel = 0
     Btn.Text = name
@@ -300,7 +296,7 @@ for i, name in ipairs(tabs) do
     Btn.Parent = TabFrame
     
     local Corner = Instance.new("UICorner")
-    Corner.CornerRadius = UDim.new(0, 5)
+    Corner.CornerRadius = UDim.new(0, 4)
     Corner.Parent = Btn
     
     Btn.MouseButton1Click:Connect(function() SelectTab(name, Btn) end)
@@ -556,13 +552,14 @@ local function CreateColorTable(parent, text, callback)
 end
 
 -- ==========================================
--- PLAYER & MISC IMPLEMENTATIONS
+-- PLAYER & MISC IMPLEMENTATIONS (FIXED MULTI-JUMP & DAYLIGHT)
 -- ==========================================
 
 CreateSlider(PlayerPage, "Speed Hack", 16, 150, 16, true, function(val) Settings.WalkSpeed = val end)
 CreateToggle(PlayerPage, "Multi Jump", true, function(state) Settings.MultiJump = state end)
 CreateSlider(PlayerPage, "Multi Jump Power", 30, 150, 50, true, function(val) Settings.MultiJumpPower = val end)
 
+-- FIXED MULTI JUMP LOGIC
 UserInputService.JumpRequest:Connect(function()
     if Settings.MultiJump then
         local char = LocalPlayer.Character
@@ -656,9 +653,13 @@ RunService.Stepped:Connect(function()
         Lighting.Brightness = 0.2
         Lighting.OutdoorAmbient = Color3.fromRGB(20, 20, 40)
     elseif Settings.DaylightMode then
-        Lighting.ClockTime = 14
+        -- FIXED DAYLIGHT MODE: Force full noon brightness and clear atmosphere
+        Lighting.ClockTime = 12
         Lighting.Brightness = 3
         Lighting.OutdoorAmbient = Color3.fromRGB(255, 255, 255)
+        Lighting.GlobalShadows = false
+    else
+        Lighting.GlobalShadows = true
     end
 end)
 
