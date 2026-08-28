@@ -1,5 +1,5 @@
 -- ========================================================
--- AMIN D3D MENU (ANDROID MOBILE OPTIMIZED UI V5.4)
+-- AMIN D3D MENU (FINAL UI FIX FOR ANDROID)
 -- ========================================================
 
 local Players = game:GetService("Players")
@@ -18,7 +18,7 @@ if _G.ImGuiV4_FOV then pcall(function() _G.ImGuiV4_FOV:Remove() end) end
 if _G.ImGuiV4_Line then pcall(function() _G.ImGuiV4_Line:Remove() end) end
 
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "AMIN_D3D_Menu_Android"
+ScreenGui.Name = "AMIN_D3D_Menu_Android_Fixed"
 ScreenGui.ResetOnSpawn = false
 _G.ImGuiV4_ScreenGui = ScreenGui
 
@@ -86,7 +86,7 @@ local function ShowToast(text, isSuccess)
 end
 
 local Settings = {
-    WalkSpeed = 16, MultiJump = false, MultiJumpPower = 7.2, -- Normal jump height
+    WalkSpeed = 16, MultiJump = false, MultiJumpPower = 7.2,
     Chams = false, ChamsColor = Color3.fromRGB(255, 0, 80), 
     Noclip = false, NightMode = false, DaylightMode = false,
     SilentAim = false, ShowFOV = false, FOVRadius = 150, 
@@ -108,7 +108,7 @@ TargetLine.Transparency = 1
 TargetLine.Visible = false
 _G.ImGuiV4_Line = TargetLine
 
--- Floating Toggle Icon Button (Ukuran Diperbesar agar mudah disentuh jari di HP)
+-- Floating Toggle Button
 local ToggleBtn = Instance.new("TextButton")
 ToggleBtn.Name = "AMIN_ToggleIcon"
 ToggleBtn.Size = UDim2.new(0, 46, 0, 46)
@@ -132,13 +132,13 @@ BtnStroke.Color = Color3.fromRGB(140, 60, 255)
 BtnStroke.Parent = ToggleBtn
 
 -- ==========================================
--- MAIN UI CONTAINER (RESPONSIF ANDROID)
+-- MAIN UI CONTAINER
 -- ==========================================
 
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
-MainFrame.Size = UDim2.new(0, 520, 0, 310)
-MainFrame.Position = UDim2.new(0.5, -260, 0.5, -155)
+MainFrame.Size = UDim2.new(0, 500, 0, 290)
+MainFrame.Position = UDim2.new(0.5, -250, 0.5, -145)
 MainFrame.BackgroundColor3 = Color3.fromRGB(18, 16, 24)
 MainFrame.BorderSizePixel = 0
 MainFrame.Active = true
@@ -154,49 +154,47 @@ MainStroke.Thickness = 1.5
 MainStroke.Color = Color3.fromRGB(110, 45, 210)
 MainStroke.Parent = MainFrame
 
--- Header Area (AMIN D3D MENU)
+-- Header Area
 local HeaderFrame = Instance.new("Frame")
-HeaderFrame.Size = UDim2.new(1, 0, 0, 44)
+HeaderFrame.Size = UDim2.new(1, 0, 0, 40)
 HeaderFrame.BackgroundTransparency = 1
 HeaderFrame.Parent = MainFrame
 
 local HeaderText = Instance.new("TextLabel")
-HeaderText.Size = UDim2.new(0, 200, 1, 0)
+HeaderText.Size = UDim2.new(0, 160, 1, 0)
 HeaderText.Position = UDim2.new(0, 14, 0, 0)
 HeaderText.BackgroundTransparency = 1
 HeaderText.Text = "AMIN D3D MENU"
 HeaderText.Font = Enum.Font.GothamBold
-HeaderText.TextSize = 15
+HeaderText.TextSize = 14
 HeaderText.TextColor3 = Color3.fromRGB(255, 255, 255)
 HeaderText.TextXAlignment = Enum.TextXAlignment.Left
 HeaderText.Parent = HeaderFrame
 
 local SubCategoryLabel = Instance.new("TextLabel")
 SubCategoryLabel.Size = UDim2.new(0, 180, 1, 0)
-SubCategoryLabel.Position = UDim2.new(0, 175, 0, 0)
+SubCategoryLabel.Position = UDim2.new(0, 150, 0, 0)
 SubCategoryLabel.BackgroundTransparency = 1
 SubCategoryLabel.Text = "[player]"
 SubCategoryLabel.Font = Enum.Font.Code
-SubCategoryLabel.TextSize = 12
+SubCategoryLabel.TextSize = 11
 SubCategoryLabel.TextColor3 = Color3.fromRGB(140, 120, 180)
 SubCategoryLabel.TextXAlignment = Enum.TextXAlignment.Left
 SubCategoryLabel.Parent = HeaderFrame
 
 local Divider = Instance.new("Frame")
 Divider.Size = UDim2.new(1, 0, 0, 1)
-Divider.Position = UDim2.new(0, 0, 0, 44)
+Divider.Position = UDim2.new(0, 0, 0, 40)
 Divider.BackgroundColor3 = Color3.fromRGB(35, 30, 48)
 Divider.BorderSizePixel = 0
 Divider.Parent = MainFrame
 
--- Left Navigation Sidebar (Lebih besar agar ramah sentuhan jari)
-local Sidebar = Instance.new("ScrollingFrame")
+-- Sidebar (Left Tab Menu)
+local Sidebar = Instance.new("Frame")
 Sidebar.Name = "Sidebar"
-Sidebar.Size = UDim2.new(0, 135, 1, -54)
-Sidebar.Position = UDim2.new(0, 10, 0, 48)
+Sidebar.Size = UDim2.new(0, 120, 1, -45)
+Sidebar.Position = UDim2.new(0, 10, 0, 45)
 Sidebar.BackgroundTransparency = 1
-Sidebar.BorderSizePixel = 0
-Sidebar.ScrollBarThickness = 0
 Sidebar.Parent = MainFrame
 
 local SidebarLayout = Instance.new("UIListLayout")
@@ -204,10 +202,11 @@ SidebarLayout.SortOrder = Enum.SortOrder.LayoutOrder
 SidebarLayout.Padding = UDim.new(0, 6)
 SidebarLayout.Parent = Sidebar
 
--- Content Container Panel (Right Side)
+-- Content Panel Container (Right Area)
 local PanelContainer = Instance.new("Frame")
-PanelContainer.Size = UDim2.new(1, -160, 1, -54)
-PanelContainer.Position = UDim2.new(0, 150, 0, 48)
+PanelContainer.Name = "PanelContainer"
+PanelContainer.Size = UDim2.new(1, -145, 1, -50)
+PanelContainer.Position = UDim2.new(0, 135, 0, 45)
 PanelContainer.BackgroundTransparency = 1
 PanelContainer.Parent = MainFrame
 
@@ -219,6 +218,7 @@ local Pages = {}
 
 local function CreatePage(name)
     local Scroll = Instance.new("ScrollingFrame")
+    Scroll.Name = name .. "Page"
     Scroll.Size = UDim2.new(1, 0, 1, 0)
     Scroll.BackgroundTransparency = 1
     Scroll.BorderSizePixel = 0
@@ -229,7 +229,7 @@ local function CreatePage(name)
     
     local Layout = Instance.new("UIListLayout")
     Layout.SortOrder = Enum.SortOrder.LayoutOrder
-    Layout.Padding = UDim.new(0, 8)
+    Layout.Padding = UDim.new(0, 6)
     Layout.Parent = Scroll
     
     Pages[name] = Scroll
@@ -260,22 +260,22 @@ end
 local tabs = {"PLAYER", "MISC", "GUN"}
 for i, name in ipairs(tabs) do
     local Btn = Instance.new("TextButton")
-    Btn.Size = UDim2.new(1, 0, 0, 36) -- Tinggi tombol tab disesuaikan untuk layar HP
+    Btn.Size = UDim2.new(1, 0, 0, 34)
     Btn.BackgroundColor3 = Color3.fromRGB(22, 18, 30)
     Btn.BorderSizePixel = 0
     Btn.Text = name
     Btn.Font = Enum.Font.GothamBold
-    Btn.TextSize = 12
+    Btn.TextSize = 11
     Btn.TextColor3 = Color3.fromRGB(150, 140, 180)
     Btn.TextXAlignment = Enum.TextXAlignment.Left
     Btn.Parent = Sidebar
     
     local Padding = Instance.new("UIPadding")
-    Padding.PaddingLeft = UDim.new(0, 12)
+    Padding.PaddingLeft = UDim.new(0, 10)
     Padding.Parent = Btn
 
     local Corner = Instance.new("UICorner")
-    Corner.CornerRadius = UDim.new(0, 8)
+    Corner.CornerRadius = UDim.new(0, 6)
     Corner.Parent = Btn
 
     local Stroke = Instance.new("UIStroke")
@@ -289,18 +289,18 @@ for i, name in ipairs(tabs) do
 end
 
 -- ==========================================
--- UI COMPONENTS (ANDROID TOUCH FRIENDLY)
+-- UI COMPONENTS
 -- ==========================================
 
 local function CreateToggle(parent, text, callback)
     local Container = Instance.new("Frame")
-    Container.Size = UDim2.new(1, -8, 0, 38)
+    Container.Size = UDim2.new(1, -6, 0, 34)
     Container.BackgroundColor3 = Color3.fromRGB(22, 18, 30)
     Container.BorderSizePixel = 0
     Container.Parent = parent
 
     local Corner = Instance.new("UICorner")
-    Corner.CornerRadius = UDim.new(0, 8)
+    Corner.CornerRadius = UDim.new(0, 6)
     Corner.Parent = Container
 
     local FeatureName = Instance.new("TextLabel")
@@ -309,14 +309,14 @@ local function CreateToggle(parent, text, callback)
     FeatureName.BackgroundTransparency = 1
     FeatureName.Text = text
     FeatureName.Font = Enum.Font.GothamMedium
-    FeatureName.TextSize = 12
+    FeatureName.TextSize = 11
     FeatureName.TextColor3 = Color3.fromRGB(210, 210, 230)
     FeatureName.TextXAlignment = Enum.TextXAlignment.Left
     FeatureName.Parent = Container
 
     local SwitchTrack = Instance.new("TextButton")
-    SwitchTrack.Size = UDim2.new(0, 44, 0, 22)
-    SwitchTrack.Position = UDim2.new(1, -52, 0.5, -11)
+    SwitchTrack.Size = UDim2.new(0, 40, 0, 20)
+    SwitchTrack.Position = UDim2.new(1, -46, 0.5, -10)
     SwitchTrack.BackgroundColor3 = Color3.fromRGB(35, 30, 48)
     SwitchTrack.Text = ""
     SwitchTrack.AutoButtonColor = false
@@ -327,8 +327,8 @@ local function CreateToggle(parent, text, callback)
     TrackCorner.Parent = SwitchTrack
 
     local SwitchKnob = Instance.new("Frame")
-    SwitchKnob.Size = UDim2.new(0, 18, 0, 18)
-    SwitchKnob.Position = UDim2.new(0, 2, 0.5, -9)
+    SwitchKnob.Size = UDim2.new(0, 16, 0, 16)
+    SwitchKnob.Position = UDim2.new(0, 2, 0.5, -8)
     SwitchKnob.BackgroundColor3 = Color3.fromRGB(160, 160, 180)
     SwitchKnob.BorderSizePixel = 0
     SwitchKnob.Parent = SwitchTrack
@@ -341,11 +341,11 @@ local function CreateToggle(parent, text, callback)
     SwitchTrack.MouseButton1Click:Connect(function()
         enabled = not enabled
         if enabled then
-            TweenService:Create(SwitchKnob, TweenInfo.new(0.2), {Position = UDim2.new(1, -20, 0.5, -9), BackgroundColor3 = Color3.fromRGB(255, 255, 255)}):Play()
+            TweenService:Create(SwitchKnob, TweenInfo.new(0.2), {Position = UDim2.new(1, -18, 0.5, -8), BackgroundColor3 = Color3.fromRGB(255, 255, 255)}):Play()
             TweenService:Create(SwitchTrack, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(110, 45, 210)}):Play()
             ShowToast(text .. " Enabled", true)
         else
-            TweenService:Create(SwitchKnob, TweenInfo.new(0.2), {Position = UDim2.new(0, 2, 0.5, -9), BackgroundColor3 = Color3.fromRGB(160, 160, 180)}):Play()
+            TweenService:Create(SwitchKnob, TweenInfo.new(0.2), {Position = UDim2.new(0, 2, 0.5, -8), BackgroundColor3 = Color3.fromRGB(160, 160, 180)}):Play()
             TweenService:Create(SwitchTrack, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(35, 30, 48)}):Play()
             ShowToast(text .. " Disabled", false)
         end
@@ -355,29 +355,29 @@ end
 
 local function CreateSlider(parent, text, min, max, default, callback)
     local Frame = Instance.new("Frame")
-    Frame.Size = UDim2.new(1, -8, 0, 50)
+    Frame.Size = UDim2.new(1, -6, 0, 44)
     Frame.BackgroundColor3 = Color3.fromRGB(22, 18, 30)
     Frame.BorderSizePixel = 0
     Frame.Parent = parent
 
     local Corner = Instance.new("UICorner")
-    Corner.CornerRadius = UDim.new(0, 8)
+    Corner.CornerRadius = UDim.new(0, 6)
     Corner.Parent = Frame
 
     local ValueText = Instance.new("TextLabel")
-    ValueText.Size = UDim2.new(1, -16, 0, 20)
+    ValueText.Size = UDim2.new(1, -16, 0, 18)
     ValueText.Position = UDim2.new(0, 10, 0, 4)
     ValueText.BackgroundTransparency = 1
     ValueText.Text = text .. ": " .. tostring(default)
     ValueText.Font = Enum.Font.GothamMedium
-    ValueText.TextSize = 12
+    ValueText.TextSize = 11
     ValueText.TextColor3 = Color3.fromRGB(210, 210, 230)
     ValueText.TextXAlignment = Enum.TextXAlignment.Left
     ValueText.Parent = Frame
 
     local SliderBar = Instance.new("TextButton")
-    SliderBar.Size = UDim2.new(1, -20, 0, 16)
-    SliderBar.Position = UDim2.new(0, 10, 0, 28)
+    SliderBar.Size = UDim2.new(1, -20, 0, 14)
+    SliderBar.Position = UDim2.new(0, 10, 0, 24)
     SliderBar.BackgroundColor3 = Color3.fromRGB(35, 30, 48)
     SliderBar.BorderSizePixel = 0
     SliderBar.Text = ""
@@ -385,7 +385,7 @@ local function CreateSlider(parent, text, min, max, default, callback)
     SliderBar.Parent = Frame
 
     local SliderCorner = Instance.new("UICorner")
-    SliderCorner.CornerRadius = UDim.new(0, 8)
+    SliderCorner.CornerRadius = UDim.new(0, 6)
     SliderCorner.Parent = SliderBar
 
     local Fill = Instance.new("Frame")
@@ -395,7 +395,7 @@ local function CreateSlider(parent, text, min, max, default, callback)
     Fill.Parent = SliderBar
 
     local FillCorner = Instance.new("UICorner")
-    FillCorner.CornerRadius = UDim.new(0, 8)
+    FillCorner.CornerRadius = UDim.new(0, 6)
     FillCorner.Parent = Fill
 
     local dragging = false
@@ -427,13 +427,13 @@ end
 
 local function CreateSelector(parent, text, options, defaultIndex, callback)
     local Frame = Instance.new("Frame")
-    Frame.Size = UDim2.new(1, -8, 0, 38)
+    Frame.Size = UDim2.new(1, -6, 0, 34)
     Frame.BackgroundColor3 = Color3.fromRGB(22, 18, 30)
     Frame.BorderSizePixel = 0
     Frame.Parent = parent
 
     local Corner = Instance.new("UICorner")
-    Corner.CornerRadius = UDim.new(0, 8)
+    Corner.CornerRadius = UDim.new(0, 6)
     Corner.Parent = Frame
 
     local Btn = Instance.new("TextButton")
@@ -441,7 +441,7 @@ local function CreateSelector(parent, text, options, defaultIndex, callback)
     Btn.BackgroundTransparency = 1
     Btn.Text = text .. ": " .. options[defaultIndex]
     Btn.Font = Enum.Font.GothamMedium
-    Btn.TextSize = 12
+    Btn.TextSize = 11
     Btn.TextColor3 = Color3.fromRGB(0, 235, 255)
     Btn.Parent = Frame
 
@@ -457,13 +457,13 @@ end
 
 local function CreateColorTable(parent, text, callback)
     local Frame = Instance.new("Frame")
-    Frame.Size = UDim2.new(1, -8, 0, 42)
+    Frame.Size = UDim2.new(1, -6, 0, 38)
     Frame.BackgroundColor3 = Color3.fromRGB(22, 18, 30)
     Frame.BorderSizePixel = 0
     Frame.Parent = parent
 
     local Corner = Instance.new("UICorner")
-    Corner.CornerRadius = UDim.new(0, 8)
+    Corner.CornerRadius = UDim.new(0, 6)
     Corner.Parent = Frame
 
     local Label = Instance.new("TextLabel")
@@ -472,7 +472,7 @@ local function CreateColorTable(parent, text, callback)
     Label.BackgroundTransparency = 1
     Label.Text = text
     Label.Font = Enum.Font.GothamMedium
-    Label.TextSize = 12
+    Label.TextSize = 11
     Label.TextColor3 = Color3.fromRGB(210, 210, 230)
     Label.TextXAlignment = Enum.TextXAlignment.Left
     Label.Parent = Frame
@@ -495,12 +495,12 @@ local function CreateColorTable(parent, text, callback)
     Layout.FillDirection = Enum.FillDirection.Horizontal
     Layout.HorizontalAlignment = Enum.HorizontalAlignment.Right
     Layout.VerticalAlignment = Enum.VerticalAlignment.Center
-    Layout.Padding = UDim.new(0, 10)
+    Layout.Padding = UDim.new(0, 8)
     Layout.Parent = ColorContainer
 
     for _, colorData in ipairs(Colors) do
         local ColorBtn = Instance.new("TextButton")
-        ColorBtn.Size = UDim2.new(0, 24, 0, 24) -- Tombol warna diperbesar agar pas dengan sentuhan jari
+        ColorBtn.Size = UDim2.new(0, 20, 0, 20)
         ColorBtn.BackgroundColor3 = colorData[1]
         ColorBtn.Text = ""
         ColorBtn.Parent = ColorContainer
@@ -510,14 +510,14 @@ local function CreateColorTable(parent, text, callback)
         BtnCorner.Parent = ColorBtn
 
         ColorBtn.MouseButton1Click:Connect(function()
-            ShowToast("Color: " + colorData[2], true)
+            ShowToast("Color: " .. colorData[2], true)
             callback(colorData[1])
         end)
     end
 end
 
 -- ==========================================
--- LOGIC IMPLEMENTATIONS & MULTI-JUMP FIX
+-- LOGIC & FEATURES
 -- ==========================================
 
 CreateSlider(PlayerPage, "Speed Hack", 16, 150, 16, function(val) Settings.WalkSpeed = val end)
@@ -586,7 +586,6 @@ local function ApplyChams(plr)
             hl.FillColor = Settings.ChamsColor
             hl.FillTransparency = 0
             hl.OutlineColor = Color3.fromRGB(255, 255, 255)
-            hl.OutlineTransparency = 0
             hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
         else
             if hl then hl:Destroy() end
@@ -718,18 +717,18 @@ end
 if hookmetamethod and getnamecallmethod then
     local oldNamecall
     oldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
-        local method = getnamecallmethod()
-        local args = {...}
+        let method = getnamecallmethod()
+        let args = {...}
 
         if Settings.SilentAim and not checkcaller() then
-            local target = GetClosestTarget()
+            let target = GetClosestTarget()
             if target and (method == "Raycast" or method == "FindPartOnRay" or method == "FindPartOnRayWithIgnoreList") then
                 if method == "Raycast" then
-                    local origin = args[1]
+                    let origin = args[1]
                     args[2] = (target.Position - origin).Unit * 5000
                     return oldNamecall(self, unpack(args))
                 elseif method == "FindPartOnRay" then
-                    local origin = args[1].Origin
+                    let origin = args[1].Origin
                     args[1] = Ray.new(origin, (target.Position - origin).Unit * 5000)
                     return oldNamecall(self, unpack(args))
                 end
@@ -741,14 +740,14 @@ if hookmetamethod and getnamecallmethod then
 end
 
 RunService.RenderStepped:Connect(function()
-    local center = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
+    let center = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
     FOVCircle.Position = center
     FOVCircle.Radius = Settings.FOVRadius
     FOVCircle.Visible = Settings.ShowFOV
 
-    local lockedTarget = GetClosestTarget()
+    let lockedTarget = GetClosestTarget()
     if lockedTarget and Settings.LineTarget then
-        local pos, onScreen = Camera:WorldToViewportPoint(lockedTarget.Position)
+        let pos, onScreen = Camera:WorldToViewportPoint(lockedTarget.Position)
         if onScreen then
             TargetLine.From = center
             TargetLine.To = Vector2.new(pos.X, pos.Y)
