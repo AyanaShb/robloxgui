@@ -1,5 +1,5 @@
 -- ========================================================
--- AMIN D3D MENU (UI REDESIGN + MULTI-JUMP FIX)
+-- AMIN D3D MENU (ANDROID MOBILE OPTIMIZED UI V5.4)
 -- ========================================================
 
 local Players = game:GetService("Players")
@@ -18,7 +18,7 @@ if _G.ImGuiV4_FOV then pcall(function() _G.ImGuiV4_FOV:Remove() end) end
 if _G.ImGuiV4_Line then pcall(function() _G.ImGuiV4_Line:Remove() end) end
 
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "AMIN_D3D_Menu"
+ScreenGui.Name = "AMIN_D3D_Menu_Android"
 ScreenGui.ResetOnSpawn = false
 _G.ImGuiV4_ScreenGui = ScreenGui
 
@@ -32,26 +32,26 @@ else
 end
 
 local ToastContainer = Instance.new("Frame")
-ToastContainer.Size = UDim2.new(0, 220, 0, 300)
-ToastContainer.Position = UDim2.new(1, -230, 1, -310)
+ToastContainer.Size = UDim2.new(0, 240, 0, 300)
+ToastContainer.Position = UDim2.new(1, -250, 1, -320)
 ToastContainer.BackgroundTransparency = 1
 ToastContainer.Parent = ScreenGui
 
 local ToastLayout = Instance.new("UIListLayout")
 ToastLayout.VerticalAlignment = Enum.VerticalAlignment.Bottom
 ToastLayout.SortOrder = Enum.SortOrder.LayoutOrder
-ToastLayout.Padding = UDim.new(0, 6)
+ToastLayout.Padding = UDim.new(0, 8)
 ToastLayout.Parent = ToastContainer
 
 local function ShowToast(text, isSuccess)
     local Toast = Instance.new("Frame")
-    Toast.Size = UDim2.new(1, 0, 0, 32)
-    Toast.BackgroundColor3 = Color3.fromRGB(18, 18, 26)
+    Toast.Size = UDim2.new(1, 0, 0, 38)
+    Toast.BackgroundColor3 = Color3.fromRGB(18, 16, 24)
     Toast.BackgroundTransparency = 1
     Toast.Parent = ToastContainer
 
     local Corner = Instance.new("UICorner")
-    Corner.CornerRadius = UDim.new(0, 6)
+    Corner.CornerRadius = UDim.new(0, 8)
     Corner.Parent = Toast
 
     local Stroke = Instance.new("UIStroke")
@@ -61,12 +61,12 @@ local function ShowToast(text, isSuccess)
     Stroke.Parent = Toast
 
     local Label = Instance.new("TextLabel")
-    Label.Size = UDim2.new(1, -12, 1, 0)
-    Label.Position = UDim2.new(0, 8, 0, 0)
+    Label.Size = UDim2.new(1, -16, 1, 0)
+    Label.Position = UDim2.new(0, 10, 0, 0)
     Label.BackgroundTransparency = 1
     Label.Text = text
-    Label.Font = Enum.Font.Code
-    Label.TextSize = 11
+    Label.Font = Enum.Font.GothamMedium
+    Label.TextSize = 12
     Label.TextColor3 = Color3.fromRGB(240, 240, 240)
     Label.TextXAlignment = Enum.TextXAlignment.Left
     Label.Transparency = 1
@@ -86,7 +86,7 @@ local function ShowToast(text, isSuccess)
 end
 
 local Settings = {
-    WalkSpeed = 16, MultiJump = false, MultiJumpPower = 7.2, -- Normalized jump power (approx standard Roblox jump height)
+    WalkSpeed = 16, MultiJump = false, MultiJumpPower = 7.2, -- Normal jump height
     Chams = false, ChamsColor = Color3.fromRGB(255, 0, 80), 
     Noclip = false, NightMode = false, DaylightMode = false,
     SilentAim = false, ShowFOV = false, FOVRadius = 150, 
@@ -108,36 +108,37 @@ TargetLine.Transparency = 1
 TargetLine.Visible = false
 _G.ImGuiV4_Line = TargetLine
 
--- Floating Toggle Icon Button
+-- Floating Toggle Icon Button (Ukuran Diperbesar agar mudah disentuh jari di HP)
 local ToggleBtn = Instance.new("TextButton")
 ToggleBtn.Name = "AMIN_ToggleIcon"
-ToggleBtn.Size = UDim2.new(0, 32, 0, 32)
-ToggleBtn.Position = UDim2.new(0.05, 0, 0.2, 0)
+ToggleBtn.Size = UDim2.new(0, 46, 0, 46)
+ToggleBtn.Position = UDim2.new(0.04, 0, 0.15, 0)
 ToggleBtn.BackgroundColor3 = Color3.fromRGB(20, 15, 30)
 ToggleBtn.BorderSizePixel = 0
 ToggleBtn.Text = "⚡"
-ToggleBtn.TextSize = 16
+ToggleBtn.TextSize = 20
+ToggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 ToggleBtn.Active = true
 ToggleBtn.Draggable = true
 ToggleBtn.Parent = ScreenGui
 
 local BtnCorner = Instance.new("UICorner")
-BtnCorner.CornerRadius = UDim.new(0, 8)
+BtnCorner.CornerRadius = UDim.new(0, 12)
 BtnCorner.Parent = ToggleBtn
 
 local BtnStroke = Instance.new("UIStroke")
-BtnStroke.Thickness = 1.5
+BtnStroke.Thickness = 2
 BtnStroke.Color = Color3.fromRGB(140, 60, 255)
 BtnStroke.Parent = ToggleBtn
 
 -- ==========================================
--- NEW UI LAYOUT (MATCHING REFERENCE IMAGE)
+-- MAIN UI CONTAINER (RESPONSIF ANDROID)
 -- ==========================================
 
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
-MainFrame.Size = UDim2.new(0, 580, 0, 360)
-MainFrame.Position = UDim2.new(0.5, -290, 0.5, -180)
+MainFrame.Size = UDim2.new(0, 520, 0, 310)
+MainFrame.Position = UDim2.new(0.5, -260, 0.5, -155)
 MainFrame.BackgroundColor3 = Color3.fromRGB(18, 16, 24)
 MainFrame.BorderSizePixel = 0
 MainFrame.Active = true
@@ -145,7 +146,7 @@ MainFrame.Draggable = true
 MainFrame.Parent = ScreenGui
 
 local MainCorner = Instance.new("UICorner")
-MainCorner.CornerRadius = UDim.new(0, 8)
+MainCorner.CornerRadius = UDim.new(0, 10)
 MainCorner.Parent = MainFrame
 
 local MainStroke = Instance.new("UIStroke")
@@ -153,28 +154,28 @@ MainStroke.Thickness = 1.5
 MainStroke.Color = Color3.fromRGB(110, 45, 210)
 MainStroke.Parent = MainFrame
 
--- Header Area
+-- Header Area (AMIN D3D MENU)
 local HeaderFrame = Instance.new("Frame")
 HeaderFrame.Size = UDim2.new(1, 0, 0, 44)
 HeaderFrame.BackgroundTransparency = 1
 HeaderFrame.Parent = MainFrame
 
 local HeaderText = Instance.new("TextLabel")
-HeaderText.Size = UDim2.new(0, 160, 1, 0)
-HeaderText.Position = UDim2.new(0, 16, 0, 0)
+HeaderText.Size = UDim2.new(0, 200, 1, 0)
+HeaderText.Position = UDim2.new(0, 14, 0, 0)
 HeaderText.BackgroundTransparency = 1
 HeaderText.Text = "AMIN D3D MENU"
 HeaderText.Font = Enum.Font.GothamBold
-HeaderText.TextSize = 14
+HeaderText.TextSize = 15
 HeaderText.TextColor3 = Color3.fromRGB(255, 255, 255)
 HeaderText.TextXAlignment = Enum.TextXAlignment.Left
 HeaderText.Parent = HeaderFrame
 
 local SubCategoryLabel = Instance.new("TextLabel")
-SubCategoryLabel.Size = UDim2.new(0, 200, 1, 0)
-SubCategoryLabel.Position = UDim2.new(0, 160, 0, 0)
+SubCategoryLabel.Size = UDim2.new(0, 180, 1, 0)
+SubCategoryLabel.Position = UDim2.new(0, 175, 0, 0)
 SubCategoryLabel.BackgroundTransparency = 1
-SubCategoryLabel.Text = "[Player]"
+SubCategoryLabel.Text = "[player]"
 SubCategoryLabel.Font = Enum.Font.Code
 SubCategoryLabel.TextSize = 12
 SubCategoryLabel.TextColor3 = Color3.fromRGB(140, 120, 180)
@@ -188,24 +189,25 @@ Divider.BackgroundColor3 = Color3.fromRGB(35, 30, 48)
 Divider.BorderSizePixel = 0
 Divider.Parent = MainFrame
 
--- Left Navigation Sidebar
-local Sidebar = Instance.new("ScrollingCanvas") or Instance.new("Frame")
+-- Left Navigation Sidebar (Lebih besar agar ramah sentuhan jari)
+local Sidebar = Instance.new("ScrollingFrame")
 Sidebar.Name = "Sidebar"
-Sidebar.Size = UDim2.new(0, 140, 1, -56)
-Sidebar.Position = UDim2.new(0, 12, 0, 52)
+Sidebar.Size = UDim2.new(0, 135, 1, -54)
+Sidebar.Position = UDim2.new(0, 10, 0, 48)
 Sidebar.BackgroundTransparency = 1
+Sidebar.BorderSizePixel = 0
+Sidebar.ScrollBarThickness = 0
 Sidebar.Parent = MainFrame
 
 local SidebarLayout = Instance.new("UIListLayout")
 SidebarLayout.SortOrder = Enum.SortOrder.LayoutOrder
-SidebarLayout.Padding = UDim.new(0, 4)
+SidebarLayout.Padding = UDim.new(0, 6)
 SidebarLayout.Parent = Sidebar
 
 -- Content Container Panel (Right Side)
 local PanelContainer = Instance.new("Frame")
-PanelContainer.Size = UDim2.new(1, -168, 1, -60)
-PanelContainer.Position = UDim2.new(0, 156, 0, 52)
-PanelContainer.BackgroundColor3 = Color3.fromRGB(14, 12, 18)
+PanelContainer.Size = UDim2.new(1, -160, 1, -54)
+PanelContainer.Position = UDim2.new(0, 150, 0, 48)
 PanelContainer.BackgroundTransparency = 1
 PanelContainer.Parent = MainFrame
 
@@ -220,7 +222,7 @@ local function CreatePage(name)
     Scroll.Size = UDim2.new(1, 0, 1, 0)
     Scroll.BackgroundTransparency = 1
     Scroll.BorderSizePixel = 0
-    Scroll.ScrollBarThickness = 3
+    Scroll.ScrollBarThickness = 4
     Scroll.ScrollBarImageColor3 = Color3.fromRGB(110, 45, 210)
     Scroll.Visible = false
     Scroll.Parent = PanelContainer
@@ -250,7 +252,7 @@ local function SelectTab(tabName, btn)
             if b:FindFirstChild("UIStroke") then b.UIStroke.Transparency = 1 end
         end
     end
-    btn.BackgroundColor3 = Color3.fromRGB(30, 24, 45)
+    btn.BackgroundColor3 = Color3.fromRGB(35, 28, 55)
     btn.TextColor3 = Color3.fromRGB(255, 255, 255)
     if btn:FindFirstChild("UIStroke") then btn.UIStroke.Transparency = 0 end
 end
@@ -258,11 +260,11 @@ end
 local tabs = {"PLAYER", "MISC", "GUN"}
 for i, name in ipairs(tabs) do
     local Btn = Instance.new("TextButton")
-    Btn.Size = UDim2.new(1, 0, 0, 32)
+    Btn.Size = UDim2.new(1, 0, 0, 36) -- Tinggi tombol tab disesuaikan untuk layar HP
     Btn.BackgroundColor3 = Color3.fromRGB(22, 18, 30)
     Btn.BorderSizePixel = 0
     Btn.Text = name
-    Btn.Font = Enum.Font.Code
+    Btn.Font = Enum.Font.GothamBold
     Btn.TextSize = 12
     Btn.TextColor3 = Color3.fromRGB(150, 140, 180)
     Btn.TextXAlignment = Enum.TextXAlignment.Left
@@ -273,12 +275,12 @@ for i, name in ipairs(tabs) do
     Padding.Parent = Btn
 
     local Corner = Instance.new("UICorner")
-    Corner.CornerRadius = UDim.new(0, 6)
+    Corner.CornerRadius = UDim.new(0, 8)
     Corner.Parent = Btn
 
     local Stroke = Instance.new("UIStroke")
-    Stroke.Thickness = 1
-    Stroke.Color = Color3.fromRGB(120, 50, 230)
+    Stroke.Thickness = 1.2
+    Stroke.Color = Color3.fromRGB(140, 60, 255)
     Stroke.Transparency = 1
     Stroke.Parent = Btn
     
@@ -287,29 +289,34 @@ for i, name in ipairs(tabs) do
 end
 
 -- ==========================================
--- UI COMPONENTS (MATCHING THEME)
+-- UI COMPONENTS (ANDROID TOUCH FRIENDLY)
 -- ==========================================
 
 local function CreateToggle(parent, text, callback)
     local Container = Instance.new("Frame")
-    Container.Size = UDim2.new(1, -6, 0, 32)
-    Container.BackgroundTransparency = 1
+    Container.Size = UDim2.new(1, -8, 0, 38)
+    Container.BackgroundColor3 = Color3.fromRGB(22, 18, 30)
+    Container.BorderSizePixel = 0
     Container.Parent = parent
+
+    local Corner = Instance.new("UICorner")
+    Corner.CornerRadius = UDim.new(0, 8)
+    Corner.Parent = Container
 
     local FeatureName = Instance.new("TextLabel")
     FeatureName.Size = UDim2.new(0.7, 0, 1, 0)
-    FeatureName.Position = UDim2.new(0, 4, 0, 0)
+    FeatureName.Position = UDim2.new(0, 10, 0, 0)
     FeatureName.BackgroundTransparency = 1
     FeatureName.Text = text
-    FeatureName.Font = Enum.Font.Code
+    FeatureName.Font = Enum.Font.GothamMedium
     FeatureName.TextSize = 12
     FeatureName.TextColor3 = Color3.fromRGB(210, 210, 230)
     FeatureName.TextXAlignment = Enum.TextXAlignment.Left
     FeatureName.Parent = Container
 
     local SwitchTrack = Instance.new("TextButton")
-    SwitchTrack.Size = UDim2.new(0, 36, 0, 18)
-    SwitchTrack.Position = UDim2.new(1, -42, 0.5, -9)
+    SwitchTrack.Size = UDim2.new(0, 44, 0, 22)
+    SwitchTrack.Position = UDim2.new(1, -52, 0.5, -11)
     SwitchTrack.BackgroundColor3 = Color3.fromRGB(35, 30, 48)
     SwitchTrack.Text = ""
     SwitchTrack.AutoButtonColor = false
@@ -320,8 +327,8 @@ local function CreateToggle(parent, text, callback)
     TrackCorner.Parent = SwitchTrack
 
     local SwitchKnob = Instance.new("Frame")
-    SwitchKnob.Size = UDim2.new(0, 14, 0, 14)
-    SwitchKnob.Position = UDim2.new(0, 2, 0.5, -7)
+    SwitchKnob.Size = UDim2.new(0, 18, 0, 18)
+    SwitchKnob.Position = UDim2.new(0, 2, 0.5, -9)
     SwitchKnob.BackgroundColor3 = Color3.fromRGB(160, 160, 180)
     SwitchKnob.BorderSizePixel = 0
     SwitchKnob.Parent = SwitchTrack
@@ -334,11 +341,11 @@ local function CreateToggle(parent, text, callback)
     SwitchTrack.MouseButton1Click:Connect(function()
         enabled = not enabled
         if enabled then
-            TweenService:Create(SwitchKnob, TweenInfo.new(0.2), {Position = UDim2.new(1, -16, 0.5, -7), BackgroundColor3 = Color3.fromRGB(255, 255, 255)}):Play()
+            TweenService:Create(SwitchKnob, TweenInfo.new(0.2), {Position = UDim2.new(1, -20, 0.5, -9), BackgroundColor3 = Color3.fromRGB(255, 255, 255)}):Play()
             TweenService:Create(SwitchTrack, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(110, 45, 210)}):Play()
             ShowToast(text .. " Enabled", true)
         else
-            TweenService:Create(SwitchKnob, TweenInfo.new(0.2), {Position = UDim2.new(0, 2, 0.5, -7), BackgroundColor3 = Color3.fromRGB(160, 160, 180)}):Play()
+            TweenService:Create(SwitchKnob, TweenInfo.new(0.2), {Position = UDim2.new(0, 2, 0.5, -9), BackgroundColor3 = Color3.fromRGB(160, 160, 180)}):Play()
             TweenService:Create(SwitchTrack, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(35, 30, 48)}):Play()
             ShowToast(text .. " Disabled", false)
         end
@@ -348,32 +355,37 @@ end
 
 local function CreateSlider(parent, text, min, max, default, callback)
     local Frame = Instance.new("Frame")
-    Frame.Size = UDim2.new(1, -6, 0, 44)
-    Frame.BackgroundTransparency = 1
+    Frame.Size = UDim2.new(1, -8, 0, 50)
+    Frame.BackgroundColor3 = Color3.fromRGB(22, 18, 30)
+    Frame.BorderSizePixel = 0
     Frame.Parent = parent
 
+    local Corner = Instance.new("UICorner")
+    Corner.CornerRadius = UDim.new(0, 8)
+    Corner.Parent = Frame
+
     local ValueText = Instance.new("TextLabel")
-    ValueText.Size = UDim2.new(1, 0, 0, 18)
-    ValueText.Position = UDim2.new(0, 4, 0, 0)
+    ValueText.Size = UDim2.new(1, -16, 0, 20)
+    ValueText.Position = UDim2.new(0, 10, 0, 4)
     ValueText.BackgroundTransparency = 1
     ValueText.Text = text .. ": " .. tostring(default)
-    ValueText.Font = Enum.Font.Code
-    ValueText.TextSize = 11
+    ValueText.Font = Enum.Font.GothamMedium
+    ValueText.TextSize = 12
     ValueText.TextColor3 = Color3.fromRGB(210, 210, 230)
     ValueText.TextXAlignment = Enum.TextXAlignment.Left
     ValueText.Parent = Frame
 
     local SliderBar = Instance.new("TextButton")
-    SliderBar.Size = UDim2.new(1, -4, 0, 16)
-    SliderBar.Position = UDim2.new(0, 2, 0, 22)
-    SliderBar.BackgroundColor3 = Color3.fromRGB(25, 22, 35)
+    SliderBar.Size = UDim2.new(1, -20, 0, 16)
+    SliderBar.Position = UDim2.new(0, 10, 0, 28)
+    SliderBar.BackgroundColor3 = Color3.fromRGB(35, 30, 48)
     SliderBar.BorderSizePixel = 0
     SliderBar.Text = ""
     SliderBar.AutoButtonColor = false
     SliderBar.Parent = Frame
 
     local SliderCorner = Instance.new("UICorner")
-    SliderCorner.CornerRadius = UDim.new(0, 4)
+    SliderCorner.CornerRadius = UDim.new(0, 8)
     SliderCorner.Parent = SliderBar
 
     local Fill = Instance.new("Frame")
@@ -383,7 +395,7 @@ local function CreateSlider(parent, text, min, max, default, callback)
     Fill.Parent = SliderBar
 
     local FillCorner = Instance.new("UICorner")
-    FillCorner.CornerRadius = UDim.new(0, 4)
+    FillCorner.CornerRadius = UDim.new(0, 8)
     FillCorner.Parent = Fill
 
     local dragging = false
@@ -415,20 +427,20 @@ end
 
 local function CreateSelector(parent, text, options, defaultIndex, callback)
     local Frame = Instance.new("Frame")
-    Frame.Size = UDim2.new(1, -6, 0, 34)
+    Frame.Size = UDim2.new(1, -8, 0, 38)
     Frame.BackgroundColor3 = Color3.fromRGB(22, 18, 30)
     Frame.BorderSizePixel = 0
     Frame.Parent = parent
 
     local Corner = Instance.new("UICorner")
-    Corner.CornerRadius = UDim.new(0, 6)
+    Corner.CornerRadius = UDim.new(0, 8)
     Corner.Parent = Frame
 
     local Btn = Instance.new("TextButton")
     Btn.Size = UDim2.new(1, 0, 1, 0)
     Btn.BackgroundTransparency = 1
     Btn.Text = text .. ": " .. options[defaultIndex]
-    Btn.Font = Enum.Font.Code
+    Btn.Font = Enum.Font.GothamMedium
     Btn.TextSize = 12
     Btn.TextColor3 = Color3.fromRGB(0, 235, 255)
     Btn.Parent = Frame
@@ -445,16 +457,21 @@ end
 
 local function CreateColorTable(parent, text, callback)
     local Frame = Instance.new("Frame")
-    Frame.Size = UDim2.new(1, -6, 0, 36)
-    Frame.BackgroundTransparency = 1
+    Frame.Size = UDim2.new(1, -8, 0, 42)
+    Frame.BackgroundColor3 = Color3.fromRGB(22, 18, 30)
+    Frame.BorderSizePixel = 0
     Frame.Parent = parent
+
+    local Corner = Instance.new("UICorner")
+    Corner.CornerRadius = UDim.new(0, 8)
+    Corner.Parent = Frame
 
     local Label = Instance.new("TextLabel")
     Label.Size = UDim2.new(0.4, 0, 1, 0)
-    Label.Position = UDim2.new(0, 4, 0, 0)
+    Label.Position = UDim2.new(0, 10, 0, 0)
     Label.BackgroundTransparency = 1
     Label.Text = text
-    Label.Font = Enum.Font.Code
+    Label.Font = Enum.Font.GothamMedium
     Label.TextSize = 12
     Label.TextColor3 = Color3.fromRGB(210, 210, 230)
     Label.TextXAlignment = Enum.TextXAlignment.Left
@@ -478,12 +495,12 @@ local function CreateColorTable(parent, text, callback)
     Layout.FillDirection = Enum.FillDirection.Horizontal
     Layout.HorizontalAlignment = Enum.HorizontalAlignment.Right
     Layout.VerticalAlignment = Enum.VerticalAlignment.Center
-    Layout.Padding = UDim.new(0, 8)
+    Layout.Padding = UDim.new(0, 10)
     Layout.Parent = ColorContainer
 
     for _, colorData in ipairs(Colors) do
         local ColorBtn = Instance.new("TextButton")
-        ColorBtn.Size = UDim2.new(0, 20, 0, 20)
+        ColorBtn.Size = UDim2.new(0, 24, 0, 24) -- Tombol warna diperbesar agar pas dengan sentuhan jari
         ColorBtn.BackgroundColor3 = colorData[1]
         ColorBtn.Text = ""
         ColorBtn.Parent = ColorContainer
@@ -493,7 +510,7 @@ local function CreateColorTable(parent, text, callback)
         BtnCorner.Parent = ColorBtn
 
         ColorBtn.MouseButton1Click:Connect(function()
-            ShowToast("Color: " .. colorData[2], true)
+            ShowToast("Color: " + colorData[2], true)
             callback(colorData[1])
         end)
     end
