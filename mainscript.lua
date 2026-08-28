@@ -1,5 +1,5 @@
 -- ========================================================
--- DEAR IMGUI PREMIUM GRADIENT UI (V5.5 - AIMBOT & CONFIG UPDATE)
+-- DEAR IMGUI PREMIUM GRADIENT UI (V5.8 - FULL INDOOR GLOW CHAMS)
 -- ========================================================
 
 local Players = game:GetService("Players")
@@ -18,7 +18,7 @@ if _G.ImGuiV4_FOV then pcall(function() _G.ImGuiV4_FOV:Remove() end) end
 if _G.ImGuiV4_Line then pcall(function() _G.ImGuiV4_Line:Remove() end) end
 
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "ImGui_Gradient_Hub_V55"
+ScreenGui.Name = "ImGui_Gradient_Hub_V58"
 ScreenGui.ResetOnSpawn = false
 _G.ImGuiV4_ScreenGui = ScreenGui
 
@@ -86,10 +86,10 @@ local function ShowToast(text, isSuccess)
 end
 
 local Settings = {
-    WalkSpeed = 30, MultiJump = false, MultiJumpPower = 50,
-    Chams = false, ChamsColor = Color3.fromRGB(255, 0, 80), 
-    Noclip = false, NightMode = false, DaylightMode = false,
-    Aimbot = false, FOVRadius = 150, AimDistance = 500, TargetPart = "Head"
+    SpeedHack = false, WalkSpeed = 30, MultiJump = false, MultiJumpPower = 50,
+    Chams = false, ChamsColor = Color3.fromRGB(255, 0, 80), GlowColor = Color3.fromRGB(0, 235, 255), 
+    Noclip = false, NightMode = false, DaylightMode = false, AntiCrash = false, AntiKick = false,
+    Aimbot = false, FOVRadius = 150, AimDistance = 500, AimSmoothness = 25, TargetPart = "Head"
 }
 
 local FOVCircle = Drawing.new("Circle")
@@ -196,7 +196,7 @@ local SubText = Instance.new("TextLabel")
 SubText.Size = UDim2.new(1, -10, 1, 0)
 SubText.Position = UDim2.new(0, 8, 0, 0)
 SubText.BackgroundTransparency = 1
-SubText.Text = "Dear ImGui v5.5 (Aimbot Integration)"
+SubText.Text = "Dear ImGui v5.8 (Full Indoor Glow & Lighting)"
 SubText.Font = Enum.Font.Code
 SubText.TextSize = 11
 SubText.TextColor3 = Color3.fromRGB(150, 160, 180)
@@ -536,7 +536,7 @@ local function CreateColorTable(parent, text, callback)
         BtnCorner.Parent = ColorBtn
 
         ColorBtn.MouseButton1Click:Connect(function()
-            ShowToast("Chams Color: " .. colorData[2], true)
+            ShowToast(text .. ": " .. colorData[2], true)
             callback(colorData[1])
         end)
     end
@@ -546,7 +546,8 @@ end
 -- LOGIC IMPLEMENTATIONS
 -- ==========================================
 
-CreateSlider(PlayerPage, "Speed Hack", 16, 150, 30, true, function(val) Settings.WalkSpeed = val end)
+CreateToggle(PlayerPage, "Speed Hack", true, function(state) Settings.SpeedHack = state end)
+CreateSlider(PlayerPage, "Speed Value", 16, 150, 30, true, function(val) Settings.WalkSpeed = val end)
 CreateToggle(PlayerPage, "Multi Jump", true, function(state) Settings.MultiJump = state end)
 CreateSlider(PlayerPage, "Multi Jump Power", 30, 150, 50, true, function(val) Settings.MultiJumpPower = val end)
 
@@ -610,8 +611,8 @@ local function ApplyChams(plr)
                 hl.Parent = char
             end
             hl.FillColor = Settings.ChamsColor
-            hl.FillTransparency = 0
-            hl.OutlineColor = Color3.fromRGB(255, 255, 255)
+            hl.FillTransparency = 0.25
+            hl.OutlineColor = Settings.GlowColor
             hl.OutlineTransparency = 0
             hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
         else
@@ -638,8 +639,9 @@ CreateToggle(PlayerPage, "Chams (Wall ESP)", true, function(state)
                     hl.Parent = plr.Character
                 end
                 hl.FillColor = Settings.ChamsColor
-                hl.FillTransparency = 0
-                hl.OutlineColor = Color3.fromRGB(255, 255, 255)
+                hl.FillTransparency = 0.25
+                hl.OutlineColor = Settings.GlowColor
+                hl.OutlineTransparency = 0
                 hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
             else
                 if hl then hl:Destroy() end
@@ -648,7 +650,7 @@ CreateToggle(PlayerPage, "Chams (Wall ESP)", true, function(state)
     end
 end)
 
-CreateColorTable(PlayerPage, "Chams Color Selector", function(col)
+CreateColorTable(PlayerPage, "Chams Body Color", function(col)
     Settings.ChamsColor = col
     if Settings.Chams then
         for _, plr in pairs(Players:GetPlayers()) do
@@ -659,11 +661,29 @@ CreateColorTable(PlayerPage, "Chams Color Selector", function(col)
     end
 end)
 
+CreateColorTable(PlayerPage, "Chams Glow / Outline Color", function(col)
+    Settings.GlowColor = col
+    if Settings.Chams then
+        for _, plr in pairs(Players:GetPlayers()) do
+            if plr.Character and plr.Character:FindFirstChild("ImGui_Cham") then
+                plr.Character.ImGui_Cham.OutlineColor = col
+            end
+        end
+    end
+end)
+
 CreateToggle(PlayerPage, "Wall Hack (Noclip)", true, function(state) Settings.Noclip = state end)
 
 RunService.Stepped:Connect(function()
-    if Settings.WalkSpeed ~= 16 and LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
-        LocalPlayer.Character:FindFirstChildOfClass("Humanoid").WalkSpeed = Settings.WalkSpeed
+    local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+    if hum then
+        if Settings.SpeedHack then
+            hum.WalkSpeed = Settings.WalkSpeed
+        else
+            if hum.WalkSpeed == Settings.WalkSpeed then
+                hum.WalkSpeed = 16
+            end
+        end
     end
 
     if Settings.Noclip and LocalPlayer.Character then
@@ -678,6 +698,19 @@ end)
 CreateToggle(MiscPage, "Anti Crash", true, function(state) Settings.AntiCrash = state end)
 CreateToggle(MiscPage, "Anti Kick", true, function(state) Settings.AntiKick = state end)
 
+-- Fungsi untuk memaksa pencahayaan ruangan tertutup ikut berubah
+local function SetIndoorLighting(isNight)
+    for _, obj in pairs(Workspace:GetDescendants()) do
+        if obj:IsA("PointLight") or obj:IsA("SurfaceLight") or obj:IsA("SpotLight") then
+            if isNight then
+                obj.Brightness = obj.Brightness * 0.2
+            else
+                obj.Brightness = obj.Brightness * 2.0
+            end
+        end
+    end
+end
+
 CreateToggle(MiscPage, "Night Mode", true, function(state)
     Settings.NightMode = state
     if state then
@@ -685,10 +718,14 @@ CreateToggle(MiscPage, "Night Mode", true, function(state)
         Lighting.ClockTime = 0
         Lighting.Brightness = 0.2
         Lighting.OutdoorAmbient = Color3.fromRGB(20, 20, 40)
+        Lighting.GlobalShadows = false
+        SetIndoorLighting(true)
     else
         Lighting.ClockTime = 14
         Lighting.Brightness = 1
         Lighting.OutdoorAmbient = Color3.fromRGB(128, 128, 128)
+        Lighting.GlobalShadows = true
+        SetIndoorLighting(false)
     end
 end)
 
@@ -699,15 +736,18 @@ CreateToggle(MiscPage, "Daylight Mode", true, function(state)
         Lighting.ClockTime = 14
         Lighting.Brightness = 3
         Lighting.OutdoorAmbient = Color3.fromRGB(255, 255, 255)
+        Lighting.GlobalShadows = false
+        SetIndoorLighting(false)
     else
         Lighting.ClockTime = 14
         Lighting.Brightness = 1
         Lighting.OutdoorAmbient = Color3.fromRGB(128, 128, 128)
+        Lighting.GlobalShadows = true
     end
 end)
 
 -- ==========================================
--- AIMBOT & TARGET SYSTEM (UNIVERSAL TEAM/ENEMY CHECK)
+-- ADVANCED AIMBOT (LOBBY GUARD & REAL-TIME TEAM CHECK)
 -- ==========================================
 
 CreateToggle(GunPage, "Aimbot (Auto Target Lock)", true, function(state) Settings.Aimbot = state end)
@@ -716,21 +756,41 @@ CreateSelector(GunPage, "Target Part", {"Head", "Body"}, 1, function(selected)
 end)
 CreateSlider(GunPage, "Aim FOV Size", 50, 400, 150, true, function(val) Settings.FOVRadius = val end)
 CreateSlider(GunPage, "Aim Distance", 100, 2000, 500, true, function(val) Settings.AimDistance = val end)
+CreateSlider(GunPage, "Aim Smoothness", 1, 50, 25, true, function(val) Settings.AimSmoothness = val end)
+
+local function IsInLobby()
+    local char = LocalPlayer.Character
+    if not char then return true end
+    local hum = char:FindFirstChildOfClass("Humanoid")
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    if not hum or not hrp or hum.Health <= 0 then return true end
+    return false
+end
 
 local function IsValidEnemy(plr)
     if plr == LocalPlayer then return false end
     if not plr.Character or not plr.Character:FindFirstChildOfClass("Humanoid") then return false end
     if plr.Character.Humanoid.Health <= 0 then return false end
 
-    -- Cross-team / Neutral / PvP handling (Works on all maps regardless of Team setup)
+    local targetHrp = plr.Character:FindFirstChild("HumanoidRootPart")
+    if not targetHrp then return false end
+
     if LocalPlayer.Team and plr.Team then
-        return LocalPlayer.Team ~= plr.Team
+        if LocalPlayer.Team == plr.Team then
+            return false
+        end
     end
-    
-    return true
+
+    if LocalPlayer.Team == nil or plr.Team == nil then
+        return true
+    end
+
+    return LocalPlayer.Team ~= plr.Team
 end
 
 local function GetClosestTarget()
+    if IsInLobby() then return nil end
+
     local closestTarget = nil
     local maxDist = Settings.FOVRadius
     local screenCenter = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
@@ -762,20 +822,21 @@ end
 RunService.RenderStepped:Connect(function()
     local center = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
     
+    local activeCheck = Settings.Aimbot and not IsInLobby()
     FOVCircle.Position = center
     FOVCircle.Radius = Settings.FOVRadius
-    FOVCircle.Visible = Settings.Aimbot
+    FOVCircle.Visible = activeCheck
 
     local lockedTarget = GetClosestTarget()
-    if lockedTarget and Settings.Aimbot then
+    if lockedTarget and activeCheck then
         local pos, onScreen = Camera:WorldToViewportPoint(lockedTarget.Position)
         if onScreen then
             TargetLine.From = center
             TargetLine.To = Vector2.new(pos.X, pos.Y)
             TargetLine.Visible = true
             
-            -- Smooth camera lock toward enemy target part
-            Camera.CFrame = Camera.CFrame:Lerp(CFrame.new(Camera.CFrame.Position, lockedTarget.Position), 0.25)
+            local smoothFactor = math.clamp(Settings.AimSmoothness / 100, 0.01, 1)
+            Camera.CFrame = Camera.CFrame:Lerp(CFrame.new(Camera.CFrame.Position, lockedTarget.Position), smoothFactor)
         else
             TargetLine.Visible = false
         end
