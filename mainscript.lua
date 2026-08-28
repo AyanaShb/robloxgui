@@ -1,5 +1,5 @@
 -- ========================================================
--- DEAR IMGUI PREMIUM GRADIENT UI (V6.2 - FIXED & CLEANED)
+-- DEAR IMGUI PREMIUM GRADIENT UI (V6.3 - FINAL FIXED)
 -- ========================================================
 
 local Players = game:GetService("Players")
@@ -18,7 +18,7 @@ if _G.ImGuiV4_FOV then pcall(function() _G.ImGuiV4_FOV:Remove() end) end
 if _G.ImGuiV4_Line then pcall(function() _G.ImGuiV4_Line:Remove() end) end
 
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "ImGui_Gradient_Hub_V62"
+ScreenGui.Name = "ImGui_Gradient_Hub_V63"
 ScreenGui.ResetOnSpawn = false
 _G.ImGuiV4_ScreenGui = ScreenGui
 
@@ -207,7 +207,7 @@ local SubText = Instance.new("TextLabel")
 SubText.Size = UDim2.new(1, -10, 1, 0)
 SubText.Position = UDim2.new(0, 8, 0, 0)
 SubText.BackgroundTransparency = 1
-SubText.Text = "Dear ImGui v6.2 (Fixed Lighting & Multi-Jump)"
+SubText.Text = "Dear ImGui v6.3 (Clean & Fixed)"
 SubText.Font = Enum.Font.Code
 SubText.TextSize = 11
 SubText.TextColor3 = Color3.fromRGB(150, 160, 180)
@@ -284,6 +284,7 @@ local function SelectTab(tabName, btn)
 end
 
 local tabs = {"PLAYER", "MISC", "GUN"}
+local TabButtons = {}
 for i, name in ipairs(tabs) do
     local Btn = Instance.new("TextButton")
     Btn.Size = UDim2.new(0.32, 0, 1, 0)
@@ -552,7 +553,6 @@ CreateSlider(PlayerPage, "Speed Hack", 16, 150, 16, true, function(val) Settings
 CreateToggle(PlayerPage, "Multi Jump", true, function(state) Settings.MultiJump = state end)
 CreateSlider(PlayerPage, "Multi Jump Power", 30, 150, 50, true, function(val) Settings.MultiJumpPower = val end)
 
--- FIXED MULTI JUMP: Menggunakan Hook JumpRequest & Humanoid State/JumpPower langsung
 UserInputService.JumpRequest:Connect(function()
     if Settings.MultiJump then
         local char = LocalPlayer.Character
@@ -631,7 +631,6 @@ end)
 
 CreateToggle(PlayerPage, "Wall Hack (Noclip)", true, function(state) Settings.Noclip = state end)
 
--- Simpan nilai default pencahayaan game asli agar bisa dikembalikan saat fitur dimatikan
 local DefaultLighting = {
     ClockTime = Lighting.ClockTime,
     Brightness = Lighting.Brightness,
@@ -652,7 +651,6 @@ RunService.Stepped:Connect(function()
         end
     end
 
-    -- FIXED LIGHTING: Logika mandiri & aman untuk Night Mode / Daylight Mode dengan reset yang benar
     if Settings.NightMode then
         Lighting.ClockTime = 0
         Lighting.Brightness = 0.2
