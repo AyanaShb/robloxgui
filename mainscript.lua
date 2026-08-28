@@ -1,5 +1,5 @@
 -- ========================================================
--- DEAR IMGUI PREMIUM GRADIENT UI (V6.3 - FINAL FIXED)
+-- DEAR IMGUI PREMIUM GRADIENT UI (V6.4 - ABSOLUTE FINAL FIX)
 -- ========================================================
 
 local Players = game:GetService("Players")
@@ -18,7 +18,7 @@ if _G.ImGuiV4_FOV then pcall(function() _G.ImGuiV4_FOV:Remove() end) end
 if _G.ImGuiV4_Line then pcall(function() _G.ImGuiV4_Line:Remove() end) end
 
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "ImGui_Gradient_Hub_V63"
+ScreenGui.Name = "ImGui_Gradient_Hub_V64"
 ScreenGui.ResetOnSpawn = false
 _G.ImGuiV4_ScreenGui = ScreenGui
 
@@ -207,7 +207,7 @@ local SubText = Instance.new("TextLabel")
 SubText.Size = UDim2.new(1, -10, 1, 0)
 SubText.Position = UDim2.new(0, 8, 0, 0)
 SubText.BackgroundTransparency = 1
-SubText.Text = "Dear ImGui v6.3 (Clean & Fixed)"
+SubText.Text = "Dear ImGui v6.4 (Clean & Stable)"
 SubText.Font = Enum.Font.Code
 SubText.TextSize = 11
 SubText.TextColor3 = Color3.fromRGB(150, 160, 180)
@@ -284,7 +284,6 @@ local function SelectTab(tabName, btn)
 end
 
 local tabs = {"PLAYER", "MISC", "GUN"}
-local TabButtons = {}
 for i, name in ipairs(tabs) do
     local Btn = Instance.new("TextButton")
     Btn.Size = UDim2.new(0.32, 0, 1, 0)
