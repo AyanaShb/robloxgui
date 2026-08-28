@@ -1,5 +1,5 @@
 -- ========================================================
--- DEAR IMGUI PREMIUM GRADIENT UI (V6.0 - AUTO BYPASS ADDED)
+-- DEAR IMGUI PREMIUM GRADIENT UI (V6.1 - TOP CENTER TOAST)
 -- ========================================================
 
 local Players = game:GetService("Players")
@@ -16,12 +16,14 @@ local LocalPlayer = Players.LocalPlayer
 local Camera = Workspace.CurrentCamera
 
 if _G.ImGuiV4_ScreenGui then _G.ImGuiV4_ScreenGui:Destroy() end
+if _G.ImGuiV4_ToastGui then _G.ImGuiV4_ToastGui:Destroy() end
 if _G.ImGuiV4_FOV then pcall(function() _G.ImGuiV4_FOV:Remove() end) end
 if _G.ImGuiV4_Line then pcall(function() _G.ImGuiV4_Line:Remove() end) end
 
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "ImGui_Gradient_Hub_V60"
+ScreenGui.Name = "ImGui_Gradient_Hub_V61"
 ScreenGui.ResetOnSpawn = false
+ScreenGui.DisplayOrder = 1
 _G.ImGuiV4_ScreenGui = ScreenGui
 
 if syn and syn.protect_gui then
@@ -33,14 +35,31 @@ else
     ScreenGui.Parent = CoreGui
 end
 
+-- ScreenGui khusus untuk Toast agar berada di lapisan paling atas (di atas menu utama)
+local ToastScreenGui = Instance.new("ScreenGui")
+ToastScreenGui.Name = "ImGui_ToastOverlay"
+ToastScreenGui.ResetOnSpawn = false
+ToastScreenGui.DisplayOrder = 999
+_G.ImGuiV4_ToastGui = ToastScreenGui
+
+if syn and syn.protect_gui then
+    syn.protect_gui(ToastScreenGui)
+    ToastScreenGui.Parent = CoreGui
+elseif gethui then
+    ToastScreenGui.Parent = gethui()
+else
+    ToastScreenGui.Parent = CoreGui
+end
+
 local ToastContainer = Instance.new("Frame")
-ToastContainer.Size = UDim2.new(0, 220, 0, 300)
-ToastContainer.Position = UDim2.new(1, -230, 1, -310)
+ToastContainer.Size = UDim2.new(0, 260, 0, 200)
+ToastContainer.Position = UDim2.new(0.5, -130, 0, 15) -- Tengah layar bagian paling atas
 ToastContainer.BackgroundTransparency = 1
-ToastContainer.Parent = ScreenGui
+ToastContainer.Parent = ToastScreenGui
 
 local ToastLayout = Instance.new("UIListLayout")
-ToastLayout.VerticalAlignment = Enum.VerticalAlignment.Bottom
+ToastLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+ToastLayout.VerticalAlignment = Enum.VerticalAlignment.Top
 ToastLayout.SortOrder = Enum.SortOrder.LayoutOrder
 ToastLayout.Padding = UDim.new(0, 6)
 ToastLayout.Parent = ToastContainer
@@ -63,14 +82,13 @@ local function ShowToast(text, isSuccess)
     Stroke.Parent = Toast
 
     local Label = Instance.new("TextLabel")
-    Label.Size = UDim2.new(1, -12, 1, 0)
-    Label.Position = UDim2.new(0, 8, 0, 0)
+    Label.Size = UDim2.new(1, 0, 1, 0)
     Label.BackgroundTransparency = 1
     Label.Text = text
     Label.Font = Enum.Font.Code
     Label.TextSize = 11
     Label.TextColor3 = Color3.fromRGB(240, 240, 240)
-    Label.TextXAlignment = Enum.TextXAlignment.Left
+    Label.TextXAlignment = Enum.TextXAlignment.Center
     Label.Transparency = 1
     Label.Parent = Toast
 
@@ -198,7 +216,7 @@ local SubText = Instance.new("TextLabel")
 SubText.Size = UDim2.new(1, -10, 1, 0)
 SubText.Position = UDim2.new(0, 8, 0, 0)
 SubText.BackgroundTransparency = 1
-SubText.Text = "Dear ImGui v6.0 (Auto Bypass Added)"
+SubText.Text = "Dear ImGui v6.1 (Top Center Toast)"
 SubText.Font = Enum.Font.Code
 SubText.TextSize = 11
 SubText.TextColor3 = Color3.fromRGB(150, 160, 180)
@@ -913,7 +931,7 @@ end
 RunService.RenderStepped:Connect(function()
     local center = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
     
-    local activeCheck = Settings.Aimbot and not IsInLobby()
+    .local activeCheck = Settings.Aimbot and not IsInLobby()
     FOVCircle.Position = center
     FOVCircle.Radius = Settings.FOVRadius
     FOVCircle.Visible = activeCheck
