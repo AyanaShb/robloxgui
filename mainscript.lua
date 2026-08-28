@@ -1,5 +1,5 @@
 -- ========================================================
--- DEAR IMGUI PREMIUM GRADIENT UI (V5.4 - NORMAL MULTI-JUMP FIX)
+-- DEAR IMGUI PREMIUM GRADIENT UI (V5.5 - AIMBOT & CONFIG UPDATE)
 -- ========================================================
 
 local Players = game:GetService("Players")
@@ -18,7 +18,7 @@ if _G.ImGuiV4_FOV then pcall(function() _G.ImGuiV4_FOV:Remove() end) end
 if _G.ImGuiV4_Line then pcall(function() _G.ImGuiV4_Line:Remove() end) end
 
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "ImGui_Gradient_Hub_V54"
+ScreenGui.Name = "ImGui_Gradient_Hub_V55"
 ScreenGui.ResetOnSpawn = false
 _G.ImGuiV4_ScreenGui = ScreenGui
 
@@ -86,11 +86,10 @@ local function ShowToast(text, isSuccess)
 end
 
 local Settings = {
-    WalkSpeed = 16, MultiJump = false, MultiJumpPower = 28,
+    WalkSpeed = 30, MultiJump = false, MultiJumpPower = 50,
     Chams = false, ChamsColor = Color3.fromRGB(255, 0, 80), 
     Noclip = false, NightMode = false, DaylightMode = false,
-    SilentAim = false, ShowFOV = false, FOVRadius = 150, 
-    LineTarget = false, TargetPart = "Head"
+    Aimbot = false, FOVRadius = 150, AimDistance = 500, TargetPart = "Head"
 }
 
 local FOVCircle = Drawing.new("Circle")
@@ -197,7 +196,7 @@ local SubText = Instance.new("TextLabel")
 SubText.Size = UDim2.new(1, -10, 1, 0)
 SubText.Position = UDim2.new(0, 8, 0, 0)
 SubText.BackgroundTransparency = 1
-SubText.Text = "Dear ImGui v5.4 (Normal Jump Height Fixed)"
+SubText.Text = "Dear ImGui v5.5 (Aimbot Integration)"
 SubText.Font = Enum.Font.Code
 SubText.TextSize = 11
 SubText.TextColor3 = Color3.fromRGB(150, 160, 180)
@@ -547,9 +546,9 @@ end
 -- LOGIC IMPLEMENTATIONS
 -- ==========================================
 
-CreateSlider(PlayerPage, "Speed Hack", 16, 150, 16, true, function(val) Settings.WalkSpeed = val end)
+CreateSlider(PlayerPage, "Speed Hack", 16, 150, 30, true, function(val) Settings.WalkSpeed = val end)
 CreateToggle(PlayerPage, "Multi Jump", true, function(state) Settings.MultiJump = state end)
-CreateSlider(PlayerPage, "Multi Jump Power", 15, 80, 28, true, function(val) Settings.MultiJumpPower = val end)
+CreateSlider(PlayerPage, "Multi Jump Power", 30, 150, 50, true, function(val) Settings.MultiJumpPower = val end)
 
 local function SetupJumpDetection()
     local char = LocalPlayer.Character
@@ -707,26 +706,44 @@ CreateToggle(MiscPage, "Daylight Mode", true, function(state)
     end
 end)
 
-CreateToggle(GunPage, "Silent Aim (Pure Bullet Redirect)", true, function(state) Settings.SilentAim = state end)
+-- ==========================================
+-- AIMBOT & TARGET SYSTEM (UNIVERSAL TEAM/ENEMY CHECK)
+-- ==========================================
+
+CreateToggle(GunPage, "Aimbot (Auto Target Lock)", true, function(state) Settings.Aimbot = state end)
 CreateSelector(GunPage, "Target Part", {"Head", "Body"}, 1, function(selected) 
     Settings.TargetPart = selected == "Body" and "UpperTorso" or "Head"
 end)
-CreateToggle(GunPage, "Show FOV Circle", true, function(state) Settings.ShowFOV = state end)
-CreateSlider(GunPage, "FOV Size", 50, 400, 150, true, function(val) Settings.FOVRadius = val end)
-CreateToggle(GunPage, "Line Target (Single Lock)", true, function(state) Settings.LineTarget = state end)
+CreateSlider(GunPage, "Aim FOV Size", 50, 400, 150, true, function(val) Settings.FOVRadius = val end)
+CreateSlider(GunPage, "Aim Distance", 100, 2000, 500, true, function(val) Settings.AimDistance = val end)
+
+local function IsValidEnemy(plr)
+    if plr == LocalPlayer then return false end
+    if not plr.Character or not plr.Character:FindFirstChildOfClass("Humanoid") then return false end
+    if plr.Character.Humanoid.Health <= 0 then return false end
+
+    -- Cross-team / Neutral / PvP handling (Works on all maps regardless of Team setup)
+    if LocalPlayer.Team and plr.Team then
+        return LocalPlayer.Team ~= plr.Team
+    end
+    
+    return true
+end
 
 local function GetClosestTarget()
     local closestTarget = nil
     local maxDist = Settings.FOVRadius
     local screenCenter = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
+    local myRoot = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
 
     for _, plr in pairs(Players:GetPlayers()) do
-        if plr ~= LocalPlayer and plr.Character and plr.Character:FindFirstChildOfClass("Humanoid") then
-            if plr.Character.Humanoid.Health > 0 then
-                local partName = Settings.TargetPart
-                local targetPart = plr.Character:FindFirstChild(partName) or plr.Character:FindFirstChild("HumanoidRootPart")
-                
-                if targetPart then
+        if IsValidEnemy(plr) then
+            local partName = Settings.TargetPart
+            local targetPart = plr.Character:FindFirstChild(partName) or plr.Character:FindFirstChild("HumanoidRootPart")
+            
+            if targetPart and myRoot then
+                local worldDist = (targetPart.Position - myRoot.Position).Magnitude
+                if worldDist <= Settings.AimDistance then
                     local pos, onScreen = Camera:WorldToViewportPoint(targetPart.Position)
                     if onScreen then
                         local dist = (Vector2.new(pos.X, pos.Y) - screenCenter).Magnitude
@@ -742,44 +759,23 @@ local function GetClosestTarget()
     return closestTarget
 end
 
-if hookmetamethod and getnamecallmethod then
-    local oldNamecall
-    oldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
-        local method = getnamecallmethod()
-        local args = {...}
-
-        if Settings.SilentAim and not checkcaller() then
-            local target = GetClosestTarget()
-            if target and (method == "Raycast" or method == "FindPartOnRay" or method == "FindPartOnRayWithIgnoreList") then
-                if method == "Raycast" then
-                    local origin = args[1]
-                    args[2] = (target.Position - origin).Unit * 5000
-                    return oldNamecall(self, unpack(args))
-                elseif method == "FindPartOnRay" then
-                    local origin = args[1].Origin
-                    args[1] = Ray.new(origin, (target.Position - origin).Unit * 5000)
-                    return oldNamecall(self, unpack(args))
-                end
-            end
-        end
-
-        return oldNamecall(self, unpack(args))
-    end)
-end
-
 RunService.RenderStepped:Connect(function()
     local center = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
+    
     FOVCircle.Position = center
     FOVCircle.Radius = Settings.FOVRadius
-    FOVCircle.Visible = Settings.ShowFOV
+    FOVCircle.Visible = Settings.Aimbot
 
     local lockedTarget = GetClosestTarget()
-    if lockedTarget and Settings.LineTarget then
+    if lockedTarget and Settings.Aimbot then
         local pos, onScreen = Camera:WorldToViewportPoint(lockedTarget.Position)
         if onScreen then
             TargetLine.From = center
             TargetLine.To = Vector2.new(pos.X, pos.Y)
             TargetLine.Visible = true
+            
+            -- Smooth camera lock toward enemy target part
+            Camera.CFrame = Camera.CFrame:Lerp(CFrame.new(Camera.CFrame.Position, lockedTarget.Position), 0.25)
         else
             TargetLine.Visible = false
         end
