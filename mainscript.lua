@@ -1,5 +1,5 @@
 -- ========================================================
--- DEAR IMGUI PREMIUM GRADIENT UI (V5.6 - RESTORED ORIGINAL TEXT & FIXED MULTIJUMP)
+-- DEAR IMGUI PREMIUM GRADIENT UI (V5.9 - PERFECT TAB HEADERS)
 -- ========================================================
 
 local Players = game:GetService("Players")
@@ -18,7 +18,7 @@ if _G.ImGuiV4_FOV then pcall(function() _G.ImGuiV4_FOV:Remove() end) end
 if _G.ImGuiV4_Line then pcall(function() _G.ImGuiV4_Line:Remove() end) end
 
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "ImGui_Gradient_Hub_V56"
+ScreenGui.Name = "ImGui_Gradient_Hub_V59"
 ScreenGui.ResetOnSpawn = false
 _G.ImGuiV4_ScreenGui = ScreenGui
 
@@ -202,7 +202,7 @@ local SubText = Instance.new("TextLabel")
 SubText.Size = UDim2.new(1, -10, 1, 0)
 SubText.Position = UDim2.new(0, 8, 0, 0)
 SubText.BackgroundTransparency = 1
-SubText.Text = "Dear ImGui v5.6 (Fixed MultiJump & Original Layout)"
+SubText.Text = "Dear ImGui v5.9 (Fixed Tab Headers)"
 SubText.Font = Enum.Font.Code
 SubText.TextSize = 11
 SubText.TextColor3 = Color3.fromRGB(150, 160, 180)
@@ -213,8 +213,11 @@ ToggleBtn.MouseButton1Click:Connect(function()
     MainFrame.Visible = not MainFrame.Visible
 end)
 
+-- ==========================================
+-- 3 TOP TABS (PLAYER, MISC, GUN) - RESTORED
+-- ==========================================
 local TabFrame = Instance.new("Frame")
-TabFrame.Size = UDim2.new(1, -12, 0, 26)
+TabFrame.Size = UDim2.new(1, -12, 0, 28)
 TabFrame.Position = UDim2.new(0, 6, 0, 56)
 TabFrame.BackgroundTransparency = 1
 TabFrame.Parent = MainFrame
@@ -222,12 +225,12 @@ TabFrame.Parent = MainFrame
 local UIListTab = Instance.new("UIListLayout")
 UIListTab.FillDirection = Enum.FillDirection.Horizontal
 UIListTab.SortOrder = Enum.SortOrder.LayoutOrder
-UIListTab.Padding = UDim.new(0, 5)
+UIListTab.Padding = UDim.new(0, 6)
 UIListTab.Parent = TabFrame
 
 local ContentFrame = Instance.new("Frame")
-ContentFrame.Size = UDim2.new(1, -12, 1, -90)
-ContentFrame.Position = UDim2.new(0, 6, 0, 84)
+ContentFrame.Size = UDim2.new(1, -12, 1, -92)
+ContentFrame.Position = UDim2.new(0, 6, 0, 88)
 ContentFrame.BackgroundColor3 = Color3.fromRGB(14, 14, 20)
 ContentFrame.BorderSizePixel = 0
 ContentFrame.Parent = MainFrame
@@ -305,12 +308,48 @@ for i, name in ipairs(tabs) do
 end
 
 -- ==========================================
--- UI COMPONENTS (ORIGINAL STYLE RESTORED)
+-- FEATURE HEADERS (SUPPORT / NON SUPPORT)
 -- ==========================================
 
-local function CreateToggle(parent, text, callback)
+local function CreateFeatureHeader(parent, titleText, isSupported)
+    local Frame = Instance.new("Frame")
+    Frame.Size = UDim2.new(1, 0, 0, 18)
+    Frame.BackgroundTransparency = 1
+    Frame.Parent = parent
+
+    local Title = Instance.new("TextLabel")
+    Title.Size = UDim2.new(0.65, 0, 1, 0)
+    Title.BackgroundTransparency = 1
+    Title.Text = "⚡ " .. titleText
+    Title.Font = Enum.Font.FredokaOne
+    Title.TextSize = 11
+    Title.TextColor3 = Color3.fromRGB(255, 220, 50)
+    Title.TextXAlignment = Enum.TextXAlignment.Left
+    Title.Parent = Frame
+
+    local Tag = Instance.new("TextLabel")
+    Tag.Size = UDim2.new(0.35, 0, 1, 0)
+    Tag.Position = UDim2.new(0.65, 0, 0, 0)
+    Tag.BackgroundTransparency = 1
+    Tag.Font = Enum.Font.Code
+    Tag.TextSize = 9
+    Tag.TextXAlignment = Enum.TextXAlignment.Right
+    Tag.Parent = Frame
+
+    if isSupported then
+        Tag.Text = "[Supported]"
+        Tag.TextColor3 = Color3.fromRGB(50, 255, 130)
+    else
+        Tag.Text = "[Not Supported]"
+        Tag.TextColor3 = Color3.fromRGB(255, 60, 80)
+    end
+end
+
+local function CreateToggle(parent, text, isSupported, callback)
+    CreateFeatureHeader(parent, text, isSupported)
+    
     local Container = Instance.new("Frame")
-    Container.Size = UDim2.new(1, 0, 0, 28)
+    Container.Size = UDim2.new(1, 0, 0, 26)
     Container.BackgroundColor3 = Color3.fromRGB(22, 22, 32)
     Container.BorderSizePixel = 0
     Container.Parent = parent
@@ -371,15 +410,17 @@ local function CreateToggle(parent, text, callback)
     end)
 end
 
-local function CreateSlider(parent, text, min, max, default, callback)
+local function CreateSlider(parent, text, min, max, default, isSupported, callback)
+    CreateFeatureHeader(parent, text, isSupported)
+    
     local Frame = Instance.new("Frame")
-    Frame.Size = UDim2.new(1, 0, 0, 36)
+    Frame.Size = UDim2.new(1, 0, 0, 28)
     Frame.BackgroundTransparency = 1
     Frame.Parent = parent
 
     local SliderBar = Instance.new("TextButton")
-    SliderBar.Size = UDim2.new(1, 0, 0, 22)
-    SliderBar.Position = UDim2.new(0, 0, 0, 10)
+    SliderBar.Size = UDim2.new(1, 0, 0, 18)
+    SliderBar.Position = UDim2.new(0, 0, 0, 8)
     SliderBar.BackgroundColor3 = Color3.fromRGB(22, 22, 32)
     SliderBar.BorderSizePixel = 0
     SliderBar.Text = ""
@@ -437,8 +478,10 @@ local function CreateSlider(parent, text, min, max, default, callback)
 end
 
 local function CreateSelector(parent, text, options, defaultIndex, callback)
+    CreateFeatureHeader(parent, text, true)
+    
     local Frame = Instance.new("Frame")
-    Frame.Size = UDim2.new(1, 0, 0, 28)
+    Frame.Size = UDim2.new(1, 0, 0, 26)
     Frame.BackgroundColor3 = Color3.fromRGB(22, 22, 32)
     Frame.BorderSizePixel = 0
     Frame.Parent = parent
@@ -467,8 +510,10 @@ local function CreateSelector(parent, text, options, defaultIndex, callback)
 end
 
 local function CreateColorTable(parent, text, callback)
+    CreateFeatureHeader(parent, text, true)
+    
     local Frame = Instance.new("Frame")
-    Frame.Size = UDim2.new(1, 0, 0, 32)
+    Frame.Size = UDim2.new(1, 0, 0, 26)
     Frame.BackgroundColor3 = Color3.fromRGB(22, 22, 32)
     Frame.BorderSizePixel = 0
     Frame.Parent = parent
@@ -514,11 +559,10 @@ end
 -- PLAYER & MISC IMPLEMENTATIONS
 -- ==========================================
 
-CreateSlider(PlayerPage, "Speed Hack", 16, 150, 16, function(val) Settings.WalkSpeed = val end)
-CreateToggle(PlayerPage, "Multi Jump", function(state) Settings.MultiJump = state end)
-CreateSlider(PlayerPage, "Multi Jump Power", 30, 150, 50, function(val) Settings.MultiJumpPower = val end)
+CreateSlider(PlayerPage, "Speed Hack", 16, 150, 16, true, function(val) Settings.WalkSpeed = val end)
+CreateToggle(PlayerPage, "Multi Jump", true, function(state) Settings.MultiJump = state end)
+CreateSlider(PlayerPage, "Multi Jump Power", 30, 150, 50, true, function(val) Settings.MultiJumpPower = val end)
 
--- Fixed Multi Jump Logic (Smooth & No Lag)
 UserInputService.JumpRequest:Connect(function()
     if Settings.MultiJump then
         local char = LocalPlayer.Character
@@ -559,7 +603,7 @@ end
 for _, plr in pairs(Players:GetPlayers()) do ApplyChams(plr) end
 Players.PlayerAdded:Connect(ApplyChams)
 
-CreateToggle(PlayerPage, "Chams (Wall ESP)", function(state)
+CreateToggle(PlayerPage, "Chams (Wall ESP)", true, function(state)
     Settings.Chams = state
     for _, plr in pairs(Players:GetPlayers()) do
         if plr ~= LocalPlayer and plr.Character then
@@ -592,7 +636,7 @@ CreateColorTable(PlayerPage, "Chams Color Selector", function(col)
     end
 end)
 
-CreateToggle(PlayerPage, "Wall Hack (Noclip)", function(state) Settings.Noclip = state end)
+CreateToggle(PlayerPage, "Wall Hack (Noclip)", true, function(state) Settings.Noclip = state end)
 
 RunService.Stepped:Connect(function()
     if Settings.WalkSpeed ~= 16 and LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
@@ -606,52 +650,44 @@ RunService.Stepped:Connect(function()
             end
         end
     end
-end)
 
-CreateToggle(MiscPage, "Anti Crash", function(state) Settings.AntiCrash = state end)
-CreateToggle(MiscPage, "Anti Kick", function(state) Settings.AntiKick = state end)
-
-CreateToggle(MiscPage, "Night Mode", function(state)
-    Settings.NightMode = state
-    if state then
-        Settings.DaylightMode = false
+    if Settings.NightMode then
         Lighting.ClockTime = 0
         Lighting.Brightness = 0.2
         Lighting.OutdoorAmbient = Color3.fromRGB(20, 20, 40)
-    else
-        Lighting.ClockTime = 14
-        Lighting.Brightness = 1
-        Lighting.OutdoorAmbient = Color3.fromRGB(128, 128, 128)
-    end
-end)
-
-CreateToggle(MiscPage, "Daylight Mode", function(state)
-    Settings.DaylightMode = state
-    if state then
-        Settings.NightMode = false
+    elseif Settings.DaylightMode then
         Lighting.ClockTime = 14
         Lighting.Brightness = 3
         Lighting.OutdoorAmbient = Color3.fromRGB(255, 255, 255)
-    else
-        Lighting.ClockTime = 14
-        Lighting.Brightness = 1
-        Lighting.OutdoorAmbient = Color3.fromRGB(128, 128, 128)
     end
+end)
+
+CreateToggle(MiscPage, "Anti Crash", true, function(state) Settings.AntiCrash = state end)
+CreateToggle(MiscPage, "Anti Kick", true, function(state) Settings.AntiKick = state end)
+
+CreateToggle(MiscPage, "Night Mode", true, function(state)
+    Settings.NightMode = state
+    if state then Settings.DaylightMode = false end
+end)
+
+CreateToggle(MiscPage, "Daylight Mode", true, function(state)
+    Settings.DaylightMode = state
+    if state then Settings.NightMode = false end
 end)
 
 -- ==========================================
 -- GUN TAB IMPLEMENTATIONS
 -- ==========================================
 
-CreateToggle(GunPage, "Aimbot (Auto Lock Enemy)", function(state) Settings.Aimbot = state end)
+CreateToggle(GunPage, "Aimbot (Auto Lock Enemy)", true, function(state) Settings.Aimbot = state end)
 CreateSelector(GunPage, "Target Part", {"Head", "Body"}, 1, function(selected) 
     Settings.TargetPart = selected == "Body" and "UpperTorso" or "Head"
 end)
-CreateSlider(GunPage, "Aimbot Smoothness", 1, 15, 3, function(val) Settings.AimbotSmooth = val end)
-CreateSlider(GunPage, "FOV Size", 50, 400, 150, function(val) Settings.FOVRadius = val end)
-CreateSlider(GunPage, "Max Distance", 100, 5000, 500, function(val) Settings.MaxDistance = val end)
-CreateToggle(GunPage, "Unlimited Ammo (Safe)", function(state) Settings.UnlimitedAmmo = state end)
-CreateToggle(GunPage, "Auto Fire (Enemy Only)", function(state) Settings.AutoFire = state end)
+CreateSlider(GunPage, "Aimbot Smoothness", 1, 15, 3, true, function(val) Settings.AimbotSmooth = val end)
+CreateSlider(GunPage, "FOV Size", 50, 400, 150, true, function(val) Settings.FOVRadius = val end)
+CreateSlider(GunPage, "Max Distance", 100, 5000, 500, true, function(val) Settings.MaxDistance = val end)
+CreateToggle(GunPage, "Unlimited Ammo (Safe)", true, function(state) Settings.UnlimitedAmmo = state end)
+CreateToggle(GunPage, "Auto Fire (Enemy Only)", true, function(state) Settings.AutoFire = state end)
 
 local function IsEnemy(plr)
     if not LocalPlayer.Team then return true end
@@ -685,24 +721,6 @@ local function GetClosestEnemyTarget()
         end
     end
     return closestTarget
-end
-
-local function IsVisible(targetPart)
-    local char = LocalPlayer.Character
-    if not char or not char:FindFirstChild("Head") then return false end
-    
-    local origin = char.Head.Position
-    local raycastParams = RaycastParams.new()
-    raycastParams.FilterType = Enum.RaycastFilterType.Exclude
-    raycastParams.FilterDescendantsInstances = {char}
-    raycastParams.IgnoreWater = true
-    
-    local result = Workspace:Raycast(origin, (targetPart.Position - origin).Unit * 5000, raycastParams)
-    if result then
-        local hitPart = result.Instance
-        return hitPart:IsDescendantOf(targetPart.Parent)
-    end
-    return false
 end
 
 task.spawn(function()
