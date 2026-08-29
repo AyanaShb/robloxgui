@@ -702,9 +702,13 @@ RunService.Stepped:Connect(function()
     local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
     if hum then
         if Settings.SpeedHack then
-            hum.WalkSpeed = Settings.SpeedHack
+            hum.WalkSpeed = Settings.WalkSpeed
+            local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+            if hrp and hrp.AssemblyLinearVelocity.Magnitude < 1 and hum.MoveDirection.Magnitude > 0 then
+                hrp.AssemblyLinearVelocity = Vector3.new(hum.MoveDirection.X * Settings.WalkSpeed, hrp.AssemblyLinearVelocity.Y, hum.MoveDirection.Z * Settings.WalkSpeed)
+            end
         else
-            if hum.WalkSpeed == Settings.SpeedHack then
+            if hum.WalkSpeed == Settings.WalkSpeed then
                 hum.WalkSpeed = 16
             end
         end
