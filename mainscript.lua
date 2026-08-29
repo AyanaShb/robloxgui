@@ -1,5 +1,5 @@
 -- ========================================================
--- DEAR IMGUI PREMIUM GRADIENT UI (V6.8 - FULL WORKING ESP & AIMBOT)
+-- DEAR IMGUI PREMIUM GRADIENT UI (V6.4/V6.9 - FIXED ESP & AIMBOT)
 -- ========================================================
 
 local Players = game:GetService("Players")
@@ -9,7 +9,6 @@ local Lighting = game:GetService("Lighting")
 local Workspace = game:GetService("Workspace")
 local CoreGui = game:GetService("CoreGui")
 local TweenService = game:GetService("TweenService")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local LocalPlayer = Players.LocalPlayer
 local Camera = Workspace.CurrentCamera
@@ -47,7 +46,7 @@ end
 local safeParent = GetSafeParent()
 
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "ImGui_Gradient_Hub_V68"
+ScreenGui.Name = "ImGui_Gradient_Hub_V69"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.DisplayOrder = 9999
 ScreenGui.Parent = safeParent
@@ -121,9 +120,7 @@ local Settings = {
     -- ESP Settings
     ESP_Name = false, ESP_Distance = false, ESP_Line = false, ESP_Health = false, ESP_Gender = false,
     -- Gun Settings
-    Aimbot = false, NoRecoil = false, FOVRadius = 150, AimDistance = 500, AimSmoothness = 25, TargetPart = "Head",
-    -- Fishing Settings
-    AutoRareFish = false, InstantCatch = false
+    Aimbot = false, NoRecoil = false, FOVRadius = 150, AimDistance = 500, TargetPart = "Head"
 }
 
 local FOVCircle = Drawing.new("Circle")
@@ -230,7 +227,7 @@ local SubText = Instance.new("TextLabel")
 SubText.Size = UDim2.new(1, -10, 1, 0)
 SubText.Position = UDim2.new(0, 8, 0, 0)
 SubText.BackgroundTransparency = 1
-SubText.Text = "Dear ImGui v6.8 (Fixed Aimbot & ESP)"
+SubText.Text = "Dear ImGui v6.9 (Fixed ESP & V6.4 Aimbot/Night)"
 SubText.Font = Enum.Font.Code
 SubText.TextSize = 11
 SubText.TextColor3 = Color3.fromRGB(150, 160, 180)
@@ -289,7 +286,6 @@ end
 local PlayerPage = CreatePage("PLAYER")
 local MiscPage = CreatePage("MISC")
 local GunPage = CreatePage("GUN")
-local FishingPage = CreatePage("FISHING")
 
 local function SelectTab(tabName, btn)
     for name, page in pairs(Pages) do
@@ -313,10 +309,10 @@ local function SelectTab(tabName, btn)
     Grad.Parent = btn
 end
 
-local tabs = {"PLAYER", "MISC", "GUN", "FISHING"}
+local tabs = {"PLAYER", "MISC", "GUN"}
 for i, name in ipairs(tabs) do
     local Btn = Instance.new("TextButton")
-    Btn.Size = UDim2.new(0.235, 0, 1, 0)
+    Btn.Size = UDim2.new(0.32, 0, 1, 0)
     Btn.BackgroundColor3 = Color3.fromRGB(24, 24, 36)
     Btn.BorderSizePixel = 0
     Btn.Text = name
@@ -571,14 +567,14 @@ local function CreateColorTable(parent, text, callback)
         BtnCorner.Parent = ColorBtn
 
         ColorBtn.MouseButton1Click:Connect(function()
-            ShowToast(text .. ": " .. colorData[2], true)
+            ShowToast(text .. ": " + colorData[2], true)
             callback(colorData[1])
         end)
     end
 end
 
 -- ==========================================
--- PLAYER MENU UI & Toggles
+-- PLAYER & MISC MENU UI
 -- ==========================================
 
 CreateToggle(PlayerPage, "Speed Hack", true, function(state) Settings.SpeedHack = state end)
@@ -638,11 +634,7 @@ CreateColorTable(PlayerPage, "Chams Glow / Outline Color", function(col)
     end
 end)
 
--- ==========================================
--- MISC & GUN & FISHING MENU UI
--- ==========================================
-
-CreateToggle(MiscPage, "Night Mode", true, function(state)
+CreateToggle(MiscPage, "Night Mode (V6.4)", true, function(state)
     Settings.NightMode = state
     if state then
         Lighting.ClockTime = 0
@@ -670,37 +662,18 @@ end)
 
 CreateToggle(MiscPage, "Anti Crash", true, function(state) Settings.AntiCrash = state end)
 CreateToggle(MiscPage, "Anti Kick", true, function(state) Settings.AntiKick = state end)
-CreateToggle(MiscPage, "Auto Bypass", true, function(state)
-    Settings.AutoBypass = state
-    if state then
-        task.spawn(function()
-            pcall(function()
-                if setreadonly then
-                    pcall(function()
-                        setreadonly(getrenv(), false)
-                        setreadonly(getreg(), false)
-                        setreadonly(getgc(), false)
-                    end)
-                end
-            end)
-        end)
-    end
-end)
+CreateToggle(MiscPage, "Auto Bypass", true, function(state) Settings.AutoBypass = state end)
 
-CreateToggle(GunPage, "Aimbot (Auto Target Lock)", true, function(state) Settings.Aimbot = state end)
+CreateToggle(GunPage, "Aimbot (V6.4 Auto Target Lock)", true, function(state) Settings.Aimbot = state end)
 CreateToggle(GunPage, "No Recoil", true, function(state) Settings.NoRecoil = state end)
 CreateSelector(GunPage, "Target Part", {"Head", "Body"}, 1, function(selected) 
     Settings.TargetPart = selected == "Body" and "UpperTorso" or "Head"
 end)
 CreateSlider(GunPage, "Aim FOV Size", 50, 400, 150, true, function(val) Settings.FOVRadius = val end)
 CreateSlider(GunPage, "Aim Distance", 100, 2000, 500, true, function(val) Settings.AimDistance = val end)
-CreateSlider(GunPage, "Aim Smoothness", 1, 50, 25, true, function(val) Settings.AimSmoothness = val end)
-
-CreateToggle(FishingPage, "Auto Rare Fish", true, function(state) Settings.AutoRareFish = state end)
-CreateToggle(FishingPage, "Instant Catch", true, function(state) Settings.InstantCatch = state end)
 
 -- ==========================================
--- PLAYER LOGIC (MULTI JUMP V6.5)
+-- PLAYER LOGIC (MULTI JUMP V6.5/V6.4)
 -- ==========================================
 
 local function SetupJumpDetection()
@@ -821,7 +794,7 @@ Players.PlayerRemoving:Connect(function(plr)
 end)
 
 -- ==========================================
--- AIMBOT & ESP RENDER ENGINE (V6.5 AIMBOT + WORKING ESP)
+-- AIMBOT (V6.4) & ESP RENDER ENGINE
 -- ==========================================
 
 local function GetClosestTarget()
@@ -871,7 +844,7 @@ RunService.RenderStepped:Connect(function()
         end
     end
 
-    -- Aimbot Logic (V6.5)
+    -- Aimbot Logic (V6.4 Direct Lock)
     if Settings.Aimbot then
         FOVCircle.Visible = true
         FOVCircle.Radius = Settings.FOVRadius
@@ -885,7 +858,7 @@ RunService.RenderStepped:Connect(function()
                 TargetLine.From = UserInputService:GetMouseLocation()
                 TargetLine.To = Vector2.new(targetScreenPos.X, targetScreenPos.Y)
                 
-                Camera.CFrame = Camera.CFrame:Lerp(CFrame.new(Camera.CFrame.Position, target.Position), 1 / Settings.AimSmoothness)
+                Camera.CFrame = CFrame.new(Camera.CFrame.Position, target.Position)
             else
                 TargetLine.Visible = false
             end
@@ -913,7 +886,7 @@ RunService.RenderStepped:Connect(function()
                 if headPos.Z > 0 then
                     -- 1. ESP Line
                     if Settings.ESP_Line then
-                        esp.Line.From = Vector2.new(Camera.ViewportSize.X / 2, 0)
+                        esp.Line.From = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y)
                         esp.Line.To = Vector2.new(headPos.X, headPos.Y)
                         esp.Line.Visible = true
                     else
