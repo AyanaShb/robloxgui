@@ -113,7 +113,8 @@ local Settings = {
     SpeedHack = false, WalkSpeed = 30, MultiJump = false, MultiJumpPower = 50,
     Chams = false, ChamsColor = Color3.fromRGB(255, 0, 80), GlowColor = Color3.fromRGB(0, 235, 255), 
     Noclip = false, NightMode = false, DaylightMode = false, AntiCrash = false, AntiKick = false, AutoBypass = false,
-    Aimbot = false, NoRecoil = false, FOVRadius = 150, AimDistance = 500, AimSmoothness = 25, TargetPart = "Head"
+    Aimbot = false, NoRecoil = false, FOVRadius = 150, AimDistance = 500, AimSmoothness = 25, TargetPart = "Head",
+    ESPLine = false
 }
 
 local FOVCircle = Drawing.new("Circle")
@@ -575,6 +576,9 @@ CreateSlider(PlayerPage, "Speed Value", 16, 150, 30, true, function(val) Setting
 CreateToggle(PlayerPage, "Multi Jump", true, function(state) Settings.MultiJump = state end)
 CreateSlider(PlayerPage, "Multi Jump Power", 30, 150, 50, true, function(val) Settings.MultiJumpPower = val end)
 
+-- ESP Line Toggle added to Player Page
+CreateToggle(PlayerPage, "ESP Line", true, function(state) Settings.ESPLine = state end)
+
 local function SetupJumpDetection()
     local char = LocalPlayer.Character
     if not char then return end
@@ -904,11 +908,39 @@ local function GetClosestTarget()
 end
 
 -- ==========================================
--- GUN LOGIC: AIMBOT & NO RECOIL
+-- ESP LINE DRAWINGS CACHE
+-- ==========================================
+local ESPLineCache = {}
+
+local function GetESPLine(plr)
+    if not ESPLineCache[plr] then
+        local line = Drawing.new("Line")
+        line.Thickness = 1.5
+        line.Color = Color3.fromRGB(255, 0, 0) -- Terang (Bright Red)
+        line.Transparency = 1
+        line.Visible = false
+        ESPLineCache[plr] = line
+    end
+    return ESPLineCache[plr]
+end
+
+Players.PlayerRemoving:Connect(function(plr)
+    if ESPLineCache[plr] then
+        pcall(function()
+            ESPLineCache[plr]:Remove()
+        end)
+        ESPLineCache[plr] = nil
+    end
+end)
+
+-- ==========================================
+-- GUN LOGIC, AIMBOT & ESP LINE
 -- ==========================================
 
 RunService.RenderStepped:Connect(function()
     local center = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
+    -- Asumsi sudut tengah layar atas handphone: X di tengah (ViewportSize.X / 2), Y di paling atas (0)
+    local topScreenCenter = Vector2.new(Camera.ViewportSize.X / 2, 0)
     
     local activeCheck = Settings.Aimbot and not IsInLobby()
     FOVCircle.Position = center
@@ -947,5 +979,27 @@ RunService.RenderStepped:Connect(function()
                 end
             end
         end)
+    end
+
+    -- Update ESP Lines for all players
+    for _, plr in pairs(Players:GetPlayers()) do
+        local line = GetESPLine(plr)
+        if Settings.ESPLine and IsValidEnemy(plr) and plr.Character then
+            local head = plr.Character:FindFirstChild("Head") or plr.Character:FindFirstChild("HumanoidRootPart")
+            if head then
+                local pos, onScreen = Camera:WorldToViewportPoint(head.Position)
+                if onScreen then
+                    line.From = topScreenCenter
+                    line.To = Vector2.new(pos.X, pos.Y)
+                    line.Visible = true
+                else
+                    line.Visible = false
+                end
+            else
+                line.Visible = false
+            end
+        else
+            line.Visible = false
+        end
     end
 end)
