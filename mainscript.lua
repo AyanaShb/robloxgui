@@ -1,5 +1,5 @@
 -- ========================================================
--- DEAR IMGUI PREMIUM GRADIENT UI (V6.6 - FULL + ESP PLAYER)
+-- DEAR IMGUI PREMIUM GRADIENT UI (V6.7 - FULL + FIXED ESP)
 -- ========================================================
 
 local Players = game:GetService("Players")
@@ -10,7 +10,6 @@ local Workspace = game:GetService("Workspace")
 local CoreGui = game:GetService("CoreGui")
 local TweenService = game:GetService("TweenService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local ScriptContext = game:GetService("ScriptContext")
 
 local LocalPlayer = Players.LocalPlayer
 local Camera = Workspace.CurrentCamera
@@ -40,15 +39,6 @@ local function GetSafeParent()
         local success, parent = pcall(gethui)
         if success and parent then return parent end
     end
-    if syn and syn.protect_gui then
-        local success, parent = pcall(function()
-            local gui = Instance.new("Folder")
-            syn.protect_gui(gui)
-            gui:Destroy()
-            return CoreGui
-        end)
-        if success and parent then return parent end
-    end
     local playerGui = LocalPlayer:FindFirstChildOfClass("PlayerGui")
     if playerGui then return playerGui end
     return CoreGui
@@ -57,7 +47,7 @@ end
 local safeParent = GetSafeParent()
 
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "ImGui_Gradient_Hub_V66"
+ScreenGui.Name = "ImGui_Gradient_Hub_V67"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.DisplayOrder = 9999
 ScreenGui.Parent = safeParent
@@ -125,13 +115,13 @@ local function ShowToast(text, isSuccess)
 end
 
 local Settings = {
-    SpeedHack = false, WalkSpeed = 30, MultiJump = false, MultiJumpPower = 50,
+    SpeedHack = false, WalkSpeed = 30, MultiJump = false, 
     Chams = false, ChamsColor = Color3.fromRGB(255, 0, 80), GlowColor = Color3.fromRGB(0, 235, 255), 
     Noclip = false, NightMode = false, DaylightMode = false, AntiCrash = false, AntiKick = false, AutoBypass = false,
     -- ESP Settings
     ESP_Name = false, ESP_Distance = false, ESP_Line = false, ESP_Health = false, ESP_Gender = false,
     -- Gun Settings
-    Aimbot = false, SilentAim = false, NoRecoil = false, FOVRadius = 150, AimDistance = 500, AimSmoothness = 25, TargetPart = "Head",
+    Aimbot = false, NoRecoil = false, FOVRadius = 150, AimDistance = 500, AimSmoothness = 25, TargetPart = "Head",
     -- Fishing Settings
     AutoRareFish = false, InstantCatch = false
 }
@@ -240,7 +230,7 @@ local SubText = Instance.new("TextLabel")
 SubText.Size = UDim2.new(1, -10, 1, 0)
 SubText.Position = UDim2.new(0, 8, 0, 0)
 SubText.BackgroundTransparency = 1
-SubText.Text = "Dear ImGui v6.6 (Full + ESP)"
+SubText.Text = "Dear ImGui v6.7 (Wallhack ESP Fixed)"
 SubText.Font = Enum.Font.Code
 SubText.TextSize = 11
 SubText.TextColor3 = Color3.fromRGB(150, 160, 180)
@@ -594,7 +584,6 @@ end
 CreateToggle(PlayerPage, "Speed Hack", true, function(state) Settings.SpeedHack = state end)
 CreateSlider(PlayerPage, "Speed Value", 16, 150, 30, true, function(val) Settings.WalkSpeed = val end)
 CreateToggle(PlayerPage, "Multi Jump", true, function(state) Settings.MultiJump = state end)
-CreateSlider(PlayerPage, "Multi Jump Power", 30, 150, 50, true, function(val) Settings.MultiJumpPower = val end)
 CreateToggle(PlayerPage, "Wall Hack (Noclip)", true, function(state) Settings.Noclip = state end)
 
 CreateToggle(PlayerPage, "ESP Name", true, function(state) Settings.ESP_Name = state end)
@@ -652,6 +641,32 @@ end)
 -- MISC & GUN & FISHING MENU UI
 -- ==========================================
 
+CreateToggle(MiscPage, "Night Mode", true, function(state)
+    Settings.NightMode = state
+    if state then
+        Lighting.ClockTime = 0
+        Lighting.Brightness = 0
+        Lighting.GlobalShadows = false
+    else
+        Lighting.ClockTime = 14.5
+        Lighting.Brightness = 2
+        Lighting.GlobalShadows = true
+    end
+end)
+
+CreateToggle(MiscPage, "Daylight Mode", true, function(state)
+    Settings.DaylightMode = state
+    if state then
+        Lighting.ClockTime = 14.5
+        Lighting.Brightness = 3
+        Lighting.GlobalShadows = false
+    else
+        Lighting.ClockTime = 14.5
+        Lighting.Brightness = 2
+        Lighting.GlobalShadows = true
+    end
+end)
+
 CreateToggle(MiscPage, "Anti Crash", true, function(state) Settings.AntiCrash = state end)
 CreateToggle(MiscPage, "Anti Kick", true, function(state) Settings.AntiKick = state end)
 CreateToggle(MiscPage, "Auto Bypass", true, function(state)
@@ -672,7 +687,6 @@ CreateToggle(MiscPage, "Auto Bypass", true, function(state)
 end)
 
 CreateToggle(GunPage, "Aimbot (Auto Target Lock)", true, function(state) Settings.Aimbot = state end)
-CreateToggle(GunPage, "Silent Aim", true, function(state) Settings.SilentAim = state end)
 CreateToggle(GunPage, "No Recoil", true, function(state) Settings.NoRecoil = state end)
 CreateSelector(GunPage, "Target Part", {"Head", "Body"}, 1, function(selected) 
     Settings.TargetPart = selected == "Body" and "UpperTorso" or "Head"
@@ -685,19 +699,18 @@ CreateToggle(FishingPage, "Auto Rare Fish", true, function(state) Settings.AutoR
 CreateToggle(FishingPage, "Instant Catch", true, function(state) Settings.InstantCatch = state end)
 
 -- ==========================================
--- PLAYER LOGIC & ESP RENDER ENGINE
+-- PLAYER LOGIC & MULTI JUMP
 -- ==========================================
 
 local function SetupJumpDetection()
     local char = LocalPlayer.Character
     if not char then return end
     local hum = char:FindFirstChildOfClass("Humanoid")
-    local hrp = char:FindFirstChild("HumanoidRootPart")
-    if not hum or not hrp then return end
+    if not hum then return end
 
-    hum.StateChanged:Connect(function(old, new)
-        if Settings.MultiJump and new == Enum.HumanoidStateType.Jumping then
-            hrp.Velocity = Vector3.new(hrp.Velocity.X, Settings.MultiJumpPower, hrp.Velocity.Z)
+    UserInputService.JumpRequest:Connect(function()
+        if Settings.MultiJump and hum then
+            hum:ChangeState(Enum.HumanoidStateType.Jumping)
         end
     end)
 end
@@ -737,7 +750,10 @@ end
 for _, plr in pairs(Players:GetPlayers()) do ApplyChams(plr) end
 Players.PlayerAdded:Connect(ApplyChams)
 
--- ESP Drawing Pool Management
+-- ==========================================
+-- ESP DRAWINGS POOL MANAGEMENT
+-- ==========================================
+
 local function GetESPDrawings(plr)
     if not _G.ImGuiV4_ESPs[plr] then
         local line = Drawing.new("Line")
@@ -802,16 +818,10 @@ Players.PlayerRemoving:Connect(function(plr)
     end
 end)
 
-local function IsInLobby()
-    local char = LocalPlayer.Character
-    if not char then return true end
-    local hum = char:FindFirstChildOfClass("Humanoid")
-    local hrp = char:FindFirstChild("HumanoidRootPart")
-    if not hum or not hrp or hum.Health <= 0 then return true end
-    return false
-end
+-- ==========================================
+-- RENDER LOOP (ESP + MOVEMENT)
+-- ==========================================
 
--- Render Loop for Movement, ESP, Aimbot
 RunService.RenderStepped:Connect(function()
     local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
     if hum then
@@ -828,7 +838,7 @@ RunService.RenderStepped:Connect(function()
         end
     end
 
-    -- ESP Update Loop
+    -- Update ESP for all players
     for _, plr in pairs(Players:GetPlayers()) do
         if plr ~= LocalPlayer then
             local esp = GetESPDrawings(plr)
@@ -838,12 +848,13 @@ RunService.RenderStepped:Connect(function()
             local humanoid = char and char:FindFirstChildOfClass("Humanoid")
 
             if char and hrp and head and humanoid and humanoid.Health > 0 then
+                -- Menggunakan WorldToViewportPoint agar tetap akurat menembus dinding
                 local headPos, headOnScreen = Camera:WorldToViewportPoint(head.Position + Vector3.new(0, 0.8, 0))
-                local rootPos, rootOnScreen = Camera:WorldToViewportPoint(hrp.Position)
                 local myRoot = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
                 
-                if headOnScreen or rootOnScreen then
-                    -- 1. ESP Line (Garis dari sudut atas tengah layar ke kepala)
+                -- Render ESP meskipun di balik dinding (menggunakan Depth Check bawaan Drawing API)
+                if headPos.Z > 0 then
+                    -- 1. ESP Line
                     if Settings.ESP_Line then
                         esp.Line.From = Vector2.new(Camera.ViewportSize.X / 2, 0)
                         esp.Line.To = Vector2.new(headPos.X, headPos.Y)
@@ -852,7 +863,7 @@ RunService.RenderStepped:Connect(function()
                         esp.Line.Visible = false
                     end
 
-                    -- 2. ESP Name (Nama di atas kepala horizontal)
+                    -- 2. ESP Name
                     if Settings.ESP_Name then
                         esp.NameText.Text = plr.Name
                         esp.NameText.Position = Vector2.new(headPos.X, headPos.Y - 22)
@@ -861,7 +872,7 @@ RunService.RenderStepped:Connect(function()
                         esp.NameText.Visible = false
                     end
 
-                    -- 3. ESP Distance (Jarak karakter)
+                    -- 3. ESP Distance
                     if Settings.ESP_Distance and myRoot then
                         local dist = math.floor((hrp.Position - myRoot.Position).Magnitude)
                         esp.DistText.Text = "[" .. dist .. "m]"
@@ -871,11 +882,10 @@ RunService.RenderStepped:Connect(function()
                         esp.DistText.Visible = false
                     end
 
-                    -- 4. ESP Gender (Deteksi gender dari nama/karakter avatar)
+                    -- 4. ESP Gender
                     if Settings.ESP_Gender then
                         local genderStr = "♂ [Boy]"
                         local nameLower = plr.Name:lower()
-                        -- Deteksi sederhana berdasarkan nama atau bisa custom
                         if nameLower:find("girl") or nameLower:find("siti") or nameLower:find("putri") or nameLower:find("ayu") then
                             genderStr = "♀ [Girl]"
                         end
@@ -886,27 +896,22 @@ RunService.RenderStepped:Connect(function()
                         esp.GenderText.Visible = false
                     end
 
-                    -- 5. ESP Health (Balok lurus vertikal di samping badan)
+                    -- 5. ESP Health
                     if Settings.ESP_Health then
-                        local legPos, legOnScreen = Camera:WorldToViewportPoint(hrp.Position - Vector3.new(0, 3, 0))
-                        if headOnScreen and legOnScreen then
-                            local height = math.abs(legPos.Y - headPos.Y)
-                            local width = height / 2
-                            local healthPct = math.clamp(humanoid.Health / humanoid.MaxHealth, 0, 1)
-                            
-                            esp.HealthBg.Size = Vector2.new(3, height)
-                            esp.HealthBg.Position = Vector2.new(headPos.X - (width / 2) - 6, headPos.Y)
-                            esp.HealthBg.Visible = true
+                        local legPos = Camera:WorldToViewportPoint(hrp.Position - Vector3.new(0, 3, 0))
+                        local height = math.abs(legPos.Y - headPos.Y)
+                        local width = height / 2
+                        local healthPct = math.clamp(humanoid.Health / humanoid.MaxHealth, 0, 1)
+                        
+                        esp.HealthBg.Size = Vector2.new(3, height)
+                        esp.HealthBg.Position = Vector2.new(headPos.X - (width / 2) - 6, headPos.Y)
+                        esp.HealthBg.Visible = true
 
-                            local barHeight = height * healthPct
-                            esp.HealthBar.Size = Vector2.new(1, barHeight)
-                            esp.HealthBar.Position = Vector2.new(headPos.X - (width / 2) - 5, headPos.Y + (height - barHeight))
-                            esp.HealthBar.Color = Color3.fromHSV(healthPct * 0.3, 1, 1) -- Hijau ke Merah
-                            esp.HealthBar.Visible = true
-                        else
-                            esp.HealthBg.Visible = false
-                            esp.HealthBar.Visible = false
-                        end
+                        local barHeight = height * healthPct
+                        esp.HealthBar.Size = Vector2.new(1, barHeight)
+                        esp.HealthBar.Position = Vector2.new(headPos.X - (width / 2) - 5, headPos.Y + (height - barHeight))
+                        esp.HealthBar.Color = Color3.fromHSV(healthPct * 0.3, 1, 1)
+                        esp.HealthBar.Visible = true
                     else
                         esp.HealthBg.Visible = false
                         esp.HealthBar.Visible = false
