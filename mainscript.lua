@@ -1,5 +1,5 @@
 -- ========================================================
--- DEAR IMGUI PREMIUM GRADIENT UI (V6.7 - FULL + FIXED ESP)
+-- DEAR IMGUI PREMIUM GRADIENT UI (V6.8 - FULL WORKING ESP & AIMBOT)
 -- ========================================================
 
 local Players = game:GetService("Players")
@@ -47,7 +47,7 @@ end
 local safeParent = GetSafeParent()
 
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "ImGui_Gradient_Hub_V67"
+ScreenGui.Name = "ImGui_Gradient_Hub_V68"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.DisplayOrder = 9999
 ScreenGui.Parent = safeParent
@@ -115,7 +115,7 @@ local function ShowToast(text, isSuccess)
 end
 
 local Settings = {
-    SpeedHack = false, WalkSpeed = 30, MultiJump = false, 
+    SpeedHack = false, WalkSpeed = 30, MultiJump = false, MultiJumpPower = 50,
     Chams = false, ChamsColor = Color3.fromRGB(255, 0, 80), GlowColor = Color3.fromRGB(0, 235, 255), 
     Noclip = false, NightMode = false, DaylightMode = false, AntiCrash = false, AntiKick = false, AutoBypass = false,
     -- ESP Settings
@@ -230,7 +230,7 @@ local SubText = Instance.new("TextLabel")
 SubText.Size = UDim2.new(1, -10, 1, 0)
 SubText.Position = UDim2.new(0, 8, 0, 0)
 SubText.BackgroundTransparency = 1
-SubText.Text = "Dear ImGui v6.7 (Wallhack ESP Fixed)"
+SubText.Text = "Dear ImGui v6.8 (Fixed Aimbot & ESP)"
 SubText.Font = Enum.Font.Code
 SubText.TextSize = 11
 SubText.TextColor3 = Color3.fromRGB(150, 160, 180)
@@ -584,6 +584,7 @@ end
 CreateToggle(PlayerPage, "Speed Hack", true, function(state) Settings.SpeedHack = state end)
 CreateSlider(PlayerPage, "Speed Value", 16, 150, 30, true, function(val) Settings.WalkSpeed = val end)
 CreateToggle(PlayerPage, "Multi Jump", true, function(state) Settings.MultiJump = state end)
+CreateSlider(PlayerPage, "Multi Jump Power", 30, 150, 50, true, function(val) Settings.MultiJumpPower = val end)
 CreateToggle(PlayerPage, "Wall Hack (Noclip)", true, function(state) Settings.Noclip = state end)
 
 CreateToggle(PlayerPage, "ESP Name", true, function(state) Settings.ESP_Name = state end)
@@ -699,18 +700,19 @@ CreateToggle(FishingPage, "Auto Rare Fish", true, function(state) Settings.AutoR
 CreateToggle(FishingPage, "Instant Catch", true, function(state) Settings.InstantCatch = state end)
 
 -- ==========================================
--- PLAYER LOGIC & MULTI JUMP
+-- PLAYER LOGIC (MULTI JUMP V6.5)
 -- ==========================================
 
 local function SetupJumpDetection()
     local char = LocalPlayer.Character
     if not char then return end
     local hum = char:FindFirstChildOfClass("Humanoid")
-    if not hum then return end
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    if not hum or not hrp then return end
 
-    UserInputService.JumpRequest:Connect(function()
-        if Settings.MultiJump and hum then
-            hum:ChangeState(Enum.HumanoidStateType.Jumping)
+    hum.StateChanged:Connect(function(old, new)
+        if Settings.MultiJump and new == Enum.HumanoidStateType.Jumping then
+            hrp.Velocity = Vector3.new(hrp.Velocity.X, Settings.MultiJumpPower, hrp.Velocity.Z)
         end
     end)
 end
@@ -819,8 +821,39 @@ Players.PlayerRemoving:Connect(function(plr)
 end)
 
 -- ==========================================
--- RENDER LOOP (ESP + MOVEMENT)
+-- AIMBOT & ESP RENDER ENGINE (V6.5 AIMBOT + WORKING ESP)
 -- ==========================================
+
+local function GetClosestTarget()
+    local closestTarget = nil
+    local shortestDistance = Settings.FOVRadius
+
+    for _, plr in pairs(Players:GetPlayers()) do
+        if plr ~= LocalPlayer and plr.Character then
+            local targetPart = plr.Character:FindFirstChild(Settings.TargetPart)
+            local humanoid = plr.Character:FindFirstChildOfClass("Humanoid")
+            
+            if targetPart and humanoid and humanoid.Health > 0 then
+                local screenPos, onScreen = Camera:WorldToViewportPoint(targetPart.Position)
+                if onScreen then
+                    local myRoot = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+                    if myRoot then
+                        local distance = (targetPart.Position - myRoot.Position).Magnitude
+                        if distance <= Settings.AimDistance then
+                            local mousePos = UserInputService:GetMouseLocation()
+                            local magnitude = (Vector2.new(screenPos.X, screenPos.Y) - mousePos).Magnitude
+                            if magnitude < shortestDistance then
+                                shortestDistance = magnitude
+                                closestTarget = targetPart
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end
+    return closestTarget
+end
 
 RunService.RenderStepped:Connect(function()
     local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
@@ -838,7 +871,33 @@ RunService.RenderStepped:Connect(function()
         end
     end
 
-    -- Update ESP for all players
+    -- Aimbot Logic (V6.5)
+    if Settings.Aimbot then
+        FOVCircle.Visible = true
+        FOVCircle.Radius = Settings.FOVRadius
+        FOVCircle.Position = UserInputService:GetMouseLocation()
+        
+        local target = GetClosestTarget()
+        if target then
+            local targetScreenPos, onScreen = Camera:WorldToViewportPoint(target.Position)
+            if onScreen then
+                TargetLine.Visible = true
+                TargetLine.From = UserInputService:GetMouseLocation()
+                TargetLine.To = Vector2.new(targetScreenPos.X, targetScreenPos.Y)
+                
+                Camera.CFrame = Camera.CFrame:Lerp(CFrame.new(Camera.CFrame.Position, target.Position), 1 / Settings.AimSmoothness)
+            else
+                TargetLine.Visible = false
+            end
+        else
+            TargetLine.Visible = false
+        end
+    else
+        FOVCircle.Visible = false
+        TargetLine.Visible = false
+    end
+
+    -- ESP Render Loop (Guaranteed Working & Wallhack)
     for _, plr in pairs(Players:GetPlayers()) do
         if plr ~= LocalPlayer then
             local esp = GetESPDrawings(plr)
@@ -848,11 +907,9 @@ RunService.RenderStepped:Connect(function()
             local humanoid = char and char:FindFirstChildOfClass("Humanoid")
 
             if char and hrp and head and humanoid and humanoid.Health > 0 then
-                -- Menggunakan WorldToViewportPoint agar tetap akurat menembus dinding
                 local headPos, headOnScreen = Camera:WorldToViewportPoint(head.Position + Vector3.new(0, 0.8, 0))
                 local myRoot = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
                 
-                -- Render ESP meskipun di balik dinding (menggunakan Depth Check bawaan Drawing API)
                 if headPos.Z > 0 then
                     -- 1. ESP Line
                     if Settings.ESP_Line then
