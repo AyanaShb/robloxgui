@@ -1,5 +1,5 @@
 -- ========================================================
--- DEAR IMGUI PREMIUM GRADIENT UI (V6.4 - FULL SCRIPT)
+-- DEAR IMGUI PREMIUM GRADIENT UI (V6.5 - FIXED MULTI-ESP)
 -- ========================================================
 
 local Players = game:GetService("Players")
@@ -9,7 +9,6 @@ local Lighting = game:GetService("Lighting")
 local Workspace = game:GetService("Workspace")
 local CoreGui = game:GetService("CoreGui")
 local TweenService = game:GetService("TweenService")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ScriptContext = game:GetService("ScriptContext")
 
 local LocalPlayer = Players.LocalPlayer
@@ -42,7 +41,7 @@ end
 local safeParent = GetSafeParent()
 
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "ImGui_Gradient_Hub_V64"
+ScreenGui.Name = "ImGui_Gradient_Hub_V65"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.DisplayOrder = 9999
 ScreenGui.Parent = safeParent
@@ -221,7 +220,7 @@ local SubText = Instance.new("TextLabel")
 SubText.Size = UDim2.new(1, -10, 1, 0)
 SubText.Position = UDim2.new(0, 8, 0, 0)
 SubText.BackgroundTransparency = 1
-SubText.Text = "Dear ImGui v6.4 (Full Features)"
+SubText.Text = "Dear ImGui v6.5 (Full Features)"
 SubText.Font = Enum.Font.Code
 SubText.TextSize = 11
 SubText.TextColor3 = Color3.fromRGB(150, 160, 180)
@@ -935,8 +934,7 @@ local function GetESPLine(plr)
     return ESPLineCache[plr]
 end
 
-local function GetESPText(cacheTable)
-    if not cacheTable then return nil end
+local function GetESPText()
     local text = Drawing.new("Text")
     text.Size = 13
     text.Center = true
@@ -1043,7 +1041,7 @@ RunService.RenderStepped:Connect(function()
         end)
     end
 
-    -- Complete ESP Render Update for all players
+    -- Complete ESP Render Update for all players concurrently
     for _, plr in pairs(Players:GetPlayers()) do
         if plr ~= LocalPlayer and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") and plr.Character:FindFirstChildOfClass("Humanoid") then
             local char = plr.Character
@@ -1089,7 +1087,7 @@ RunService.RenderStepped:Connect(function()
                     distText.Visible = false
                 end
 
-                -- 4. ESP Gender (Determined dynamically via character naming or default fallback)
+                -- 4. ESP Gender
                 if not ESPGenderCache[plr] then ESPGenderCache[plr] = GetESPText() end
                 local genderText = ESPGenderCache[plr]
                 if Settings.ESPGender and headOnScreen then
@@ -1142,7 +1140,7 @@ RunService.RenderStepped:Connect(function()
                     for _, l in ipairs(boxLines) do l.Visible = false end
                 end
 
-                -- 6. ESP Health (Vertical bar on the left/side of the character body)
+                -- 6. ESP Health
                 local bgBar, healthBar = GetHealthBar(plr)
                 if Settings.ESPHealth and rootOnScreen then
                     local topPos, topOnScreen = Camera:WorldToViewportPoint((hrp.CFrame * CFrame.new(0, 2.5, 0)).Position)
