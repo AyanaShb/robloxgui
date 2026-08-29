@@ -1,5 +1,5 @@
 -- ========================================================
--- DEAR IMGUI PREMIUM GRADIENT UI (V6.4/V6.9 - FIXED ESP & AIMBOT)
+-- DEAR IMGUI PREMIUM GRADIENT UI (V6.4 - FULL SCRIPT)
 -- ========================================================
 
 local Players = game:GetService("Players")
@@ -9,6 +9,8 @@ local Lighting = game:GetService("Lighting")
 local Workspace = game:GetService("Workspace")
 local CoreGui = game:GetService("CoreGui")
 local TweenService = game:GetService("TweenService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local ScriptContext = game:GetService("ScriptContext")
 
 local LocalPlayer = Players.LocalPlayer
 local Camera = Workspace.CurrentCamera
@@ -18,24 +20,18 @@ if _G.ImGuiV4_ToastGui then _G.ImGuiV4_ToastGui:Destroy() end
 if _G.ImGuiV4_FOV then pcall(function() _G.ImGuiV4_FOV:Remove() end) end
 if _G.ImGuiV4_Line then pcall(function() _G.ImGuiV4_Line:Remove() end) end
 
--- Cleanup previous ESP drawings if any
-if _G.ImGuiV4_ESPs then
-    for _, espData in pairs(_G.ImGuiV4_ESPs) do
-        pcall(function()
-            if espData.Line then espData.Line:Remove() end
-            if espData.NameText then espData.NameText:Remove() end
-            if espData.DistText then espData.DistText:Remove() end
-            if espData.GenderText then espData.GenderText:Remove() end
-            if espData.HealthBg then espData.HealthBg:Remove() end
-            if espData.HealthBar then espData.HealthBar:Remove() end
-        end)
-    end
-end
-_G.ImGuiV4_ESPs = {}
-
 local function GetSafeParent()
     if gethui then
         local success, parent = pcall(gethui)
+        if success and parent then return parent end
+    end
+    if syn and syn.protect_gui then
+        local success, parent = pcall(function()
+            local gui = Instance.new("Folder")
+            syn.protect_gui(gui)
+            gui:Destroy()
+            return CoreGui
+        end)
         if success and parent then return parent end
     end
     local playerGui = LocalPlayer:FindFirstChildOfClass("PlayerGui")
@@ -46,7 +42,7 @@ end
 local safeParent = GetSafeParent()
 
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "ImGui_Gradient_Hub_V69"
+ScreenGui.Name = "ImGui_Gradient_Hub_V64"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.DisplayOrder = 9999
 ScreenGui.Parent = safeParent
@@ -117,10 +113,7 @@ local Settings = {
     SpeedHack = false, WalkSpeed = 30, MultiJump = false, MultiJumpPower = 50,
     Chams = false, ChamsColor = Color3.fromRGB(255, 0, 80), GlowColor = Color3.fromRGB(0, 235, 255), 
     Noclip = false, NightMode = false, DaylightMode = false, AntiCrash = false, AntiKick = false, AutoBypass = false,
-    -- ESP Settings
-    ESP_Name = false, ESP_Distance = false, ESP_Line = false, ESP_Health = false, ESP_Gender = false,
-    -- Gun Settings
-    Aimbot = false, NoRecoil = false, FOVRadius = 150, AimDistance = 500, TargetPart = "Head"
+    Aimbot = false, SilentAim = false, NoRecoil = false, FOVRadius = 150, AimDistance = 500, AimSmoothness = 25, TargetPart = "Head"
 }
 
 local FOVCircle = Drawing.new("Circle")
@@ -227,7 +220,7 @@ local SubText = Instance.new("TextLabel")
 SubText.Size = UDim2.new(1, -10, 1, 0)
 SubText.Position = UDim2.new(0, 8, 0, 0)
 SubText.BackgroundTransparency = 1
-SubText.Text = "Dear ImGui v6.9 (Fixed ESP & V6.4 Aimbot/Night)"
+SubText.Text = "Dear ImGui v6.4 (Full Features)"
 SubText.Font = Enum.Font.Code
 SubText.TextSize = 11
 SubText.TextColor3 = Color3.fromRGB(150, 160, 180)
@@ -247,7 +240,7 @@ TabFrame.Parent = MainFrame
 local UIListTab = Instance.new("UIListLayout")
 UIListTab.FillDirection = Enum.FillDirection.Horizontal
 UIListTab.SortOrder = Enum.SortOrder.LayoutOrder
-UIListTab.Padding = UDim.new(0, 4)
+UIListTab.Padding = UDim.new(0, 5)
 UIListTab.Parent = TabFrame
 
 local ContentFrame = Instance.new("Frame")
@@ -317,7 +310,7 @@ for i, name in ipairs(tabs) do
     Btn.BorderSizePixel = 0
     Btn.Text = name
     Btn.Font = Enum.Font.Code
-    Btn.TextSize = 11
+    Btn.TextSize = 12
     Btn.TextColor3 = Color3.fromRGB(160, 160, 180)
     Btn.Parent = TabFrame
     
@@ -567,27 +560,96 @@ local function CreateColorTable(parent, text, callback)
         BtnCorner.Parent = ColorBtn
 
         ColorBtn.MouseButton1Click:Connect(function()
-            ShowToast(text .. ": " + colorData[2], true)
+            ShowToast(text .. ": " .. colorData[2], true)
             callback(colorData[1])
         end)
     end
 end
 
 -- ==========================================
--- PLAYER & MISC MENU UI
+-- LOGIC IMPLEMENTATIONS (PLAYER & MISC)
 -- ==========================================
 
 CreateToggle(PlayerPage, "Speed Hack", true, function(state) Settings.SpeedHack = state end)
 CreateSlider(PlayerPage, "Speed Value", 16, 150, 30, true, function(val) Settings.WalkSpeed = val end)
 CreateToggle(PlayerPage, "Multi Jump", true, function(state) Settings.MultiJump = state end)
 CreateSlider(PlayerPage, "Multi Jump Power", 30, 150, 50, true, function(val) Settings.MultiJumpPower = val end)
-CreateToggle(PlayerPage, "Wall Hack (Noclip)", true, function(state) Settings.Noclip = state end)
 
-CreateToggle(PlayerPage, "ESP Name", true, function(state) Settings.ESP_Name = state end)
-CreateToggle(PlayerPage, "ESP Distance", true, function(state) Settings.ESP_Distance = state end)
-CreateToggle(PlayerPage, "ESP Line", true, function(state) Settings.ESP_Line = state end)
-CreateToggle(PlayerPage, "ESP Health", true, function(state) Settings.ESP_Health = state end)
-CreateToggle(PlayerPage, "ESP Gender", true, function(state) Settings.ESP_Gender = state end)
+local function SetupJumpDetection()
+    local char = LocalPlayer.Character
+    if not char then return end
+    local hum = char:FindFirstChildOfClass("Humanoid")
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    if not hum or not hrp then return end
+
+    hum.StateChanged:Connect(function(old, new)
+        if Settings.MultiJump and new == Enum.HumanoidStateType.Jumping then
+            hrp.Velocity = Vector3.new(hrp.Velocity.X, Settings.MultiJumpPower, hrp.Velocity.Z)
+        end
+    end)
+end
+
+LocalPlayer.CharacterAdded:Connect(function(char)
+    char:WaitForChild("Humanoid")
+    task.delay(1, SetupJumpDetection)
+end)
+if LocalPlayer.Character then
+    task.spawn(SetupJumpDetection)
+end
+
+task.spawn(function()
+    pcall(function()
+        local playerGui = LocalPlayer:WaitForChild("PlayerGui", 5)
+        local touchGui = playerGui:WaitForChild("TouchGui", 5)
+        if touchGui then
+            local touchControlFrame = touchGui:WaitForChild("TouchControlFrame", 5)
+            if touchControlFrame then
+                local jumpButton = touchControlFrame:WaitForChild("JumpButton", 5)
+                if jumpButton then
+                    jumpButton.MouseButton1Down:Connect(function()
+                        if Settings.MultiJump then
+                            local char = LocalPlayer.Character
+                            if char then
+                                local hrp = char:FindFirstChild("HumanoidRootPart")
+                                if hrp then
+                                    hrp.Velocity = Vector3.new(hrp.Velocity.X, Settings.MultiJumpPower, hrp.Velocity.Z)
+                                end
+                            end
+                        end
+                    end)
+                end
+            end
+        end
+    end)
+end)
+
+local function ApplyChams(plr)
+    if plr == LocalPlayer then return end
+    local function UpdateHighlight(char)
+        if not char then return end
+        local hl = char:FindFirstChild("ImGui_Cham")
+        if Settings.Chams then
+            if not hl then
+                hl = Instance.new("Highlight")
+                hl.Name = "ImGui_Cham"
+                hl.Parent = char
+            end
+            hl.FillColor = Settings.ChamsColor
+            hl.FillTransparency = 0.25
+            hl.OutlineColor = Settings.GlowColor
+            hl.OutlineTransparency = 0
+            hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+        else
+            if hl then hl:Destroy() end
+        end
+    end
+
+    if plr.Character then UpdateHighlight(plr.Character) end
+    plr.CharacterAdded:Connect(UpdateHighlight)
+end
+
+for _, plr in pairs(Players:GetPlayers()) do ApplyChams(plr) end
+Players.PlayerAdded:Connect(ApplyChams)
 
 CreateToggle(PlayerPage, "Chams (Wall ESP)", true, function(state)
     Settings.Chams = state
@@ -634,205 +696,17 @@ CreateColorTable(PlayerPage, "Chams Glow / Outline Color", function(col)
     end
 end)
 
-CreateToggle(MiscPage, "Night Mode (V6.4)", true, function(state)
-    Settings.NightMode = state
-    if state then
-        Lighting.ClockTime = 0
-        Lighting.Brightness = 0
-        Lighting.GlobalShadows = false
-    else
-        Lighting.ClockTime = 14.5
-        Lighting.Brightness = 2
-        Lighting.GlobalShadows = true
-    end
-end)
+CreateToggle(PlayerPage, "Wall Hack (Noclip)", true, function(state) Settings.Noclip = state end)
 
-CreateToggle(MiscPage, "Daylight Mode", true, function(state)
-    Settings.DaylightMode = state
-    if state then
-        Lighting.ClockTime = 14.5
-        Lighting.Brightness = 3
-        Lighting.GlobalShadows = false
-    else
-        Lighting.ClockTime = 14.5
-        Lighting.Brightness = 2
-        Lighting.GlobalShadows = true
-    end
-end)
-
-CreateToggle(MiscPage, "Anti Crash", true, function(state) Settings.AntiCrash = state end)
-CreateToggle(MiscPage, "Anti Kick", true, function(state) Settings.AntiKick = state end)
-CreateToggle(MiscPage, "Auto Bypass", true, function(state) Settings.AutoBypass = state end)
-
-CreateToggle(GunPage, "Aimbot (V6.4 Auto Target Lock)", true, function(state) Settings.Aimbot = state end)
-CreateToggle(GunPage, "No Recoil", true, function(state) Settings.NoRecoil = state end)
-CreateSelector(GunPage, "Target Part", {"Head", "Body"}, 1, function(selected) 
-    Settings.TargetPart = selected == "Body" and "UpperTorso" or "Head"
-end)
-CreateSlider(GunPage, "Aim FOV Size", 50, 400, 150, true, function(val) Settings.FOVRadius = val end)
-CreateSlider(GunPage, "Aim Distance", 100, 2000, 500, true, function(val) Settings.AimDistance = val end)
-
--- ==========================================
--- PLAYER LOGIC (MULTI JUMP V6.5/V6.4)
--- ==========================================
-
-local function SetupJumpDetection()
-    local char = LocalPlayer.Character
-    if not char then return end
-    local hum = char:FindFirstChildOfClass("Humanoid")
-    local hrp = char:FindFirstChild("HumanoidRootPart")
-    if not hum or not hrp then return end
-
-    hum.StateChanged:Connect(function(old, new)
-        if Settings.MultiJump and new == Enum.HumanoidStateType.Jumping then
-            hrp.Velocity = Vector3.new(hrp.Velocity.X, Settings.MultiJumpPower, hrp.Velocity.Z)
-        end
-    end)
-end
-
-LocalPlayer.CharacterAdded:Connect(function(char)
-    char:WaitForChild("Humanoid")
-    task.delay(1, SetupJumpDetection)
-end)
-if LocalPlayer.Character then
-    task.spawn(SetupJumpDetection)
-end
-
-local function ApplyChams(plr)
-    if plr == LocalPlayer then return end
-    local function UpdateHighlight(char)
-        if not char then return end
-        local hl = char:FindFirstChild("ImGui_Cham")
-        if Settings.Chams then
-            if not hl then
-                hl = Instance.new("Highlight")
-                hl.Name = "ImGui_Cham"
-                hl.Parent = char
-            end
-            hl.FillColor = Settings.ChamsColor
-            hl.FillTransparency = 0.25
-            hl.OutlineColor = Settings.GlowColor
-            hl.OutlineTransparency = 0
-            hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
-        else
-            if hl then hl:Destroy() end
-        end
-    end
-    if plr.Character then UpdateHighlight(plr.Character) end
-    plr.CharacterAdded:Connect(UpdateHighlight)
-end
-
-for _, plr in pairs(Players:GetPlayers()) do ApplyChams(plr) end
-Players.PlayerAdded:Connect(ApplyChams)
-
--- ==========================================
--- ESP DRAWINGS POOL MANAGEMENT
--- ==========================================
-
-local function GetESPDrawings(plr)
-    if not _G.ImGuiV4_ESPs[plr] then
-        local line = Drawing.new("Line")
-        line.Thickness = 1
-        line.Color = Color3.fromRGB(0, 235, 255)
-        line.Transparency = 1
-        line.Visible = false
-
-        local nameText = Drawing.new("Text")
-        nameText.Size = 13
-        nameText.Center = true
-        nameText.Outline = true
-        nameText.Color = Color3.fromRGB(255, 255, 255)
-        nameText.Visible = false
-
-        local distText = Drawing.new("Text")
-        distText.Size = 12
-        distText.Center = true
-        distText.Outline = true
-        distText.Color = Color3.fromRGB(0, 235, 255)
-        distText.Visible = false
-
-        local genderText = Drawing.new("Text")
-        genderText.Size = 12
-        genderText.Center = true
-        genderText.Outline = true
-        genderText.Color = Color3.fromRGB(255, 100, 200)
-        genderText.Visible = false
-
-        local healthBg = Drawing.new("Square")
-        healthBg.Thickness = 1
-        healthBg.Filled = true
-        healthBg.Color = Color3.fromRGB(0, 0, 0)
-        healthBg.Transparency = 0.5
-        healthBg.Visible = false
-
-        local healthBar = Drawing.new("Square")
-        healthBar.Thickness = 1
-        healthBar.Filled = true
-        healthBar.Color = Color3.fromRGB(0, 255, 100)
-        healthBar.Transparency = 1
-        healthBar.Visible = false
-
-        _G.ImGuiV4_ESPs[plr] = {
-            Line = line,
-            NameText = nameText,
-            DistText = distText,
-            GenderText = genderText,
-            HealthBg = healthBg,
-            HealthBar = healthBar
-        }
-    end
-    return _G.ImGuiV4_ESPs[plr]
-end
-
-Players.PlayerRemoving:Connect(function(plr)
-    if _G.ImGuiV4_ESPs[plr] then
-        pcall(function()
-            for _, obj in pairs(_G.ImGuiV4_ESPs[plr]) do obj:Remove() end
-        end)
-        _G.ImGuiV4_ESPs[plr] = nil
-    end
-end)
-
--- ==========================================
--- AIMBOT (V6.4) & ESP RENDER ENGINE
--- ==========================================
-
-local function GetClosestTarget()
-    local closestTarget = nil
-    local shortestDistance = Settings.FOVRadius
-
-    for _, plr in pairs(Players:GetPlayers()) do
-        if plr ~= LocalPlayer and plr.Character then
-            local targetPart = plr.Character:FindFirstChild(Settings.TargetPart)
-            local humanoid = plr.Character:FindFirstChildOfClass("Humanoid")
-            
-            if targetPart and humanoid and humanoid.Health > 0 then
-                local screenPos, onScreen = Camera:WorldToViewportPoint(targetPart.Position)
-                if onScreen then
-                    local myRoot = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-                    if myRoot then
-                        local distance = (targetPart.Position - myRoot.Position).Magnitude
-                        if distance <= Settings.AimDistance then
-                            local mousePos = UserInputService:GetMouseLocation()
-                            local magnitude = (Vector2.new(screenPos.X, screenPos.Y) - mousePos).Magnitude
-                            if magnitude < shortestDistance then
-                                shortestDistance = magnitude
-                                closestTarget = targetPart
-                            end
-                        end
-                    end
-                end
-            end
-        end
-    end
-    return closestTarget
-end
-
-RunService.RenderStepped:Connect(function()
+RunService.Stepped:Connect(function()
     local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
     if hum then
         if Settings.SpeedHack then
             hum.WalkSpeed = Settings.WalkSpeed
+        else
+            if hum.WalkSpeed == Settings.WalkSpeed then
+                hum.WalkSpeed = 16
+            end
         end
     end
 
@@ -843,125 +717,258 @@ RunService.RenderStepped:Connect(function()
             end
         end
     end
+end)
 
-    -- Aimbot Logic (V6.4 Direct Lock)
-    if Settings.Aimbot then
-        FOVCircle.Visible = true
-        FOVCircle.Radius = Settings.FOVRadius
-        FOVCircle.Position = UserInputService:GetMouseLocation()
-        
-        local target = GetClosestTarget()
-        if target then
-            local targetScreenPos, onScreen = Camera:WorldToViewportPoint(target.Position)
-            if onScreen then
-                TargetLine.Visible = true
-                TargetLine.From = UserInputService:GetMouseLocation()
-                TargetLine.To = Vector2.new(targetScreenPos.X, targetScreenPos.Y)
-                
-                Camera.CFrame = CFrame.new(Camera.CFrame.Position, target.Position)
+CreateToggle(MiscPage, "Anti Crash", true, function(state) Settings.AntiCrash = state end)
+CreateToggle(MiscPage, "Anti Kick", true, function(state) Settings.AntiKick = state end)
+
+CreateToggle(MiscPage, "Auto Bypass", true, function(state)
+    Settings.AutoBypass = state
+    if state then
+        task.spawn(function()
+            pcall(function()
+                if setreadonly then
+                    pcall(function()
+                        setreadonly(getrenv(), false)
+                        setreadonly(getreg(), false)
+                        setreadonly(getgc(), false)
+                    end)
+                end
+                if make_writeable then
+                    pcall(function()
+                        make_writeable(getreg())
+                    end)
+                end
+                if detour_function then
+                    detour_function = function(...)
+                        return true
+                    end
+                end
+                if getconnections then
+                    pcall(function()
+                        for _, connection in ipairs(getconnections(ScriptContext.Error)) do
+                            connection:Disable()
+                        end
+                    end)
+                end
+                if getcallingscript then
+                    pcall(function()
+                        getcallingscript = function()
+                            return nil
+                        end
+                    end)
+                end
+            end)
+        end)
+    end
+end)
+
+local OriginalLightValues = {}
+for _, obj in pairs(Workspace:GetDescendants()) do
+    if obj:IsA("PointLight") or obj:IsA("SurfaceLight") or obj:IsA("SpotLight") then
+        OriginalLightValues[obj] = obj.Brightness
+    end
+end
+
+Workspace.DescendantAdded:Connect(function(obj)
+    if obj:IsA("PointLight") or obj:IsA("SurfaceLight") or obj:IsA("SpotLight") then
+        OriginalLightValues[obj] = obj.Brightness
+    end
+end)
+
+local function SetIndoorLighting(isNight)
+    for obj, origBrightness in pairs(OriginalLightValues) do
+        if obj and obj.Parent then
+            if isNight then
+                obj.Brightness = origBrightness * 0.2
             else
-                TargetLine.Visible = false
+                obj.Brightness = origBrightness 
             end
+        end
+    end
+end
+
+CreateToggle(MiscPage, "Night Mode", true, function(state)
+    Settings.NightMode = state
+    if state then
+        Settings.DaylightMode = false
+        Lighting.ClockTime = 0
+        Lighting.Brightness = 0.2
+        Lighting.OutdoorAmbient = Color3.fromRGB(20, 20, 40)
+        Lighting.GlobalShadows = false
+        SetIndoorLighting(true)
+    else
+        Lighting.ClockTime = 14
+        Lighting.Brightness = 1
+        Lighting.OutdoorAmbient = Color3.fromRGB(128, 128, 128)
+        Lighting.GlobalShadows = true
+        SetIndoorLighting(false)
+    end
+end)
+
+CreateToggle(MiscPage, "Daylight Mode", true, function(state)
+    Settings.DaylightMode = state
+    if state then
+        Settings.NightMode = false
+        Lighting.ClockTime = 14
+        Lighting.Brightness = 3
+        Lighting.OutdoorAmbient = Color3.fromRGB(255, 255, 255)
+        Lighting.GlobalShadows = false
+        SetIndoorLighting(false)
+    else
+        Lighting.ClockTime = 14
+        Lighting.Brightness = 1
+        Lighting.OutdoorAmbient = Color3.fromRGB(128, 128, 128)
+        Lighting.GlobalShadows = true
+        SetIndoorLighting(false)
+    end
+end)
+
+-- ==========================================
+-- GUN MENU UI (AIMBOT, SILENT AIM, NO RECOIL)
+-- ==========================================
+
+CreateToggle(GunPage, "Aimbot (Auto Target Lock)", true, function(state) Settings.Aimbot = state end)
+CreateToggle(GunPage, "Silent Aim", true, function(state) Settings.SilentAim = state end)
+CreateToggle(GunPage, "No Recoil", true, function(state) Settings.NoRecoil = state end)
+
+CreateSelector(GunPage, "Target Part", {"Head", "Body"}, 1, function(selected) 
+    Settings.TargetPart = selected == "Body" and "UpperTorso" or "Head"
+end)
+CreateSlider(GunPage, "Aim FOV Size", 50, 400, 150, true, function(val) Settings.FOVRadius = val end)
+CreateSlider(GunPage, "Aim Distance", 100, 2000, 500, true, function(val) Settings.AimDistance = val end)
+CreateSlider(GunPage, "Aim Smoothness", 1, 50, 25, true, function(val) Settings.AimSmoothness = val end)
+
+local function IsInLobby()
+    local char = LocalPlayer.Character
+    if not char then return true end
+    local hum = char:FindFirstChildOfClass("Humanoid")
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    if not hum or not hrp or hum.Health <= 0 then return true end
+    return false
+end
+
+local function IsValidEnemy(plr)
+    if plr == LocalPlayer then return false end
+    if not plr.Character or not plr.Character:FindFirstChildOfClass("Humanoid") then return false end
+    if plr.Character.Humanoid.Health <= 0 then return false end
+
+    local targetHrp = plr.Character:FindFirstChild("HumanoidRootPart")
+    if not targetHrp then return false end
+
+    if LocalPlayer.Team and plr.Team then
+        if LocalPlayer.Team == plr.Team then
+            return false
+        end
+    end
+
+    if LocalPlayer.Team == nil or plr.Team == nil then
+        return true
+    end
+
+    return LocalPlayer.Team ~= plr.Team
+end
+
+local function GetClosestTarget()
+    if IsInLobby() then return nil end
+
+    local closestTarget = nil
+    local maxDist = Settings.FOVRadius
+    local screenCenter = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
+    local myRoot = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+
+    for _, plr in pairs(Players:GetPlayers()) do
+        if IsValidEnemy(plr) then
+            local partName = Settings.TargetPart
+            local targetPart = plr.Character:FindFirstChild(partName) or plr.Character:FindFirstChild("HumanoidRootPart")
+            
+            if targetPart and myRoot then
+                local worldDist = (targetPart.Position - myRoot.Position).Magnitude
+                if worldDist <= Settings.AimDistance then
+                    local pos, onScreen = Camera:WorldToViewportPoint(targetPart.Position)
+                    if onScreen then
+                        local dist = (Vector2.new(pos.X, pos.Y) - screenCenter).Magnitude
+                        if dist < maxDist then
+                            maxDist = dist
+                            closestTarget = targetPart
+                        end
+                    end
+                end
+            end
+        end
+    end
+    return closestTarget
+end
+
+-- ==========================================
+-- GUN LOGIC: AIMBOT, SILENT AIM, & NO RECOIL
+-- ==========================================
+
+local oldNamecall
+oldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
+    local method = getnamecallmethod()
+    local args = {...}
+    
+    if Settings.SilentAim and not IsInLobby() then
+        if method == "FireServer" or method == "InvokeServer" or method == "Raycast" then
+            local targetPart = GetClosestTarget()
+            if targetPart then
+                for i, v in ipairs(args) do
+                    if typeof(v) == "Vector3" then
+                        local camPos = Camera.CFrame.Position
+                        if (v - camPos).Magnitude < 500 then
+                            args[i] = targetPart.Position
+                        end
+                    elseif typeof(v) == "CFrame" then
+                        args[i] = CFrame.new(v.Position, targetPart.Position)
+                    end
+                end
+            end
+        end
+    end
+    
+    return oldNamecall(self, unpack(args))
+end)
+
+RunService.RenderStepped:Connect(function()
+    local center = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
+    
+    local activeCheck = Settings.Aimbot and not IsInLobby()
+    FOVCircle.Position = center
+    FOVCircle.Radius = Settings.FOVRadius
+    FOVCircle.Visible = activeCheck
+
+    local lockedTarget = GetClosestTarget()
+    if lockedTarget and activeCheck then
+        local pos, onScreen = Camera:WorldToViewportPoint(lockedTarget.Position)
+        if onScreen then
+            TargetLine.From = center
+            TargetLine.To = Vector2.new(pos.X, pos.Y)
+            TargetLine.Visible = true
+            
+            local smoothFactor = math.clamp(Settings.AimSmoothness / 100, 0.01, 1)
+            Camera.CFrame = Camera.CFrame:Lerp(CFrame.new(Camera.CFrame.Position, lockedTarget.Position), smoothFactor)
         else
             TargetLine.Visible = false
         end
     else
-        FOVCircle.Visible = false
         TargetLine.Visible = false
     end
 
-    -- ESP Render Loop (Guaranteed Working & Wallhack)
-    for _, plr in pairs(Players:GetPlayers()) do
-        if plr ~= LocalPlayer then
-            local esp = GetESPDrawings(plr)
-            local char = plr.Character
-            local hrp = char and char:FindFirstChild("HumanoidRootPart")
-            local head = char and char:FindFirstChild("Head")
-            local humanoid = char and char:FindFirstChildOfClass("Humanoid")
-
-            if char and hrp and head and humanoid and humanoid.Health > 0 then
-                local headPos, headOnScreen = Camera:WorldToViewportPoint(head.Position + Vector3.new(0, 0.8, 0))
-                local myRoot = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-                
-                if headPos.Z > 0 then
-                    -- 1. ESP Line
-                    if Settings.ESP_Line then
-                        esp.Line.From = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y)
-                        esp.Line.To = Vector2.new(headPos.X, headPos.Y)
-                        esp.Line.Visible = true
-                    else
-                        esp.Line.Visible = false
+    if Settings.NoRecoil and not IsInLobby() then
+        pcall(function()
+            local char = LocalPlayer.Character
+            if char then
+                for _, child in pairs(char:GetDescendants()) do
+                    if child:IsA("Folder") and (child.Name:lower():find("recoil") or child.Name:lower():find("gunanim")) then
+                        child:Destroy()
                     end
-
-                    -- 2. ESP Name
-                    if Settings.ESP_Name then
-                        esp.NameText.Text = plr.Name
-                        esp.NameText.Position = Vector2.new(headPos.X, headPos.Y - 22)
-                        esp.NameText.Visible = true
-                    else
-                        esp.NameText.Visible = false
-                    end
-
-                    -- 3. ESP Distance
-                    if Settings.ESP_Distance and myRoot then
-                        local dist = math.floor((hrp.Position - myRoot.Position).Magnitude)
-                        esp.DistText.Text = "[" .. dist .. "m]"
-                        esp.DistText.Position = Vector2.new(headPos.X, headPos.Y - 36)
-                        esp.DistText.Visible = true
-                    else
-                        esp.DistText.Visible = false
-                    end
-
-                    -- 4. ESP Gender
-                    if Settings.ESP_Gender then
-                        local genderStr = "♂ [Boy]"
-                        local nameLower = plr.Name:lower()
-                        if nameLower:find("girl") or nameLower:find("siti") or nameLower:find("putri") or nameLower:find("ayu") then
-                            genderStr = "♀ [Girl]"
-                        end
-                        esp.GenderText.Text = genderStr
-                        esp.GenderText.Position = Vector2.new(headPos.X, headPos.Y - 50)
-                        esp.GenderText.Visible = true
-                    else
-                        esp.GenderText.Visible = false
-                    end
-
-                    -- 5. ESP Health
-                    if Settings.ESP_Health then
-                        local legPos = Camera:WorldToViewportPoint(hrp.Position - Vector3.new(0, 3, 0))
-                        local height = math.abs(legPos.Y - headPos.Y)
-                        local width = height / 2
-                        local healthPct = math.clamp(humanoid.Health / humanoid.MaxHealth, 0, 1)
-                        
-                        esp.HealthBg.Size = Vector2.new(3, height)
-                        esp.HealthBg.Position = Vector2.new(headPos.X - (width / 2) - 6, headPos.Y)
-                        esp.HealthBg.Visible = true
-
-                        local barHeight = height * healthPct
-                        esp.HealthBar.Size = Vector2.new(1, barHeight)
-                        esp.HealthBar.Position = Vector2.new(headPos.X - (width / 2) - 5, headPos.Y + (height - barHeight))
-                        esp.HealthBar.Color = Color3.fromHSV(healthPct * 0.3, 1, 1)
-                        esp.HealthBar.Visible = true
-                    else
-                        esp.HealthBg.Visible = false
-                        esp.HealthBar.Visible = false
-                    end
-                else
-                    esp.Line.Visible = false
-                    esp.NameText.Visible = false
-                    esp.DistText.Visible = false
-                    esp.GenderText.Visible = false
-                    esp.HealthBg.Visible = false
-                    esp.HealthBar.Visible = false
                 end
-            else
-                esp.Line.Visible = false
-                esp.NameText.Visible = false
-                esp.DistText.Visible = false
-                esp.GenderText.Visible = false
-                esp.HealthBg.Visible = false
-                esp.HealthBar.Visible = false
+                local cameraShaker = Camera:FindFirstChild("CameraShaker")
+                if cameraShaker then
+                    cameraShaker.Enabled = false
+                end
             end
-        end
+        end)
     end
 end)
