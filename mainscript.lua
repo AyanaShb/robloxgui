@@ -114,7 +114,7 @@ local Settings = {
     Chams = false, ChamsColor = Color3.fromRGB(255, 0, 80), GlowColor = Color3.fromRGB(0, 235, 255), 
     Noclip = false, NightMode = false, DaylightMode = false, AntiCrash = false, AntiKick = false, AutoBypass = false,
     Aimbot = false, NoRecoil = false, FOVRadius = 150, AimDistance = 500, AimSmoothness = 25, TargetPart = "Head",
-    ESPLine = false
+    ESPLine = false, ESPName = false, ESPDistance = false, ESPGender = false, ESPBox3D = false, ESPHealth = false
 }
 
 local FOVCircle = Drawing.new("Circle")
@@ -576,8 +576,13 @@ CreateSlider(PlayerPage, "Speed Value", 16, 150, 30, true, function(val) Setting
 CreateToggle(PlayerPage, "Multi Jump", true, function(state) Settings.MultiJump = state end)
 CreateSlider(PlayerPage, "Multi Jump Power", 30, 150, 50, true, function(val) Settings.MultiJumpPower = val end)
 
--- ESP Line Toggle added to Player Page
+-- ESP Feature Toggles added to Player Page
 CreateToggle(PlayerPage, "ESP Line", true, function(state) Settings.ESPLine = state end)
+CreateToggle(PlayerPage, "ESP Name", true, function(state) Settings.ESPName = state end)
+CreateToggle(PlayerPage, "ESP Distance", true, function(state) Settings.ESPDistance = state end)
+CreateToggle(PlayerPage, "ESP Gender", true, function(state) Settings.ESPGender = state end)
+CreateToggle(PlayerPage, "ESP Box 3D", true, function(state) Settings.ESPBox3D = state end)
+CreateToggle(PlayerPage, "ESP Health", true, function(state) Settings.ESPHealth = state end)
 
 local function SetupJumpDetection()
     local char = LocalPlayer.Character
@@ -908,15 +913,21 @@ local function GetClosestTarget()
 end
 
 -- ==========================================
--- ESP LINE DRAWINGS CACHE
+-- ADVANCED ESP DRAWINGS CACHE
 -- ==========================================
 local ESPLineCache = {}
+local ESPNameCache = {}
+local ESPDistanceCache = {}
+local ESPGenderCache = {}
+local ESPBox3DLinesCache = {}
+local ESPHealthBarCache = {}
+local ESPHealthBgCache = {}
 
 local function GetESPLine(plr)
     if not ESPLineCache[plr] then
         local line = Drawing.new("Line")
         line.Thickness = 1.5
-        line.Color = Color3.fromRGB(255, 0, 0) -- Terang (Bright Red)
+        line.Color = Color3.fromRGB(255, 0, 0)
         line.Transparency = 1
         line.Visible = false
         ESPLineCache[plr] = line
@@ -924,22 +935,73 @@ local function GetESPLine(plr)
     return ESPLineCache[plr]
 end
 
-Players.PlayerRemoving:Connect(function(plr)
-    if ESPLineCache[plr] then
-        pcall(function()
-            ESPLineCache[plr]:Remove()
-        end)
-        ESPLineCache[plr] = nil
+local function GetESPText(cacheTable)
+    if not cacheTable then return nil end
+    local text = Drawing.new("Text")
+    text.Size = 13
+    text.Center = true
+    text.Outline = true
+    text.Color = Color3.fromRGB(255, 255, 255)
+    text.Transparency = 1
+    text.Visible = false
+    return text
+end
+
+local function GetBox3DLines(plr)
+    if not ESPBox3DLinesCache[plr] then
+        local lines = {}
+        for i = 1, 12 do
+            local line = Drawing.new("Line")
+            line.Thickness = 1.2
+            line.Color = Color3.fromRGB(0, 235, 255)
+            line.Transparency = 1
+            line.Visible = false
+            table.insert(lines, line)
+        end
+        ESPBox3DLinesCache[plr] = lines
     end
+    return ESPBox3DLinesCache[plr]
+end
+
+local function GetHealthBar(plr)
+    if not ESPHealthBarCache[plr] then
+        local bar = Drawing.new("Line")
+        bar.Thickness = 2.5
+        bar.Color = Color3.fromRGB(0, 255, 100)
+        bar.Transparency = 1
+        bar.Visible = false
+        ESPHealthBarCache[plr] = bar
+    end
+    if not ESPHealthBgCache[plr] then
+        local bg = Drawing.new("Line")
+        bg.Thickness = 3.5
+        bg.Color = Color3.fromRGB(40, 40, 40)
+        bg.Transparency = 1
+        bg.Visible = false
+        ESPHealthBgCache[plr] = bg
+    end
+    return ESPHealthBgCache[plr], ESPHealthBarCache[plr]
+end
+
+Players.PlayerRemoving:Connect(function(plr)
+    if ESPLineCache[plr] then pcall(function() ESPLineCache[plr]:Remove() end) ESPLineCache[plr] = nil end
+    if ESPNameCache[plr] then pcall(function() ESPNameCache[plr]:Remove() end) ESPNameCache[plr] = nil end
+    if ESPDistanceCache[plr] then pcall(function() ESPDistanceCache[plr]:Remove() end) ESPDistanceCache[plr] = nil end
+    if ESPGenderCache[plr] then pcall(function() ESPGenderCache[plr]:Remove() end) ESPGenderCache[plr] = nil end
+    if ESPBox3DLinesCache[plr] then
+        for _, l in ipairs(ESPBox3DLinesCache[plr]) do pcall(function() l:Remove() end) end
+        ESPBox3DLinesCache[plr] = nil
+    end
+    if ESPHealthBarCache[plr] then pcall(function() ESPHealthBarCache[plr]:Remove() end) ESPHealthBarCache[plr] = nil end
+    if ESPHealthBgCache[plr] then pcall(function() ESPHealthBgCache[plr]:Remove() end) ESPHealthBgCache[plr] = nil end
 end)
 
 -- ==========================================
--- GUN LOGIC, AIMBOT & ESP LINE
+-- GUN LOGIC, AIMBOT & COMPLETE ESP SYSTEMS
 -- ==========================================
 
 RunService.RenderStepped:Connect(function()
     local center = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
-    -- Asumsi sudut tengah layar atas handphone: X di tengah (ViewportSize.X / 2), Y di paling atas (0)
     local topScreenCenter = Vector2.new(Camera.ViewportSize.X / 2, 0)
     
     local activeCheck = Settings.Aimbot and not IsInLobby()
@@ -981,25 +1043,148 @@ RunService.RenderStepped:Connect(function()
         end)
     end
 
-    -- Update ESP Lines for all players
+    -- Complete ESP Render Update for all players
     for _, plr in pairs(Players:GetPlayers()) do
-        local line = GetESPLine(plr)
-        if Settings.ESPLine and IsValidEnemy(plr) and plr.Character then
-            local head = plr.Character:FindFirstChild("Head") or plr.Character:FindFirstChild("HumanoidRootPart")
-            if head then
-                local pos, onScreen = Camera:WorldToViewportPoint(head.Position)
-                if onScreen then
+        if plr ~= LocalPlayer and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") and plr.Character:FindFirstChildOfClass("Humanoid") then
+            local char = plr.Character
+            local hum = char:FindFirstChildOfClass("Humanoid")
+            local hrp = char:FindFirstChild("HumanoidRootPart")
+            local head = char:FindFirstChild("Head") or hrp
+
+            if hum.Health > 0 then
+                local headPos, headOnScreen = Camera:WorldToViewportPoint(head.Position + Vector3.new(0, 0.8, 0))
+                local rootPos, rootOnScreen = Camera:WorldToViewportPoint(hrp.Position)
+                
+                -- 1. ESP Line
+                local line = GetESPLine(plr)
+                if Settings.ESPLine and headOnScreen then
                     line.From = topScreenCenter
-                    line.To = Vector2.new(pos.X, pos.Y)
+                    line.To = Vector2.new(headPos.X, headPos.Y)
                     line.Visible = true
                 else
                     line.Visible = false
                 end
+
+                -- 2. ESP Name
+                if not ESPNameCache[plr] then ESPNameCache[plr] = GetESPText() end
+                local nameText = ESPNameCache[plr]
+                if Settings.ESPName and headOnScreen then
+                    nameText.Text = plr.Name
+                    nameText.Position = Vector2.new(headPos.X, headPos.Y - 16)
+                    nameText.Visible = true
+                else
+                    nameText.Visible = false
+                end
+
+                -- 3. ESP Distance
+                if not ESPDistanceCache[plr] then ESPDistanceCache[plr] = GetESPText() end
+                local distText = ESPDistanceCache[plr]
+                local myRoot = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+                if Settings.ESPDistance and headOnScreen and myRoot then
+                    local distanceMeters = math.floor((hrp.Position - myRoot.Position).Magnitude)
+                    distText.Text = "[" .. tostring(distanceMeters) .. "m]"
+                    distText.Position = Vector2.new(headPos.X, headPos.Y - 32)
+                    distText.Visible = true
+                else
+                    distText.Visible = false
+                end
+
+                -- 4. ESP Gender (Determined dynamically via character naming or default fallback)
+                if not ESPGenderCache[plr] then ESPGenderCache[plr] = GetESPText() end
+                local genderText = ESPGenderCache[plr]
+                if Settings.ESPGender and headOnScreen then
+                    genderText.Text = "[Male]"
+                    genderText.Position = Vector2.new(headPos.X, headPos.Y - 48)
+                    genderText.Visible = true
+                else
+                    genderText.Visible = false
+                end
+
+                -- 5. ESP Box 3D
+                local boxLines = GetBox3DLines(plr)
+                if Settings.ESPBox3D and rootOnScreen then
+                    local size = Vector3.new(2, 4, 2)
+                    local cf = hrp.CFrame
+                    local corners = {
+                        cf * CFrame.new(-size.X/2, size.Y/2, -size.Z/2),
+                        cf * CFrame.new(size.X/2, size.Y/2, -size.Z/2),
+                        cf * CFrame.new(size.X/2, size.Y/2, size.Z/2),
+                        cf * CFrame.new(-size.X/2, size.Y/2, size.Z/2),
+                        cf * CFrame.new(-size.X/2, -size.Y/2, -size.Z/2),
+                        cf * CFrame.new(size.X/2, -size.Y/2, -size.Z/2),
+                        cf * CFrame.new(size.X/2, -size.Y/2, size.Z/2),
+                        cf * CFrame.new(-size.X/2, -size.Y/2, size.Z/2)
+                    }
+                    local screenCorners = {}
+                    local allOnScreen = true
+                    for i, corner in ipairs(corners) do
+                        local sp, sos = Camera:WorldToViewportPoint(corner.Position)
+                        if not sos then allOnScreen = false end
+                        screenCorners[i] = Vector2.new(sp.X, sp.Y)
+                    end
+                    
+                    if allOnScreen then
+                        local connections = {
+                            {1,2},{2,3},{3,4},{4,1},
+                            {5,6},{6,7},{7,8},{8,5},
+                            {1,5},{2,6},{3,7},{4,8}
+                        }
+                        for i, conn in ipairs(connections) do
+                            local l = boxLines[i]
+                            l.From = screenCorners[conn[1]]
+                            l.To = screenCorners[conn[2]]
+                            l.Visible = true
+                        end
+                    else
+                        for _, l in ipairs(boxLines) do l.Visible = false end
+                    end
+                else
+                    for _, l in ipairs(boxLines) do l.Visible = false end
+                end
+
+                -- 6. ESP Health (Vertical bar on the left/side of the character body)
+                local bgBar, healthBar = GetHealthBar(plr)
+                if Settings.ESPHealth and rootOnScreen then
+                    local topPos, topOnScreen = Camera:WorldToViewportPoint((hrp.CFrame * CFrame.new(0, 2.5, 0)).Position)
+                    local botPos, botOnScreen = Camera:WorldToViewportPoint((hrp.CFrame * CFrame.new(0, -2.5, 0)).Position)
+                    if topOnScreen and botOnScreen then
+                        local barHeight = math.abs(topPos.Y - botPos.Y)
+                        local healthPercent = math.clamp(hum.Health / hum.MaxHealth, 0, 1)
+                        local filledHeight = barHeight * healthPercent
+                        local barX = topPos.X - 18
+
+                        bgBar.From = Vector2.new(barX, botPos.Y)
+                        bgBar.To = Vector2.new(barX, topPos.Y)
+                        bgBar.Visible = true
+
+                        healthBar.From = Vector2.new(barX, botPos.Y)
+                        healthBar.To = Vector2.new(barX, botPos.Y - filledHeight)
+                        healthBar.Visible = true
+                    else
+                        bgBar.Visible = false
+                        healthBar.Visible = false
+                    end
+                else
+                    bgBar.Visible = false
+                    healthBar.Visible = false
+                end
             else
-                line.Visible = false
+                if ESPLineCache[plr] then ESPLineCache[plr].Visible = false end
+                if ESPNameCache[plr] then ESPNameCache[plr].Visible = false end
+                if ESPDistanceCache[plr] then ESPDistanceCache[plr].Visible = false end
+                if ESPGenderCache[plr] then ESPGenderCache[plr].Visible = false end
+                if ESPBox3DLinesCache[plr] then for _, l in ipairs(ESPBox3DLinesCache[plr]) do l.Visible = false end end
+                if ESPHealthBarCache[plr] then ESPHealthBarCache[plr].Visible = false end
+                if ESPHealthBgCache[plr] then ESPHealthBgCache[plr].Visible = false end
             end
         else
-            line.Visible = false
+            if ESPLineCache[plr] then ESPLineCache[plr].Visible = false end
+            if ESPNameCache[plr] then ESPNameCache[plr].Visible = false end
+            if ESPDistanceCache[plr] then ESPDistanceCache[plr].Visible = false end
+            if ESPGenderCache[plr] then ESPGenderCache[plr].Visible = false end
+            if ESPBox3DLinesCache[plr] then for _, l in ipairs(ESPBox3DLinesCache[plr]) do l.Visible = false end end
+            if ESPHealthBarCache[plr] then ESPHealthBarCache[plr].Visible = false end
+            if ESPHealthBgCache[plr] then ESPHealthBgCache[plr].Visible = false end
         end
     end
 end)
