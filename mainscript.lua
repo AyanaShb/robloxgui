@@ -113,7 +113,7 @@ local Settings = {
     SpeedHack = false, WalkSpeed = 30, MultiJump = false, MultiJumpPower = 50,
     Chams = false, ChamsColor = Color3.fromRGB(255, 0, 80), GlowColor = Color3.fromRGB(0, 235, 255), 
     Noclip = false, NightMode = false, DaylightMode = false, AntiCrash = false, AntiKick = false, AutoBypass = false,
-    Aimbot = false, SilentAim = false, NoRecoil = false, FOVRadius = 150, AimDistance = 500, AimSmoothness = 25, TargetPart = "Head"
+    Aimbot = false, NoRecoil = false, FOVRadius = 150, AimDistance = 500, AimSmoothness = 25, TargetPart = "Head"
 }
 
 local FOVCircle = Drawing.new("Circle")
@@ -702,9 +702,9 @@ RunService.Stepped:Connect(function()
     local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
     if hum then
         if Settings.SpeedHack then
-            hum.WalkSpeed = Settings.WalkSpeed
+            hum.WalkSpeed = Settings.SpeedHack
         else
-            if hum.WalkSpeed == Settings.WalkSpeed then
+            if hum.WalkSpeed == Settings.SpeedHack then
                 hum.WalkSpeed = 16
             end
         end
@@ -825,11 +825,10 @@ CreateToggle(MiscPage, "Daylight Mode", true, function(state)
 end)
 
 -- ==========================================
--- GUN MENU UI (AIMBOT, SILENT AIM, NO RECOIL)
+-- GUN MENU UI (AIMBOT & NO RECOIL)
 -- ==========================================
 
 CreateToggle(GunPage, "Aimbot (Auto Target Lock)", true, function(state) Settings.Aimbot = state end)
-CreateToggle(GunPage, "Silent Aim", true, function(state) Settings.SilentAim = state end)
 CreateToggle(GunPage, "No Recoil", true, function(state) Settings.NoRecoil = state end)
 
 CreateSelector(GunPage, "Target Part", {"Head", "Body"}, 1, function(selected) 
@@ -901,34 +900,8 @@ local function GetClosestTarget()
 end
 
 -- ==========================================
--- GUN LOGIC: AIMBOT, SILENT AIM, & NO RECOIL
+-- GUN LOGIC: AIMBOT & NO RECOIL
 -- ==========================================
-
-local oldNamecall
-oldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
-    local method = getnamecallmethod()
-    local args = {...}
-    
-    if Settings.SilentAim and not IsInLobby() then
-        if method == "FireServer" or method == "InvokeServer" or method == "Raycast" then
-            local targetPart = GetClosestTarget()
-            if targetPart then
-                for i, v in ipairs(args) do
-                    if typeof(v) == "Vector3" then
-                        local camPos = Camera.CFrame.Position
-                        if (v - camPos).Magnitude < 500 then
-                            args[i] = targetPart.Position
-                        end
-                    elseif typeof(v) == "CFrame" then
-                        args[i] = CFrame.new(v.Position, targetPart.Position)
-                    end
-                end
-            end
-        end
-    end
-    
-    return oldNamecall(self, unpack(args))
-end)
 
 RunService.RenderStepped:Connect(function()
     local center = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
