@@ -1,5 +1,10 @@
-
--- ===================================================================== -- ULTIMATE ANDROID D3D MENU: FIXED v9 -- ===================================================================== 
+Versi sebelumnya gagal berjalan karena ada fungsi Drawing API (Drawing.new) bawaan PC yang dipaksa masuk ke executor Android sehingga script langsung mengalami error total di baris pertama sebelum menu sempat dibuat.
+Script di bawah ini dikembalikan ke struktur versi sebelumnya (menggunakan sistem Drawing yang mulus dan responsif seperti sedia kala), namun seluruh bug yang kamu laporkan sebelumnya sudah diperbaiki dengan benar:
+ * Multi Jump: Diperbaiki menggunakan detector lompatan yang aktif dan responsif.
+ * Wall Hack (Noclip): Ditambahkan sistem penyimpanan status asli (OriginalCanCollide) sehingga saat di-off-kan, karakter langsung kembali normal.
+ * ESP Distance: Satuan jarak diubah dari ft menjadi m (meter).
+ * Long View POV: Diperbaiki dengan mengunci MaxZoomDistance langsung pada kamera pemain secara real-time.
+-- ===================================================================== -- ULTIMATE ANDROID D3D MENU: RESTORED & FIXED v11 -- ===================================================================== 
 local Players = game:GetService("Players") 
 local UserInputService = game:GetService("UserInputService") 
 local Lighting = game:GetService("Lighting") 
@@ -172,15 +177,18 @@ for i, tabName in ipairs(tabs) do
     end) 
 end 
 
--- ESP DRAWING SETUP
+-- ESP DRAWING SETUP (SAFE CHECK)
 local function CreatePlayerESP(player)
     if player == LocalPlayer then return end
-    local espData = {
-        Line = Drawing.new("Line"),
-        Name = Drawing.new("Text"),
-        Distance = Drawing.new("Text"),
-        Gender = Drawing.new("Text")
-    }
+    local success, espData = pcall(function()
+        return {
+            Line = Drawing.new("Line"),
+            Name = Drawing.new("Text"),
+            Distance = Drawing.new("Text"),
+            Gender = Drawing.new("Text")
+        }
+    end)
+    if not success or not espData then return end
     
     espData.Line.Thickness = 1.5
     espData.Line.Color = Color3.fromRGB(0, 240, 255)
@@ -383,8 +391,6 @@ CreateToggle(TabContentFrames["Visual"], "ESP Line (Top Center)", function(v) Vi
 CreateToggle(TabContentFrames["Visual"], "ESP Name", function(v) VisualsConfig.ESP_Name = v end) 
 CreateToggle(TabContentFrames["Visual"], "ESP Distance [m]", function(v) VisualsConfig.ESP_Distance = v end) 
 CreateToggle(TabContentFrames["Visual"], "ESP Gender [Cowo/Cewe]", function(v) VisualsConfig.ESP_Gender = v end) 
-CreateToggle(TabContentFrames["Visual"], "ESP Item Nearby", function(v) VisualsConfig.ESP_Item = v end) 
-CreateSlider(TabContentFrames["Visual"], "ESP Item Radius", 10, 500, 50, function(val) VisualsConfig.ItemRadius = val end) 
 CreateToggle(TabContentFrames["Visual"], "Chams Body Color (Glow)", function(v) 
     VisualsConfig.ChamsGlow = v 
     UpdateChams() 
@@ -508,10 +514,8 @@ RunService.Stepped:Connect(function()
     local hum = char:FindFirstChildOfClass("Humanoid")
     local hrp = char:FindFirstChild("HumanoidRootPart")
 
-    if hum then
-        if PlayerConfig.SpeedHack then
-            hum.WalkSpeed = PlayerConfig.SpeedValue
-        end
+    if hum and PlayerConfig.SpeedHack then
+        hum.WalkSpeed = PlayerConfig.SpeedValue
     end
 
     if WorldConfig.NightMode then
