@@ -1,4 +1,4 @@
--- ===================================================================== -- ULTIMATE ANDROID D3D MENU: FULLY FIXED PLAYER & UI ENGINE -- ===================================================================== 
+-- ===================================================================== -- ULTIMATE ANDROID D3D MENU: FIXED PLAYER ENGINE v3 -- ===================================================================== 
 local Players = game:GetService("Players") 
 local UserInputService = game:GetService("UserInputService") 
 local Lighting = game:GetService("Lighting") 
@@ -228,7 +228,7 @@ local function UpdateChams()
     end
 end
 
--- ROBUST UI BUILDERS (TOUCH & MOUSE FIXED)
+-- UI BUILDERS
 local function CreateToggle(parent, text, callback) 
     local frame = Instance.new("Frame") 
     frame.Size = UDim2.new(1, 0, 0, 36) 
@@ -388,15 +388,33 @@ CreateColorPicker(TabContentFrames["Visual"], "Chams Circle Color Picker", funct
     UpdateChams() 
 end) 
 
--- PLAYER TAB CONTROLS
-CreateToggle(TabContentFrames["Player"], "Speed Run", function(v) PlayerConfig.SpeedHack = v end) 
+-- PLAYER TAB CONTROLS (FULLY MAPPED)
+CreateToggle(TabContentFrames["Player"], "Speed Run", function(v) 
+    PlayerConfig.SpeedHack = v 
+    if not v and LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
+        LocalPlayer.Character:FindFirstChildOfClass("Humanoid").WalkSpeed = 16
+    end
+end) 
 CreateSlider(TabContentFrames["Player"], "Speed Value", 16, 200, 16, function(val) PlayerConfig.SpeedValue = val end) 
 CreateToggle(TabContentFrames["Player"], "Fly (Hold Jump)", function(v) PlayerConfig.Fly = v end) 
 CreateToggle(TabContentFrames["Player"], "Long Jump", function(v) PlayerConfig.LongJump = v end) 
 CreateToggle(TabContentFrames["Player"], "Wall Hack", function(v) PlayerConfig.WallHack = v end) 
-CreateToggle(TabContentFrames["Player"], "Size Hack", function(v) PlayerConfig.SizeHack = v end) 
+CreateToggle(TabContentFrames["Player"], "Size Hack", function(v) 
+    PlayerConfig.SizeHack = v 
+    if not v and LocalPlayer.Character then
+        pcall(function()
+            local hum = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+            if hum then
+                for _, scale in ipairs({"BodyHeightScale", "BodyWidthScale", "BodyDepthScale", "HeadScale"}) do
+                    local s = hum:FindFirstChild(scale)
+                    if s then s.Value = 1 end
+                end
+            end
+        end)
+    end
+end) 
 CreateSlider(TabContentFrames["Player"], "Size Value", 1, 5, 1, function(val) PlayerConfig.SizeValue = val end) 
-CreateToggle(TabContentFrames["Player"], "God Mode (Anti Hazard)", function(v) PlayerConfig.GodMode = v end) 
+CreateToggle(TabContentFrames["Player"], "God Mode (All Immunity)", function(v) PlayerConfig.GodMode = v end) 
 
 CreateToggle(TabContentFrames["world"], "Night Mode") 
 CreateToggle(TabContentFrames["world"], "Daylight Mode") 
@@ -418,7 +436,7 @@ tpButton.TextSize = 11.5
 tpButton.Font = Enum.Font.GothamBold 
 Instance.new("UICorner", tpButton).CornerRadius = UDim.new(0, 8) 
 
--- PLAYER HACKS EXECUTION ENGINE (BYPASSING HOOK LIMITATIONS)
+-- ADVANCED PLAYER ENGINE RUNSERVICE LOOP
 RunService.Stepped:Connect(function()
     local char = LocalPlayer.Character
     if not char then return end
@@ -426,7 +444,7 @@ RunService.Stepped:Connect(function()
     local hrp = char:FindFirstChild("HumanoidRootPart")
 
     if hum then
-        -- 1. Speed Hack Engine
+        -- 1. Speed Hack Engine (With instant normal reset logic)
         if PlayerConfig.SpeedHack then
             hum.WalkSpeed = PlayerConfig.SpeedValue
         end
@@ -437,20 +455,40 @@ RunService.Stepped:Connect(function()
             hum.JumpPower = 120
         end
 
-        -- 3. God Mode Engine
+        -- 3. Ultimate God Mode / Immunity Engine (Health, Oxygen, Temperature, Poison, Hazard)
         if PlayerConfig.GodMode then
             hum.Health = hum.MaxHealth
+            pcall(function()
+                -- Hapus objek pembunuh/hazard/status buruk di dalam karakter jika ada
+                for _, child in ipairs(char:GetChildren()) do
+                    if child:IsA("Folder") or child:IsA("Model") or child:IsA("ValueBase") then
+                        if child.Name:lower():match("oxygen") or child.Name:lower():match("air") or child.Name:lower():match("poison") or child.Name:lower():match("status") or child.Name:lower():match("temp") then
+                            if child:IsA("NumberValue") or child:IsA("IntValue") then
+                                child.Value = child.MaxValue or 100
+                            end
+                        end
+                    end
+                end
+                -- Proteksi status efek bawaan game (leaderstats / status khusus)
+                local stats = LocalPlayer:FindFirstChild("leaderstats")
+                if stats then
+                    for _, stat in ipairs(stats:GetChildren()) do
+                        if stat.Name:lower():match("oxygen") or stat.Name:lower():match("air") or stat.Name:lower():match("hp") then
+                            stat.Value = 999
+                        end
+                    end
+                end
+            end)
         end
     end
 
-    -- 4. Size Hack Engine
-    if PlayerConfig.SizeHack and char:FindFirstChild("Humanoid") then
+    -- 4. Size Hack Engine (Direct Roblox Scale Manipulation)
+    if PlayerConfig.SizeHack and hum then
         local scale = PlayerConfig.SizeValue
         pcall(function()
-            local humanoid = char:FindFirstChildOfClass("Humanoid")
-            for _, v in ipairs(humanoid:GetChildren()) do
-                if v:IsA("NumberValue") and (v.Name:match("Scale") or v.Name:match("Proportion")) then
-                    v.Value = scale
+            for _, scaleObj in ipairs({hum:FindFirstChild("BodyHeightScale"), hum:FindFirstChild("BodyWidthScale"), hum:FindFirstChild("BodyDepthScale"), hum:FindFirstChild("HeadScale")}) do
+                if scaleObj and scaleObj:IsA("NumberValue") then
+                    scaleObj.Value = scale
                 end
             end
         end)
@@ -465,21 +503,31 @@ RunService.Stepped:Connect(function()
         end
     end
 
-    -- 6. Fly Engine
+    -- 6. Interactive Hold-Jump Fly Engine (Tahan tombol lompat untuk terbang naik, lepas untuk berhenti/jatuh)
     if PlayerConfig.Fly and hrp then
         local camCFrame = Camera.CFrame
-        local flyVector = Vector3.new()
-        if UserInputService:IsKeyDown(Enum.KeyCode.W) then flyVector = flyVector + camCFrame.LookVector end
-        if UserInputService:IsKeyDown(Enum.KeyCode.S) then flyVector = flyVector - camCFrame.LookVector end
-        if UserInputService:IsKeyDown(Enum.KeyCode.A) then flyVector = flyVector - camCFrame.RightVector end
-        if UserInputService:IsKeyDown(Enum.KeyCode.D) then flyVector = flyVector + camCFrame.RightVector end
+        local moveDir = Vector3.new()
+        
+        if UserInputService:IsKeyDown(Enum.KeyCode.W) then moveDir = moveDir + camCFrame.LookVector end
+        if UserInputService:IsKeyDown(Enum.KeyCode.S) then moveDir = moveDir - camCFrame.LookVector end
+        if UserInputService:IsKeyDown(Enum.KeyCode.A) then moveDir = moveDir - camCFrame.RightVector end
+        if UserInputService:IsKeyDown(Enum.KeyCode.D) then moveDir = moveDir + camCFrame.RightVector end
 
-        if flyVector.Magnitude > 0 then
-            hrp.Velocity = flyVector.Unit * 60
-            hrp.AssemblyLinearVelocity = flyVector.Unit * 60
+        -- Deteksi tombol spasi/lompat ditekan atau tidak
+        local isHoldingJump = UserInputService:IsKeyDown(Enum.KeyCode.Space) or (hum and hum.Jump)
+
+        if moveDir.Magnitude > 0 or isHoldingJump then
+            local ySpeed = isHoldingJump and 45 or 0
+            if moveDir.Magnitude > 0 then
+                hrp.Velocity = Vector3.new(moveDir.Unit.X * 55, ySpeed, moveDir.Unit.Z * 55)
+                hrp.AssemblyLinearVelocity = Vector3.new(moveDir.Unit.X * 55, ySpeed, moveDir.Unit.Z * 55)
+            else
+                hrp.Velocity = Vector3.new(0, ySpeed, 0)
+                hrp.AssemblyLinearVelocity = Vector3.new(0, ySpeed, 0)
+            end
         else
-            hrp.Velocity = Vector3.new(0, 0.1, 0)
-            hrp.AssemblyLinearVelocity = Vector3.new(0, 0.1, 0)
+            -- Kalau tidak ditekan, biarkan gravitasi bekerja normal tanpa melayang statis
+            hrp.Velocity = Vector3.new(hrp.Velocity.X, -2, hrp.Velocity.Z)
         end
     end
 end)
