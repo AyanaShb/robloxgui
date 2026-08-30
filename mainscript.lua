@@ -1,6 +1,6 @@
 -- =====================================================================
--- CYBERPUNK ULTRA-LITE: × D3D MENU BG AMIN ×
--- High-Performance Modern Aesthetic UI & Complete Cheat Logic
+-- NEON OLEDSLICK UI: × D3D MENU BG AMIN ×
+-- Ultra-Modern, Sleek, Minimalist, Colorful & Lightweight Design
 -- =====================================================================
 
 local Players = game:GetService("Players")
@@ -21,7 +21,7 @@ getgenv().D3DConfig = {
     EspItem = false,
     ItemRadius = 50,
     Chams = false,
-    ChamsColor = Color3.fromRGB(255, 0, 85),
+    ChamsColor = Color3.fromRGB(255, 40, 130),
     SpeedRun = false,
     SpeedValue = 24,
     Fly = false,
@@ -42,7 +42,7 @@ getgenv().D3DConfig = {
 }
 
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "D3D_Menu_Cyberpunk"
+ScreenGui.Name = "D3D_OledSlick_Menu"
 ScreenGui.ResetOnSpawn = false
 if syn and syn.protect_gui then
     syn.protect_gui(ScreenGui)
@@ -53,13 +53,13 @@ else
     ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 end
 
--- Floating Cyberpunk Mini Icon "UI"
+-- Floating Mini Icon (Glow Capsule)
 local FloatButton = Instance.new("TextButton")
-FloatButton.Size = UDim2.new(0, 44, 0, 44)
-FloatButton.Position = UDim2.new(0, 24, 0, 100)
-FloatButton.BackgroundColor3 = Color3.fromRGB(12, 12, 18)
+FloatButton.Size = UDim2.new(0, 48, 0, 48)
+FloatButton.Position = UDim2.new(0, 20, 0, 100)
+FloatButton.BackgroundColor3 = Color3.fromRGB(8, 8, 12)
 FloatButton.Text = "UI"
-FloatButton.TextColor3 = Color3.fromRGB(0, 255, 200)
+FloatButton.TextColor3 = Color3.fromRGB(255, 255, 255)
 FloatButton.TextSize = 15
 FloatButton.Font = Enum.Font.GothamBold
 FloatButton.Active = true
@@ -67,68 +67,73 @@ FloatButton.Draggable = true
 FloatButton.Parent = ScreenGui
 
 local FloatCorner = Instance.new("UICorner")
-FloatCorner.CornerRadius = UDim.new(0, 12)
+FloatCorner.CornerRadius = UDim.new(1, 0)
 FloatCorner.Parent = FloatButton
 
 local FloatStroke = Instance.new("UIStroke")
-FloatStroke.Color = Color3.fromRGB(255, 0, 128)
 FloatStroke.Thickness = 2
 FloatStroke.Parent = FloatButton
 
--- Modern Glassmorphism Main Window
+local FloatGradient = Instance.new("UIGradient")
+FloatGradient.Color = ColorSequence.new({
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 0, 128)),
+    ColorSequenceKeypoint.new(0.5, Color3.fromRGB(120, 0, 255)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(0, 240, 255))
+})
+FloatGradient.Parent = FloatStroke
+
+-- Main Window (Pure OLED Dark + Blur & Vibrant Glow)
 local MainFrame = Instance.new("Frame")
-MainFrame.Size = UDim2.new(0, 440, 0, 300)
-MainFrame.Position = UDim2.new(0.5, -220, 0.5, -150)
-MainFrame.BackgroundColor3 = Color3.fromRGB(10, 10, 15)
-MainFrame.BackgroundTransparency = 0.08
+MainFrame.Size = UDim2.new(0, 430, 0, 310)
+MainFrame.Position = UDim2.new(0.5, -215, 0.5, -155)
+MainFrame.BackgroundColor3 = Color3.fromRGB(6, 6, 9)
+MainFrame.BackgroundTransparency = 0.05
 MainFrame.BorderSizePixel = 0
 MainFrame.Active = true
 MainFrame.Draggable = true
 MainFrame.Parent = ScreenGui
 
 local MainCorner = Instance.new("UICorner")
-MainCorner.CornerRadius = UDim.new(0, 14)
+MainCorner.CornerRadius = UDim.new(0, 16)
 MainCorner.Parent = MainFrame
 
--- Colorful Neon Gradient Accent Border
 local MainStroke = Instance.new("UIStroke")
-MainStroke.Color = Color3.fromRGB(0, 240, 255)
-MainStroke.Thickness = 1.8
+MainStroke.Thickness = 1.5
 MainStroke.Parent = MainFrame
 
-local UIGradient = Instance.new("UIGradient")
-UIGradient.Color = ColorSequence.new({
-    ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 0, 120)),
-    ColorSequenceKeypoint.new(0.5, Color3.fromRGB(140, 0, 255)),
-    ColorSequenceKeypoint.new(1, Color3.fromRGB(0, 220, 255))
+local MainGradient = Instance.new("UIGradient")
+MainGradient.Color = ColorSequence.new({
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 0, 128)),
+    ColorSequenceKeypoint.new(0.5, Color3.fromRGB(0, 240, 255)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(160, 0, 255))
 })
-UIGradient.Rotation = 90
-UIGradient.Parent = MainStroke
+MainGradient.Rotation = 45
+MainGradient.Parent = MainStroke
 
 FloatButton.MouseButton1Click:Connect(function()
     D3DConfig.MenuVisible = not D3DConfig.MenuVisible
     MainFrame.Visible = D3DConfig.MenuVisible
 end)
 
--- Title Header
+-- Title Header (Centered, Clean & Aesthetic)
 local TitleLabel = Instance.new("TextLabel")
-TitleLabel.Size = UDim2.new(1, 0, 0, 32)
+TitleLabel.Size = UDim2.new(1, 0, 0, 36)
 TitleLabel.BackgroundTransparency = 1
-TitleLabel.Text = " × D3D MENU BG AMIN ×"
-TitleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-TitleLabel.TextSize = 14
+TitleLabel.Text = "× D3D MENU BG AMIN ×"
+TitleLabel.TextColor3 = Color3.fromRGB(240, 240, 255)
+TitleLabel.TextSize = 13.5
 TitleLabel.Font = Enum.Font.GothamBold
 TitleLabel.Parent = MainFrame
 
--- Sleek Tab Bar (4 Tabs)
+-- Tab Bar (Floating Capsule Style)
 local TabContainer = Instance.new("Frame")
-TabContainer.Size = UDim2.new(1, -20, 0, 30)
-TabContainer.Position = UDim2.new(0, 10, 0, 34)
-TabContainer.BackgroundColor3 = Color3.fromRGB(18, 18, 26)
+TabContainer.Size = UDim2.new(1, -24, 0, 32)
+TabContainer.Position = UDim2.new(0, 12, 0, 36)
+TabContainer.BackgroundColor3 = Color3.fromRGB(12, 12, 18)
 TabContainer.Parent = MainFrame
 
 local TabCorner = Instance.new("UICorner")
-TabCorner.CornerRadius = UDim.new(0, 8)
+TabCorner.CornerRadius = UDim.new(0, 10)
 TabCorner.Parent = TabContainer
 
 local tabs = {"Visual", "Player", "world", "skill"}
@@ -141,24 +146,24 @@ for i, tabName in ipairs(tabs) do
     btn.Position = UDim2.new((i-1)*0.25, 0, 0, 0)
     btn.BackgroundTransparency = 1
     btn.Text = tabName:gsub("^%l", string.upper)
-    btn.TextColor3 = (i == 1) and Color3.fromRGB(0, 255, 200) or Color3.fromRGB(130, 130, 150)
+    btn.TextColor3 = (i == 1) and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(110, 110, 140)
     btn.TextSize = 11
     btn.Font = Enum.Font.GothamBold
     btn.Parent = TabContainer
     
     local content = Instance.new("ScrollingFrame")
-    content.Size = UDim2.new(1, -20, 1, -78)
-    content.Position = UDim2.new(0, 10, 0, 72)
+    content.Size = UDim2.new(1, -24, 1, -84)
+    content.Position = UDim2.new(0, 12, 0, 76)
     content.BackgroundTransparency = 1
     content.BorderSizePixel = 0
     content.ScrollBarThickness = 3
-    content.ScrollBarImageColor3 = Color3.fromRGB(255, 0, 128)
+    content.ScrollBarImageColor3 = Color3.fromRGB(0, 240, 255)
     content.Visible = (i == 1)
     content.Parent = MainFrame
     
     local uiList = Instance.new("UIListLayout")
     uiList.SortOrder = Enum.SortOrder.LayoutOrder
-    uiList.Padding = UDim.new(0, 6)
+    uiList.Padding = UDim.new(0, 8)
     uiList.Parent = content
     
     uiList:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
@@ -171,40 +176,40 @@ for i, tabName in ipairs(tabs) do
     btn.MouseButton1Click:Connect(function()
         for _, t in ipairs(tabs) do
             TabContentFrames[t].Visible = false
-            TabButtons[t].TextColor3 = Color3.fromRGB(130, 130, 150)
+            TabButtons[t].TextColor3 = Color3.fromRGB(110, 110, 140)
         end
         content.Visible = true
-        btn.TextColor3 = Color3.fromRGB(0, 255, 200)
+        btn.TextColor3 = Color3.fromRGB(255, 255, 255)
         D3DConfig.CurrentTab = tabName
     end)
 end
 
--- Component Builders (Lightweight & Modern)
+-- Re-engineered Modern Components (Slim Cards)
 local function CreateToggle(parent, text, callback, defaultVal)
     local frame = Instance.new("Frame")
-    frame.Size = UDim2.new(1, 0, 0, 32)
-    frame.BackgroundColor3 = Color3.fromRGB(16, 16, 24)
+    frame.Size = UDim2.new(1, 0, 0, 36)
+    frame.BackgroundColor3 = Color3.fromRGB(12, 12, 18)
     frame.BorderSizePixel = 0
     
     local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, 6)
+    corner.CornerRadius = UDim.new(0, 8)
     corner.Parent = frame
     
     local label = Instance.new("TextLabel")
-    label.Size = UDim2.new(0.75, 0, 1, 0)
-    label.Position = UDim2.new(0, 10, 0, 0)
+    label.Size = UDim2.new(0.7, 0, 1, 0)
+    label.Position = UDim2.new(0, 12, 0, 0)
     label.BackgroundTransparency = 1
     label.Text = text
-    label.TextColor3 = Color3.fromRGB(220, 220, 230)
+    label.TextColor3 = Color3.fromRGB(220, 220, 235)
     label.TextSize = 10.5
     label.Font = Enum.Font.GothamMedium
     label.TextXAlignment = Enum.TextXAlignment.Left
     label.Parent = frame
     
     local toggleBtn = Instance.new("TextButton")
-    toggleBtn.Size = UDim2.new(0, 36, 0, 18)
-    toggleBtn.Position = UDim2.new(1, -44, 0.5, -9)
-    toggleBtn.BackgroundColor3 = defaultVal and Color3.fromRGB(0, 255, 150) or Color3.fromRGB(35, 35, 48)
+    toggleBtn.Size = UDim2.new(0, 42, 0, 20)
+    toggleBtn.Position = UDim2.new(1, -50, 0.5, -10)
+    toggleBtn.BackgroundColor3 = defaultVal and Color3.fromRGB(0, 230, 130) or Color3.fromRGB(25, 25, 36)
     toggleBtn.Text = ""
     toggleBtn.Parent = frame
     
@@ -213,8 +218,8 @@ local function CreateToggle(parent, text, callback, defaultVal)
     tCorner.Parent = toggleBtn
     
     local circle = Instance.new("Frame")
-    circle.Size = UDim2.new(0, 14, 0, 14)
-    circle.Position = defaultVal and UDim2.new(1, -16, 0.5, -7) or UDim2.new(0, 2, 0.5, -7)
+    circle.Size = UDim2.new(0, 16, 0, 16)
+    circle.Position = defaultVal and UDim2.new(1, -18, 0.5, -8) or UDim2.new(0, 2, 0.5, -8)
     circle.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
     circle.Parent = toggleBtn
     
@@ -227,11 +232,11 @@ local function CreateToggle(parent, text, callback, defaultVal)
         active = not active
         callback(active)
         if active then
-            toggleBtn.BackgroundColor3 = Color3.fromRGB(0, 255, 150)
-            circle:TweenPosition(UDim2.new(1, -16, 0.5, -7), Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0.1, true)
+            toggleBtn.BackgroundColor3 = Color3.fromRGB(0, 230, 130)
+            circle:TweenPosition(UDim2.new(1, -18, 0.5, -8), Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0.1, true)
         else
-            toggleBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 48)
-            circle:TweenPosition(UDim2.new(0, 2, 0.5, -7), Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0.1, true)
+            toggleBtn.BackgroundColor3 = Color3.fromRGB(25, 25, 36)
+            circle:TweenPosition(UDim2.new(0, 2, 0.5, -8), Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0.1, true)
         end
     end)
     
@@ -240,29 +245,29 @@ end
 
 local function CreateSlider(parent, text, min, max, default, callback)
     local frame = Instance.new("Frame")
-    frame.Size = UDim2.new(1, 0, 0, 40)
-    frame.BackgroundColor3 = Color3.fromRGB(16, 16, 24)
+    frame.Size = UDim2.new(1, 0, 0, 44)
+    frame.BackgroundColor3 = Color3.fromRGB(12, 12, 18)
     frame.BorderSizePixel = 0
     
     local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, 6)
+    corner.CornerRadius = UDim.new(0, 8)
     corner.Parent = frame
     
     local label = Instance.new("TextLabel")
-    label.Size = UDim2.new(1, -16, 0, 18)
-    label.Position = UDim2.new(0, 8, 0, 3)
+    label.Size = UDim2.new(1, -24, 0, 18)
+    label.Position = UDim2.new(0, 12, 0, 4)
     label.BackgroundTransparency = 1
     label.Text = text .. ": " .. tostring(default)
-    label.TextColor3 = Color3.fromRGB(220, 220, 230)
+    label.TextColor3 = Color3.fromRGB(220, 220, 235)
     label.TextSize = 10.5
     label.Font = Enum.Font.GothamMedium
     label.TextXAlignment = Enum.TextXAlignment.Left
     label.Parent = frame
     
     local sliderBg = Instance.new("Frame")
-    sliderBg.Size = UDim2.new(1, -16, 0, 5)
-    sliderBg.Position = UDim2.new(0, 8, 0, 26)
-    sliderBg.BackgroundColor3 = Color3.fromRGB(30, 30, 42)
+    sliderBg.Size = UDim2.new(1, -24, 0, 5)
+    sliderBg.Position = UDim2.new(0, 12, 0, 28)
+    sliderBg.BackgroundColor3 = Color3.fromRGB(25, 25, 36)
     sliderBg.Parent = frame
     
     local sCorner = Instance.new("UICorner")
@@ -271,7 +276,7 @@ local function CreateSlider(parent, text, min, max, default, callback)
     
     local sliderFill = Instance.new("Frame")
     sliderFill.Size = UDim2.new((default - min) / (max - min), 0, 1, 0)
-    sliderFill.BackgroundColor3 = Color3.fromRGB(255, 0, 128)
+    sliderFill.BackgroundColor3 = Color3.fromRGB(0, 240, 255)
     sliderFill.Parent = sliderBg
     
     local fCorner = Instance.new("UICorner")
@@ -306,46 +311,46 @@ end
 
 local function CreateColorCirclePicker(parent, callback)
     local frame = Instance.new("Frame")
-    frame.Size = UDim2.new(1, 0, 0, 46)
-    frame.BackgroundColor3 = Color3.fromRGB(16, 16, 24)
+    frame.Size = UDim2.new(1, 0, 0, 48)
+    frame.BackgroundColor3 = Color3.fromRGB(12, 12, 18)
     frame.BorderSizePixel = 0
     
     local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, 6)
+    corner.CornerRadius = UDim.new(0, 8)
     corner.Parent = frame
     
     local label = Instance.new("TextLabel")
-    label.Size = UDim2.new(1, -16, 0, 16)
-    label.Position = UDim2.new(0, 8, 0, 3)
+    label.Size = UDim2.new(1, -24, 0, 16)
+    label.Position = UDim2.new(0, 12, 0, 4)
     label.BackgroundTransparency = 1
-    label.Text = "Chams Palette Circle"
-    label.TextColor3 = Color3.fromRGB(0, 255, 200)
+    label.Text = "Chams Color Circle Palette"
+    label.TextColor3 = Color3.fromRGB(255, 0, 128)
     label.TextSize = 10.5
     label.Font = Enum.Font.GothamBold
     label.TextXAlignment = Enum.TextXAlignment.Left
     label.Parent = frame
     
     local circleContainer = Instance.new("Frame")
-    circleContainer.Size = UDim2.new(1, -16, 0, 20)
-    circleContainer.Position = UDim2.new(0, 8, 0, 22)
+    circleContainer.Size = UDim2.new(1, -24, 0, 20)
+    circleContainer.Position = UDim2.new(0, 12, 0, 22)
     circleContainer.BackgroundTransparency = 1
     circleContainer.Parent = frame
     
     local colors = {
-        Color3.fromRGB(255, 0, 85),
-        Color3.fromRGB(0, 255, 128),
-        Color3.fromRGB(0, 180, 255),
-        Color3.fromRGB(255, 220, 0),
-        Color3.fromRGB(255, 100, 0),
-        Color3.fromRGB(160, 0, 255),
-        Color3.fromRGB(0, 255, 255),
-        Color3.fromRGB(255, 255, 255)
+        Color3.fromRGB(255, 0, 128),
+        Color3.fromRGB(0, 255, 130),
+        Color3.fromRGB(0, 240, 255),
+        Color3.fromRGB(255, 210, 0),
+        Color3.fromRGB(255, 90, 0),
+        Color3.fromRGB(140, 0, 255),
+        Color3.fromRGB(255, 255, 255),
+        Color3.fromRGB(100, 100, 100)
     }
     
     for i, col in ipairs(colors) do
         local colorBtn = Instance.new("TextButton")
         colorBtn.Size = UDim2.new(0, 18, 0, 18)
-        colorBtn.Position = UDim2.new(0, (i-1)*26, 0, 0)
+        colorBtn.Position = UDim2.new(0, (i-1)*28, 0, 0)
         colorBtn.BackgroundColor3 = col
         colorBtn.Text = ""
         colorBtn.Parent = circleContainer
@@ -406,21 +411,21 @@ CreateToggle(skl, "Fast Vehicle", function(v) D3DConfig.FastVehicle = v end)
 CreateSlider(skl, "Vehicle Speed", 50, 400, 150, function(v) D3DConfig.VehicleSpeedValue = v end)
 
 local tpFrame = Instance.new("Frame")
-tpFrame.Size = UDim2.new(1, 0, 0, 32)
+tpFrame.Size = UDim2.new(1, 0, 0, 36)
 tpFrame.BackgroundTransparency = 1
 tpFrame.Parent = skl
 
 local tpButton = Instance.new("TextButton")
 tpButton.Size = UDim2.new(1, 0, 1, 0)
-tpButton.BackgroundColor3 = Color3.fromRGB(0, 200, 255)
+tpButton.BackgroundColor3 = Color3.fromRGB(140, 0, 255)
 tpButton.Text = "Random Player Teleport"
-tpButton.TextColor3 = Color3.fromRGB(10, 10, 15)
+tpButton.TextColor3 = Color3.fromRGB(255, 255, 255)
 tpButton.TextSize = 11.5
 tpButton.Font = Enum.Font.GothamBold
 tpButton.Parent = tpFrame
 
 local tpCorner = Instance.new("UICorner")
-tpCorner.CornerRadius = UDim.new(0, 6)
+tpCorner.CornerRadius = UDim.new(0, 8)
 tpCorner.Parent = tpButton
 
 tpButton.MouseButton1Click:Connect(function()
@@ -434,7 +439,7 @@ tpButton.MouseButton1Click:Connect(function()
 end)
 
 -- =====================================================================
--- CHEAT EXECUTION BACKEND
+-- FULL FUNCTIONAL CHEAT LOOP
 -- =====================================================================
 
 local activeDrawings = {}
@@ -467,7 +472,7 @@ RunService.RenderStepped:Connect(function()
                         line.Visible = true
                         line.From = Vector2.new(Camera.ViewportSize.X / 2, 0)
                         line.To = Vector2.new(headPos.X, headPos.Y)
-                        line.Color = Color3.fromRGB(255, 0, 85)
+                        line.Color = Color3.fromRGB(255, 0, 128)
                         line.Thickness = 1.2
                         table.insert(activeDrawings, line)
                     end
@@ -492,7 +497,7 @@ RunService.RenderStepped:Connect(function()
                         distText.Position = Vector2.new(headPos.X, headPos.Y - 38)
                         distText.Center = true
                         distText.Outline = true
-                        distText.Color = Color3.fromRGB(0, 255, 200)
+                        distText.Color = Color3.fromRGB(0, 240, 255)
                         distText.Size = 11
                         table.insert(activeDrawings, distText)
                     end
@@ -505,7 +510,7 @@ RunService.RenderStepped:Connect(function()
                         genderText.Position = Vector2.new(headPos.X, headPos.Y - 52)
                         genderText.Center = true
                         genderText.Outline = true
-                        genderText.Color = Color3.fromRGB(255, 120, 200)
+                        genderText.Color = Color3.fromRGB(255, 140, 200)
                         genderText.Size = 10
                         table.insert(activeDrawings, genderText)
                     end
@@ -539,7 +544,7 @@ RunService.RenderStepped:Connect(function()
                             itemText.Position = Vector2.new(itemPos.X, itemPos.Y)
                             itemText.Center = true
                             itemText.Outline = true
-                            itemText.Color = Color3.fromRGB(255, 220, 0)
+                            itemText.Color = Color3.fromRGB(255, 210, 0)
                             itemText.Size = 10
                             table.insert(activeDrawings, itemText)
                         end
@@ -620,7 +625,7 @@ RunService.RenderStepped:Connect(function()
         fovCircle.Visible = true
         fovCircle.Position = mousePos
         fovCircle.Radius = D3DConfig.AimbotFov
-        fovCircle.Color = Color3.fromRGB(0, 255, 200)
+        fovCircle.Color = Color3.fromRGB(0, 240, 255)
         fovCircle.Thickness = 1.2
         fovCircle.Filled = false
         table.insert(activeDrawings, fovCircle)
@@ -629,7 +634,7 @@ RunService.RenderStepped:Connect(function()
         local shortestDistance = D3DConfig.AimbotFov
 
         for _, p in ipairs(Players:GetPlayers()) do
-            if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("Head") and p.Character:FindFirstChild("Humanoid") and p.Character.Humanoid.Health >NIL and p.Character.Humanoid.Health > 0 then
+            if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("Head") and p.Character:FindFirstChild("Humanoid") and p.Character.Humanoid.Health > 0 then
                 local head = p.Character.Head
                 local screenPoint, onScreen = Camera:WorldToViewportPoint(head.Position)
                 if onScreen then
