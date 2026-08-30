@@ -1,5 +1,6 @@
+
 -- =====================================================================
--- ULTIMATE ANDROID D3D MENU: ESP LINE (DRAWING ADAPTED TO FRAME) & CHAMS
+-- ULTIMATE ANDROID D3D MENU: FULL CODE WITH EXACT DRAWING.NEW ESP LINE
 -- =====================================================================
 
 local Players = game:GetService("Players")
@@ -54,7 +55,7 @@ pcall(function()
 end)
 if not ScreenGui.Parent then ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui") end
 
--- GLOBAL STORAGE UNTUK ESP (MENGIKUTI FORMAT _G.ImGuiV4_ESPs)
+-- GLOBAL ESP TABLE
 _G.ImGuiV4_ESPs = {}
 
 -- FLOATING BUTTON UI
@@ -356,32 +357,23 @@ tpButton.MouseButton1Click:Connect(function()
     end
 end)
 
--- CONTAINER GUI ESP
+-- CONTAINER FOLDER BILLBOARD
 local ESPFolder = Instance.new("Folder")
 ESPFolder.Name = "D3D_Android_ESP"
 ESPFolder.Parent = ScreenGui
 
--- FUNGSI HELPER UNTUK MENGGAMBAR GARIS MENGGUNAKAN FRAME UI (LOGIC ADAPTED DARI DRAWING LINE)
-local function UpdateLine(frame, fromPos, toPos)
-    local distance = (fromPos - toPos).Magnitude
-    frame.Size = UDim2.new(0, 1.5, 0, distance)
-    frame.Position = UDim2.new(0, (fromPos.X + toPos.X) / 2, 0, (fromPos.Y + toPos.Y) / 2)
-    frame.Rotation = math.deg(math.atan2(toPos.Y - fromPos.Y, toPos.X - fromPos.X)) - 90
-end
-
-local function setupPlayerESP(plr)
+-- 1. INISISALISASI ESP (MENGGUNAKAN GETESPDRAWINGS DAN DRAWING.NEW SESUAI PERMINTAANMU)
+local function GetESPDrawings(plr)
     if plr == LocalPlayer then return end
-    
-    local lineFrame = Instance.new("Frame")
-    lineFrame.Name = "ESP_Line"
-    lineFrame.AnchorPoint = Vector2.new(0.5, 0.5)
-    lineFrame.BackgroundColor3 = Color3.fromRGB(0, 235, 255)
-    lineFrame.BorderSizePixel = 0
-    lineFrame.Visible = false
-    lineFrame.Parent = ScreenGui
+
+    local line = Drawing.new("Line")
+    line.Thickness = 1
+    line.Color = Color3.fromRGB(0, 235, 255)
+    line.Transparency = 1
+    line.Visible = false
 
     _G.ImGuiV4_ESPs[plr] = {
-        Line = lineFrame
+        Line = line
     }
 
     local function createBillboard(char)
@@ -435,21 +427,21 @@ local function setupPlayerESP(plr)
     plr.CharacterAdded:Connect(createBillboard)
 end
 
-Players.PlayerAdded:Connect(setupPlayerESP)
+Players.PlayerAdded:Connect(GetESPDrawings)
 for _, p in ipairs(Players:GetPlayers()) do
-    setupPlayerESP(p)
+    GetESPDrawings(p)
 end
 
 Players.PlayerRemoving:Connect(function(plr)
     if _G.ImGuiV4_ESPs[plr] then
         if _G.ImGuiV4_ESPs[plr].Line then
-            _G.ImGuiV4_ESPs[plr].Line:Destroy()
+            pcall(function() _G.ImGuiV4_ESPs[plr].Line:Remove() end)
         end
         _G.ImGuiV4_ESPs[plr] = nil
     end
 end)
 
--- LOOP UTAMA RENDERSTEPPED (MENGIKUTI STRUKTUR LOGIC ANDA)
+-- LOOP UTAMA RENDERSTEPPED (MENGGUNAKAN LOGIC ESP LINE YANG KAMU BERIKAN)
 RunService.RenderStepped:Connect(function()
     for plr, esp in pairs(_G.ImGuiV4_ESPs) do
         local char = plr.Character
@@ -461,18 +453,16 @@ RunService.RenderStepped:Connect(function()
         if char and hum and hum.Health > 0 and hrp and head then
             local headPos, onScreen = Camera:WorldToViewportPoint(head.Position)
             
-            -- 1. LOGIKA RENDER & UPDATE LINE ESP (ADAPTASI DARI LOGIC ANDA)
+            -- 2. LOGIKA RENDER & UPDATE LINE ESP (PERSIS SEPERTI CONTOHMU)
             if D3DConfig.EspLine and onScreen then
-                local screenCenter = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y)
-                local headScreenPos = Vector2.new(headPos.X, headPos.Y)
-                
-                UpdateLine(esp.Line, screenCenter, headScreenPos)
+                esp.Line.From = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y)
+                esp.Line.To = Vector2.new(headPos.X, headPos.Y)
                 esp.Line.Visible = true
             else
                 esp.Line.Visible = false
             end
             
-            -- 2. UPDATE BILLBOARD (NAME, DISTANCE, GENDER)
+            -- UPDATE BILLBOARD (NAME, DISTANCE, GENDER)
             if billboard then
                 local nameLbl = billboard:FindFirstChild("NameLabel")
                 local distLbl = billboard:FindFirstChild("DistLabel")
@@ -497,7 +487,7 @@ RunService.RenderStepped:Connect(function()
                 end
             end
             
-            -- 3. CHAMS MENGGUNAKAN SELECTIONBOX (DIJAMIN TEMBUS TEMBOK DI ANDROID)
+            -- CHAMS (SELECTIONBOX TEMBUS TEMBOK)
             local highlight = char:FindFirstChild("D3D_ChamsBox")
             if D3DConfig.Chams then
                 if not highlight then
