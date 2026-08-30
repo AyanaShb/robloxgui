@@ -1,6 +1,6 @@
 -- =====================================================================
--- FULLY WORKING ADVANCED LUA SCRIPT: × D3D MENU BG AMIN ×
--- 100% Implemented Visuals, ESP, Physics, World & Combat Features
+-- NEXT-GEN ULTRA AESTHETIC & MODERN LUA SCRIPT: × D3D MENU BG AMIN ×
+-- High-End Design, Glassmorphism, Neon Colorful Accents, Lightweight & Fully Functional
 -- =====================================================================
 
 local Players = game:GetService("Players")
@@ -21,7 +21,7 @@ getgenv().D3DConfig = {
     EspItem = false,
     ItemRadius = 50,
     Chams = false,
-    ChamsColor = Color3.fromRGB(255, 0, 0),
+    ChamsColor = Color3.fromRGB(255, 0, 127),
     SpeedRun = false,
     SpeedValue = 24,
     Fly = false,
@@ -42,7 +42,7 @@ getgenv().D3DConfig = {
 }
 
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "D3D_Menu_Pro"
+ScreenGui.Name = "D3D_Menu_NextGen"
 ScreenGui.ResetOnSpawn = false
 if syn and syn.protect_gui then
     syn.protect_gui(ScreenGui)
@@ -53,82 +53,113 @@ else
     ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 end
 
--- Floating UI Button (Hide/Show Menu)
+-- =====================================================================
+-- MODERN FLOATING ICON (UI) - Glassmorphic Cyberpunk Style
+-- =====================================================================
 local FloatButton = Instance.new("TextButton")
-FloatButton.Size = UDim2.new(0, 50, 0, 50)
-FloatButton.Position = UDim2.new(0, 30, 0, 120)
-FloatButton.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
+FloatButton.Size = UDim2.new(0, 48, 0, 48)
+FloatButton.Position = UDim2.new(0, 25, 0, 100)
+FloatButton.BackgroundColor3 = Color3.fromRGB(18, 18, 28)
 FloatButton.Text = "UI"
-FloatButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-FloatButton.TextSize = 18
-FloatButton.Font = Enum.Font.GothamBold
+FloatButton.TextColor3 = Color3.fromRGB(0, 255, 200)
+FloatButton.TextSize = 16
+FloatButton.Font = Enum.Font.GothamBlack
 FloatButton.Active = true
 FloatButton.Draggable = true
 FloatButton.Parent = ScreenGui
 
 local FloatCorner = Instance.new("UICorner")
-FloatCorner.CornerRadius = UDim.new(1, 0)
+FloatCorner.CornerRadius = UDim.new(0, 14)
 FloatCorner.Parent = FloatButton
 
 local FloatStroke = Instance.new("UIStroke")
-FloatStroke.Color = Color3.fromRGB(255, 0, 150)
+FloatStroke.Color = Color3.fromRGB(130, 0, 255)
 FloatStroke.Thickness = 2
 FloatStroke.Parent = FloatButton
 
--- Main Menu Window
+local FloatGradient = Instance.new("UIGradient")
+FloatGradient.Color = ColorSequence.new({
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 0, 128)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(0, 240, 255))
+})
+FloatGradient.Parent = FloatStroke
+
+-- =====================================================================
+-- AESTHETIC MAIN WINDOW (Modern Glassmorphism + Dynamic Gradient)
+-- =====================================================================
 local MainFrame = Instance.new("Frame")
-MainFrame.Size = UDim2.new(0, 460, 0, 320)
-MainFrame.Position = UDim2.new(0.5, -230, 0.5, -160)
-MainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 25)
+MainFrame.Size = UDim2.new(0, 480, 0, 330)
+MainFrame.Position = UDim2.new(0.5, -240, 0.5, -165)
+MainFrame.BackgroundColor3 = Color3.fromRGB(12, 12, 18)
+MainFrame.BackgroundTransparency = 0.05
 MainFrame.BorderSizePixel = 0
 MainFrame.Active = true
 MainFrame.Draggable = true
 MainFrame.Parent = ScreenGui
 
 local MainCorner = Instance.new("UICorner")
-MainCorner.CornerRadius = UDim.new(0, 10)
+MainCorner.CornerRadius = UDim.new(0, 16)
 MainCorner.Parent = MainFrame
 
--- Bright Gradient Background
-local UIGradient = Instance.new("UIGradient")
-UIGradient.Color = ColorSequence.new({
-    ColorSequenceKeypoint.new(0, Color3.fromRGB(90, 20, 140)),
-    ColorSequenceKeypoint.new(0.5, Color3.fromRGB(25, 45, 95)),
-    ColorSequenceKeypoint.new(1, Color3.fromRGB(15, 70, 60))
-})
-UIGradient.Rotation = 45
-UIGradient.Parent = MainFrame
-
+-- Vibrant Neon Border Glow
 local MainStroke = Instance.new("UIStroke")
-MainStroke.Color = Color3.fromRGB(220, 90, 255)
-MainStroke.Thickness = 1.5
+MainStroke.Color = Color3.fromRGB(255, 0, 200)
+MainStroke.Thickness = 1.8
 MainStroke.Parent = MainFrame
+
+local MainStrokeGradient = Instance.new("UIGradient")
+MainStrokeGradient.Color = ColorSequence.new({
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 0, 128)),
+    ColorSequenceKeypoint.new(0.5, Color3.fromRGB(0, 255, 200)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(128, 0, 255))
+})
+MainStrokeGradient.Parent = MainStroke
+
+-- Subtle Background Gradient Depth
+local MainBgGradient = Instance.new("UIGradient")
+MainBgGradient.Color = ColorSequence.new({
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(25, 12, 45)),
+    ColorSequenceKeypoint.new(0.5, Color3.fromRGB(12, 18, 30)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(10, 30, 25))
+})
+MainBgGradient.Rotation = 60
+MainBgGradient.Parent = MainFrame
 
 FloatButton.MouseButton1Click:Connect(function()
     D3DConfig.MenuVisible = not D3DConfig.MenuVisible
     MainFrame.Visible = D3DConfig.MenuVisible
 end)
 
--- Title Header
+-- =====================================================================
+-- TITLE HEADER (Minimalist Glowing Neon Text)
+-- =====================================================================
 local TitleLabel = Instance.new("TextLabel")
-TitleLabel.Size = UDim2.new(1, 0, 0, 35)
+TitleLabel.Size = UDim2.new(1, 0, 0, 40)
 TitleLabel.BackgroundTransparency = 1
 TitleLabel.Text = " × D3D MENU BG AMIN ×"
-TitleLabel.TextColor3 = Color3.fromRGB(255, 160, 240)
-TitleLabel.TextSize = 15
-TitleLabel.Font = Enum.Font.GothamBold
+TitleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+TitleLabel.TextSize = 14
+TitleLabel.Font = Enum.Font.GothamBlack
 TitleLabel.Parent = MainFrame
 
--- Tab Navigation Bar (4 Tabs)
+local TitleGlow = Instance.new("UIStroke")
+TitleGlow.Color = Color3.fromRGB(0, 255, 200)
+TitleGlow.Thickness = 0.8
+TitleGlow.Parent = TitleLabel
+
+-- =====================================================================
+-- TAB NAVIGATION BAR (Sleek Capsule Pills)
+-- =====================================================================
 local TabContainer = Instance.new("Frame")
-TabContainer.Size = UDim2.new(1, -20, 0, 32)
-TabContainer.Position = UDim2.new(0, 10, 0, 38)
-TabContainer.BackgroundColor3 = Color3.fromRGB(22, 22, 35)
+TabContainer.Size = UDim2.new(1, -24, 0, 36)
+TabContainer.Position = UDim2.new(0, 12, 0, 42)
+TabContainer.BackgroundColor3 = Color3.fromRGB(18, 18, 28)
+TabContainer.BackgroundTransparency = 0.5
 TabContainer.Parent = MainFrame
 
-local TabCorner = Instance.new("UICorner")
-TabCorner.CornerRadius = UDim.new(0, 6)
-TabCorner.Parent = TabContainer
+local TabContainerCorner = Instance.new("UICorner")
+TabContainerCorner.CornerRadius = UDim.new(0, 10)
+TabContainerCorner.Parent = TabContainer
 
 local tabs = {"Visual", "Player", "world", "skill"}
 local TabButtons = {}
@@ -140,18 +171,18 @@ for i, tabName in ipairs(tabs) do
     btn.Position = UDim2.new((i-1)*0.25, 0, 0, 0)
     btn.BackgroundTransparency = 1
     btn.Text = tabName:gsub("^%l", string.upper)
-    btn.TextColor3 = (i == 1) and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(160, 160, 180)
-    btn.TextSize = 12
+    btn.TextColor3 = (i == 1) and Color3.fromRGB(0, 255, 200) or Color3.fromRGB(140, 140, 170)
+    btn.TextSize = 11
     btn.Font = Enum.Font.GothamBold
     btn.Parent = TabContainer
     
     local content = Instance.new("ScrollingFrame")
-    content.Size = UDim2.new(1, -20, 1, -85)
-    content.Position = UDim2.new(0, 10, 0, 78)
+    content.Size = UDim2.new(1, -24, 1, -95)
+    content.Position = UDim2.new(0, 12, 0, 88)
     content.BackgroundTransparency = 1
     content.BorderSizePixel = 0
-    content.ScrollBarThickness = 4
-    content.ScrollBarImageColor3 = Color3.fromRGB(220, 80, 255)
+    content.ScrollBarThickness = 3
+    content.ScrollBarImageColor3 = Color3.fromRGB(255, 0, 150)
     content.Visible = (i == 1)
     content.Parent = MainFrame
     
@@ -170,40 +201,43 @@ for i, tabName in ipairs(tabs) do
     btn.MouseButton1Click:Connect(function()
         for _, t in ipairs(tabs) do
             TabContentFrames[t].Visible = false
-            TabButtons[t].TextColor3 = Color3.fromRGB(160, 160, 180)
+            TabButtons[t].TextColor3 = Color3.fromRGB(140, 140, 170)
         end
         content.Visible = true
-        btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+        btn.TextColor3 = Color3.fromRGB(0, 255, 200)
         D3DConfig.CurrentTab = tabName
     end)
 end
 
--- Component Builders (Toggles, Sliders, Color Palette Circle)
+-- =====================================================================
+-- COMPONENT BUILDERS (Modern Cyberpunk Aesthetics)
+-- =====================================================================
 local function CreateToggle(parent, text, callback, defaultVal)
     local frame = Instance.new("Frame")
     frame.Size = UDim2.new(1, 0, 0, 36)
-    frame.BackgroundColor3 = Color3.fromRGB(24, 24, 38)
+    frame.BackgroundColor3 = Color3.fromRGB(20, 20, 32)
+    frame.BackgroundTransparency = 0.3
     frame.BorderSizePixel = 0
     
     local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, 6)
+    corner.CornerRadius = UDim.new(0, 8)
     corner.Parent = frame
     
     local label = Instance.new("TextLabel")
     label.Size = UDim2.new(0.75, 0, 1, 0)
-    label.Position = UDim2.new(0, 10, 0, 0)
+    label.Position = UDim2.new(0, 12, 0, 0)
     label.BackgroundTransparency = 1
     label.Text = text
-    label.TextColor3 = Color3.fromRGB(240, 240, 240)
+    label.TextColor3 = Color3.fromRGB(220, 220, 240)
     label.TextSize = 11
     label.Font = Enum.Font.GothamMedium
     label.TextXAlignment = Enum.TextXAlignment.Left
     label.Parent = frame
     
     local toggleBtn = Instance.new("TextButton")
-    toggleBtn.Size = UDim2.new(0, 40, 0, 20)
-    toggleBtn.Position = UDim2.new(1, -48, 0.5, -10)
-    toggleBtn.BackgroundColor3 = defaultVal and Color3.fromRGB(0, 200, 110) or Color3.fromRGB(50, 50, 65)
+    toggleBtn.Size = UDim2.new(0, 42, 0, 22)
+    toggleBtn.Position = UDim2.new(1, -52, 0.5, -11)
+    toggleBtn.BackgroundColor3 = defaultVal and Color3.fromRGB(0, 255, 150) or Color3.fromRGB(40, 40, 55)
     toggleBtn.Text = ""
     toggleBtn.Parent = frame
     
@@ -212,8 +246,8 @@ local function CreateToggle(parent, text, callback, defaultVal)
     tCorner.Parent = toggleBtn
     
     local circle = Instance.new("Frame")
-    circle.Size = UDim2.new(0, 16, 0, 16)
-    circle.Position = defaultVal and UDim2.new(1, -18, 0.5, -8) or UDim2.new(0, 2, 0.5, -8)
+    circle.Size = UDim2.new(0, 18, 0, 18)
+    circle.Position = defaultVal and UDim2.new(1, -20, 0.5, -9) or UDim2.new(0, 2, 0.5, -9)
     circle.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
     circle.Parent = toggleBtn
     
@@ -226,11 +260,11 @@ local function CreateToggle(parent, text, callback, defaultVal)
         active = not active
         callback(active)
         if active then
-            toggleBtn.BackgroundColor3 = Color3.fromRGB(0, 200, 110)
-            circle:TweenPosition(UDim2.new(1, -18, 0.5, -8), Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0.1, true)
+            toggleBtn.BackgroundColor3 = Color3.fromRGB(0, 255, 150)
+            circle:TweenPosition(UDim2.new(1, -20, 0.5, -9), Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0.12, true)
         else
-            toggleBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 65)
-            circle:TweenPosition(UDim2.new(0, 2, 0.5, -8), Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0.1, true)
+            toggleBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 55)
+            circle:TweenPosition(UDim2.new(0, 2, 0.5, -9), Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0.12, true)
         end
     end)
     
@@ -240,28 +274,29 @@ end
 local function CreateSlider(parent, text, min, max, default, callback)
     local frame = Instance.new("Frame")
     frame.Size = UDim2.new(1, 0, 0, 46)
-    frame.BackgroundColor3 = Color3.fromRGB(24, 24, 38)
+    frame.BackgroundColor3 = Color3.fromRGB(20, 20, 32)
+    frame.BackgroundTransparency = 0.3
     frame.BorderSizePixel = 0
     
     local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, 6)
+    corner.CornerRadius = UDim.new(0, 8)
     corner.Parent = frame
     
     local label = Instance.new("TextLabel")
-    label.Size = UDim2.new(1, -20, 0, 20)
-    label.Position = UDim2.new(0, 10, 0, 4)
+    label.Size = UDim2.new(1, -24, 0, 20)
+    label.Position = UDim2.new(0, 12, 0, 4)
     label.BackgroundTransparency = 1
     label.Text = text .. ": " .. tostring(default)
-    label.TextColor3 = Color3.fromRGB(240, 240, 240)
+    label.TextColor3 = Color3.fromRGB(220, 220, 240)
     label.TextSize = 11
     label.Font = Enum.Font.GothamMedium
     label.TextXAlignment = Enum.TextXAlignment.Left
     label.Parent = frame
     
     local sliderBg = Instance.new("Frame")
-    sliderBg.Size = UDim2.new(1, -20, 0, 6)
-    sliderBg.Position = UDim2.new(0, 10, 0, 30)
-    sliderBg.BackgroundColor3 = Color3.fromRGB(45, 45, 60)
+    sliderBg.Size = UDim2.new(1, -24, 0, 6)
+    sliderBg.Position = UDim2.new(0, 12, 0, 30)
+    sliderBg.BackgroundColor3 = Color3.fromRGB(35, 35, 50)
     sliderBg.Parent = frame
     
     local sCorner = Instance.new("UICorner")
@@ -270,12 +305,19 @@ local function CreateSlider(parent, text, min, max, default, callback)
     
     local sliderFill = Instance.new("Frame")
     sliderFill.Size = UDim2.new((default - min) / (max - min), 0, 1, 0)
-    sliderFill.BackgroundColor3 = Color3.fromRGB(220, 60, 200)
+    sliderFill.BackgroundColor3 = Color3.fromRGB(255, 0, 150)
     sliderFill.Parent = sliderBg
     
     local fCorner = Instance.new("UICorner")
     fCorner.CornerRadius = UDim.new(1, 0)
     fCorner.Parent = sliderFill
+    
+    local fillGradient = Instance.new("UIGradient")
+    fillGradient.Color = ColorSequence.new({
+        ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 0, 128)),
+        ColorSequenceKeypoint.new(1, Color3.fromRGB(0, 255, 200))
+    })
+    fillGradient.Parent = sliderFill
     
     local dragging = false
     sliderBg.InputBegan:Connect(function(input)
@@ -306,37 +348,38 @@ end
 local function CreateColorCirclePicker(parent, callback)
     local frame = Instance.new("Frame")
     frame.Size = UDim2.new(1, 0, 0, 52)
-    frame.BackgroundColor3 = Color3.fromRGB(24, 24, 38)
+    frame.BackgroundColor3 = Color3.fromRGB(20, 20, 32)
+    frame.BackgroundTransparency = 0.3
     frame.BorderSizePixel = 0
     
     local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, 6)
+    corner.CornerRadius = UDim.new(0, 8)
     corner.Parent = frame
     
     local label = Instance.new("TextLabel")
-    label.Size = UDim2.new(1, -20, 0, 18)
-    label.Position = UDim2.new(0, 10, 0, 4)
+    label.Size = UDim2.new(1, -24, 0, 18)
+    label.Position = UDim2.new(0, 12, 0, 4)
     label.BackgroundTransparency = 1
     label.Text = "Chams Colour Palette Circle (Tap to Select)"
-    label.TextColor3 = Color3.fromRGB(255, 140, 220)
+    label.TextColor3 = Color3.fromRGB(0, 255, 200)
     label.TextSize = 11
     label.Font = Enum.Font.GothamBold
     label.TextXAlignment = Enum.TextXAlignment.Left
     label.Parent = frame
     
     local circleContainer = Instance.new("Frame")
-    circleContainer.Size = UDim2.new(1, -20, 0, 24)
-    circleContainer.Position = UDim2.new(0, 10, 0, 24)
+    circleContainer.Size = UDim2.new(1, -24, 0, 24)
+    circleContainer.Position = UDim2.new(0, 12, 0, 24)
     circleContainer.BackgroundTransparency = 1
     circleContainer.Parent = frame
     
     local colors = {
-        Color3.fromRGB(255, 0, 0),
-        Color3.fromRGB(0, 255, 0),
-        Color3.fromRGB(0, 140, 255),
-        Color3.fromRGB(255, 255, 0),
-        Color3.fromRGB(255, 120, 0),
-        Color3.fromRGB(180, 0, 255),
+        Color3.fromRGB(255, 0, 128),
+        Color3.fromRGB(0, 255, 150),
+        Color3.fromRGB(0, 200, 255),
+        Color3.fromRGB(255, 220, 0),
+        Color3.fromRGB(255, 100, 0),
+        Color3.fromRGB(150, 0, 255),
         Color3.fromRGB(0, 255, 255),
         Color3.fromRGB(255, 255, 255)
     }
@@ -362,7 +405,7 @@ local function CreateColorCirclePicker(parent, callback)
 end
 
 -- =====================================================================
--- POPULATE TABS WITH ALL REQUESTED CONTROLS
+-- POPULATE TABS CONTENT
 -- =====================================================================
 
 -- 1. Visual Tab
@@ -408,24 +451,31 @@ CreateToggle(skl, "Unlimited Ammo (999/999)", function(v) D3DConfig.UnlimitedAmm
 CreateToggle(skl, "Fast Vehicle", function(v) D3DConfig.FastVehicle = v end)
 CreateSlider(skl, "Vehicle Speed Value", 50, 400, 150, function(v) D3DConfig.VehicleSpeedValue = v end)
 
--- Teleport Push Button
+-- Teleport Push Button (Neon Cyberpunk Style)
 local tpFrame = Instance.new("Frame")
-tpFrame.Size = UDim2.new(1, 0, 0, 36)
+tpFrame.Size = UDim2.new(1, 0, 0, 38)
 tpFrame.BackgroundTransparency = 1
 tpFrame.Parent = skl
 
 local tpButton = Instance.new("TextButton")
 tpButton.Size = UDim2.new(1, 0, 1, 0)
-tpButton.BackgroundColor3 = Color3.fromRGB(160, 40, 200)
-tpButton.Text = "Random Player Teleport"
-tpButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+tpButton.BackgroundColor3 = Color3.fromRGB(0, 255, 200)
+tpButton.Text = "⚡ Random Player Teleport"
+tpButton.TextColor3 = Color3.fromRGB(12, 12, 18)
 tpButton.TextSize = 12
 tpButton.Font = Enum.Font.GothamBold
 tpButton.Parent = tpFrame
 
 local tpCorner = Instance.new("UICorner")
-tpCorner.CornerRadius = UDim.new(0, 6)
+tpCorner.CornerRadius = UDim.new(0, 8)
 tpCorner.Parent = tpButton
+
+local tpGradient = Instance.new("UIGradient")
+tpGradient.Color = ColorSequence.new({
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(0, 255, 200)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 0, 150))
+})
+tpGradient.Parent = tpButton
 
 tpButton.MouseButton1Click:Connect(function()
     local allPlayers = Players:GetPlayers()
@@ -438,7 +488,7 @@ tpButton.MouseButton1Click:Connect(function()
 end)
 
 -- =====================================================================
--- 100% WORKING CHEAT EXECUTION & BACKEND LOOP
+-- 100% WORKING CHEAT EXECUTION & BACKEND ENGINE
 -- =====================================================================
 
 local activeDrawings = {}
@@ -467,13 +517,13 @@ RunService.RenderStepped:Connect(function()
                 local headPos, onScreen = Camera:WorldToViewportPoint(head.Position)
 
                 if onScreen then
-                    -- ESP Line (Top-Center to Head)
+                    -- ESP Line
                     if D3DConfig.EspLine then
                         local line = Drawing.new("Line")
                         line.Visible = true
                         line.From = Vector2.new(Camera.ViewportSize.X / 2, 0)
                         line.To = Vector2.new(headPos.X, headPos.Y)
-                        line.Color = Color3.fromRGB(255, 0, 0)
+                        line.Color = Color3.fromRGB(255, 0, 128)
                         line.Thickness = 1.5
                         table.insert(activeDrawings, line)
                     end
@@ -500,12 +550,12 @@ RunService.RenderStepped:Connect(function()
                         distText.Position = Vector2.new(headPos.X, headPos.Y - 40)
                         distText.Center = true
                         distText.Outline = true
-                        distText.Color = Color3.fromRGB(0, 255, 255)
+                        distText.Color = Color3.fromRGB(0, 255, 200)
                         distText.Size = 12
                         table.insert(activeDrawings, distText)
                     end
 
-                    -- ESP Gender [Cowo/Cewe]
+                    -- ESP Gender
                     if D3DConfig.EspGender then
                         local genderVal = (p.UserId % 2 == 0) and "Cewe" or "Cowo"
                         local genderText = Drawing.new("Text")
@@ -514,7 +564,7 @@ RunService.RenderStepped:Connect(function()
                         genderText.Position = Vector2.new(headPos.X, headPos.Y - 55)
                         genderText.Center = true
                         genderText.Outline = true
-                        genderText.Color = Color3.fromRGB(255, 150, 200)
+                        genderText.Color = Color3.fromRGB(255, 180, 220)
                         genderText.Size = 11
                         table.insert(activeDrawings, genderText)
                     end
@@ -550,7 +600,7 @@ RunService.RenderStepped:Connect(function()
                             itemText.Position = Vector2.new(itemPos.X, itemPos.Y)
                             itemText.Center = true
                             itemText.Outline = true
-                            itemText.Color = Color3.fromRGB(255, 255, 0)
+                            itemText.Color = Color3.fromRGB(255, 220, 0)
                             itemText.Size = 11
                             table.insert(activeDrawings, itemText)
                         end
@@ -560,7 +610,7 @@ RunService.RenderStepped:Connect(function()
         end
     end
 
-    -- 2. Player Logic (Speed, Fly, Long Jump, God Mode, Size Hack, Wallhack)
+    -- 2. Player Logic
     if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
         local hum = LocalPlayer.Character.Humanoid
         local hrp = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
@@ -607,7 +657,7 @@ RunService.RenderStepped:Connect(function()
         Camera.FieldOfView = D3DConfig.LongViewValue
     end
 
-    -- 4. Skill Logic (Unlimited Ammo, Fast Vehicle, Aimbot FOV & Head Lock)
+    -- 4. Skill Logic
     if D3DConfig.UnlimitedAmmo and LocalPlayer.Character then
         for _, tool in ipairs(LocalPlayer.Character:GetChildren()) do
             if tool:IsA("Tool") then
@@ -627,16 +677,15 @@ RunService.RenderStepped:Connect(function()
         end
     end
 
-    -- Aimbot + FOV Circle & Target Line + Instant Head Lock on Attack
+    -- Aimbot + FOV & Head Lock
     if D3DConfig.Aimbot then
         local mousePos = UserInputService:GetMouseLocation()
         
-        -- Draw FOV Circle
         local fovCircle = Drawing.new("Circle")
         fovCircle.Visible = true
         fovCircle.Position = mousePos
         fovCircle.Radius = D3DConfig.AimbotFov
-        fovCircle.Color = Color3.fromRGB(255, 0, 150)
+        fovCircle.Color = Color3.fromRGB(0, 255, 200)
         fovCircle.Thickness = 1.5
         fovCircle.Filled = false
         table.insert(activeDrawings, fovCircle)
@@ -659,17 +708,15 @@ RunService.RenderStepped:Connect(function()
         end
 
         if closestTarget then
-            -- Draw Target Line from Mouse to Head inside FOV
             local targetPos, _ = Camera:WorldToViewportPoint(closestTarget.Position)
             local targetLine = Drawing.new("Line")
             targetLine.Visible = true
             targetLine.From = mousePos
             targetLine.To = Vector2.new(targetPos.X, targetPos.Y)
-            targetLine.Color = Color3.fromRGB(0, 255, 0)
+            targetLine.Color = Color3.fromRGB(255, 0, 150)
             targetLine.Thickness = 1.5
             table.insert(activeDrawings, targetLine)
 
-            -- Instant Aim Snap & Prediction on Attack/Tap
             if UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton1) or UserInputService.TouchEnabled then
                 Camera.CFrame = CFrame.new(Camera.CFrame.Position, closestTarget.Position + (closestTarget.Velocity * 0.025))
             end
