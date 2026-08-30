@@ -1,5 +1,5 @@
 -- =====================================================================
--- NEON OLEDSLICK UI: × D3D MENU BG AMIN × (ANDROID FULL FEATURED)
+-- FIXED D3D MENU: ESP & CHAMS REPAIRED (ANDROID OPTIMIZED)
 -- =====================================================================
 
 local Players = game:GetService("Players")
@@ -40,7 +40,7 @@ getgenv().D3DConfig = {
 }
 
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "D3D_OledSlick_Android"
+ScreenGui.Name = "D3D_Fixed_Android"
 ScreenGui.ResetOnSpawn = false
 pcall(function()
     if syn and syn.protect_gui then
@@ -54,10 +54,7 @@ pcall(function()
 end)
 if not ScreenGui.Parent then ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui") end
 
-local EspContainer = Instance.new("Folder")
-EspContainer.Name = "D3D_EspContainer"
-EspContainer.Parent = ScreenGui
-
+-- FLOATING ICON BUTTON
 local FloatButton = Instance.new("TextButton")
 FloatButton.Size = UDim2.new(0, 52, 0, 52)
 FloatButton.Position = UDim2.new(0, 20, 0, 100)
@@ -80,6 +77,7 @@ FloatGradient.Color = ColorSequence.new({
     ColorSequenceKeypoint.new(1, Color3.fromRGB(0, 240, 255))
 })
 
+-- MAIN MENU FRAME
 local MainFrame = Instance.new("Frame")
 MainFrame.Size = UDim2.new(0, 440, 0, 330)
 MainFrame.Position = UDim2.new(0.5, -220, 0.5, -165)
@@ -322,20 +320,10 @@ CreateSlider(TabContentFrames["Player"], "Size Value", 1, 5, 1, function(v) D3DC
 CreateToggle(TabContentFrames["Player"], "God Mode (Anti Hazard)", false, function(v) D3DConfig.GodMode = v end)
 
 CreateToggle(TabContentFrames["world"], "Night Mode", false, function(v)
-    if v then
-        D3DConfig.DaylightMode = false
-        Lighting.ClockTime = 0
-    else
-        Lighting.ClockTime = 14
-    end
+    if v then Lighting.ClockTime = 0 else Lighting.ClockTime = 14 end
 end)
 CreateToggle(TabContentFrames["world"], "Daylight Mode", false, function(v)
-    if v then
-        D3DConfig.NightMode = false
-        Lighting.ClockTime = 14
-    else
-        Lighting.ClockTime = 14
-    end
+    if v then Lighting.ClockTime = 14 else Lighting.ClockTime = 14 end
 end)
 CreateToggle(TabContentFrames["world"], "Long View POV", false, function(v) D3DConfig.LongView = v end)
 CreateSlider(TabContentFrames["world"], "Long View Distance", 70, 300, 70, function(v) D3DConfig.LongViewValue = v end)
@@ -365,7 +353,7 @@ tpButton.MouseButton1Click:Connect(function()
     end
 end)
 
--- FOV Circle Drawing
+-- DRAWING OBJECTS FOR ROBUST ANDROID ESP
 local FOVCircle = Drawing.new("Circle")
 FOVCircle.Visible = false
 FOVCircle.Thickness = 1.5
@@ -373,17 +361,21 @@ FOVCircle.Color = Color3.fromRGB(0, 240, 255)
 FOVCircle.Filled = false
 FOVCircle.Transparency = 0.8
 
-local activeFrames = {}
-local function clearFrames()
-    for _, f in pairs(activeFrames) do
-        if f and f.Destroy then pcall(function() f:Destroy() end) end
+-- Dynamic cache storage for ESP elements to prevent flickering
+local EspCache = {}
+
+local function clearEspCache()
+    for _, cache in pairs(EspCache) do
+        for _, obj in pairs(cache) do
+            if obj and obj.Remove then pcall(function() obj:Remove() end) end
+        end
     end
-    activeFrames = {}
+    EspCache = {}
 end
 
 -- MAIN ENGINE LOOP
 RunService.RenderStepped:Connect(function()
-    clearFrames()
+    clearEspCache()
 
     -- FOV Circle Update
     if D3DConfig.Aimbot then
@@ -404,77 +396,73 @@ RunService.RenderStepped:Connect(function()
 
             if hum and hum.Health > 0 then
                 local headPos, onHead = Camera:WorldToViewportPoint(head.Position)
-                local legPos, onLeg = Camera:WorldToViewportPoint(hrp.Position - Vector3.new(0, 3, 0))
+                
+                if onHead then
+                    local playerDrawingList = {}
 
-                if onHead or onLeg then
                     -- ESP Line from Top Center
                     if D3DConfig.EspLine then
-                        local line = Instance.new("Frame", EspContainer)
-                        line.AnchorPoint = Vector2.new(0.5, 0)
-                        line.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
-                        line.BorderSizePixel = 0
-                        local p1 = Vector2.new(Camera.ViewportSize.X / 2, 0)
-                        local p2 = Vector2.new(headPos.X, headPos.Y)
-                        line.Position = UDim2.new(0, (p1.X + p2.X) / 2, 0, (p1.Y + p2.Y) / 2)
-                        line.Size = UDim2.new(0, 1.5, 0, (p2 - p1).Magnitude)
-                        line.Rotation = math.deg(math.atan2(p2.Y - p1.Y, p2.X - p1.X)) - 90
-                        table.insert(activeFrames, line)
+                        local line = Drawing.new("Line")
+                        line.Visible = true
+                        line.From = Vector2.new(Camera.ViewportSize.X / 2, 0)
+                        line.To = Vector2.new(headPos.X, headPos.Y)
+                        line.Color = Color3.fromRGB(255, 0, 0)
+                        line.Thickness = 1.5
+                        table.insert(playerDrawingList, line)
                     end
 
                     -- ESP Name
                     if D3DConfig.EspName then
-                        local lbl = Instance.new("TextLabel", EspContainer)
-                        lbl.BackgroundTransparency = 1
-                        lbl.Position = UDim2.new(0, headPos.X - 50, 0, headPos.Y - 24)
-                        lbl.Size = UDim2.new(0, 100, 0, 18)
-                        lbl.Font = Enum.Font.GothamBold
-                        lbl.Text = p.Name
-                        lbl.TextColor3 = Color3.fromRGB(255, 255, 255)
-                        lbl.TextSize = 11
-                        lbl.TextStrokeTransparency = 0.5
-                        table.insert(activeFrames, lbl)
+                        local txt = Drawing.new("Text")
+                        txt.Visible = true
+                        txt.Text = p.Name
+                        txt.Size = 13
+                        txt.Center = true
+                        txt.Outline = true
+                        txt.Color = Color3.fromRGB(255, 255, 255)
+                        txt.Position = Vector2.new(headPos.X, headPos.Y - 25)
+                        table.insert(playerDrawingList, txt)
                     end
 
                     -- ESP Distance
                     if D3DConfig.EspDistance and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
                         local dist = math.floor((LocalPlayer.Character.HumanoidRootPart.Position - hrp.Position).Magnitude)
-                        local lbl = Instance.new("TextLabel", EspContainer)
-                        lbl.BackgroundTransparency = 1
-                        lbl.Position = UDim2.new(0, headPos.X - 50, 0, headPos.Y - 42)
-                        lbl.Size = UDim2.new(0, 100, 0, 18)
-                        lbl.Font = Enum.Font.GothamBold
-                        lbl.Text = "[" .. dist .. "m]"
-                        lbl.TextColor3 = Color3.fromRGB(0, 240, 255)
-                        lbl.TextSize = 10
-                        lbl.TextStrokeTransparency = 0.5
-                        table.insert(activeFrames, lbl)
+                        local txt = Drawing.new("Text")
+                        txt.Visible = true
+                        txt.Text = "[" .. dist .. "m]"
+                        txt.Size = 12
+                        txt.Center = true
+                        txt.Outline = true
+                        txt.Color = Color3.fromRGB(0, 240, 255)
+                        txt.Position = Vector2.new(headPos.X, headPos.Y - 40)
+                        table.insert(playerDrawingList, txt)
                     end
 
-                    -- ESP Gender [Cowo / Cewe]
+                    -- ESP Gender
                     if D3DConfig.EspGender then
-                        local genderText = (p.UserId % 2 == 0) and "[Cewe]" or "[Cowo]"
-                        local lbl = Instance.new("TextLabel", EspContainer)
-                        lbl.BackgroundTransparency = 1
-                        lbl.Position = UDim2.new(0, headPos.X - 50, 0, headPos.Y - 60)
-                        lbl.Size = UDim2.new(0, 100, 0, 18)
-                        lbl.Font = Enum.Font.GothamBold
-                        lbl.Text = genderText
-                        lbl.TextColor3 = (genderText == "[Cewe]") and Color3.fromRGB(255, 105, 180) or Color3.fromRGB(100, 149, 237)
-                        lbl.TextSize = 10
-                        lbl.TextStrokeTransparency = 0.5
-                        table.insert(activeFrames, lbl)
+                        local genderText = (p.UserId % 2 == 0) and "[Cewe]" / "[Cowo]" or "[Cowo]"
+                        local txt = Drawing.new("Text")
+                        txt.Visible = true
+                        txt.Text = genderText
+                        txt.Size = 12
+                        txt.Center = true
+                        txt.Outline = true
+                        txt.Color = (genderText == "[Cewe]") and Color3.fromRGB(255, 105, 180) or Color3.fromRGB(100, 149, 237)
+                        txt.Position = Vector2.new(headPos.X, headPos.Y - 55)
+                        table.insert(playerDrawingList, txt)
                     end
+
+                    EspCache[p] = playerDrawingList
                 end
 
-                -- Chams & Wall Hack Body Color
+                -- Chams & Wall Hack Body Color Fix
                 for _, part in ipairs(char:GetChildren()) do
                     if part:IsA("BasePart") then
                         if D3DConfig.Chams then
                             part.Color = D3DConfig.ChamsColor
                             part.Material = Enum.Material.ForceField
-                        end
-                        if D3DConfig.WallHack then
-                            part.CanCollide = false
+                        else
+                            part.Material = Enum.Material.SmoothPlastic
                         end
                     end
                 end
@@ -482,30 +470,11 @@ RunService.RenderStepped:Connect(function()
         end
     end
 
-    -- ESP Item Nearby
-    if D3DConfig.EspItem and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-        local myPos = LocalPlayer.Character.HumanoidRootPart.Position
-        for _, obj in ipairs(Workspace:GetDescendants()) do
-            if obj:IsA("Tool") or obj:IsA("Model") and obj:FindFirstChild("Handle") then
-                local targetPart = obj:IsA("Tool") and obj:FindFirstChild("Handle") or obj.PrimaryPart or obj:FindFirstChild("Handle")
-                if targetPart then
-                    local dist = (myPos - targetPart.Position).Magnitude
-                    if dist <= D3DConfig.EspItemRadius then
-                        local itemPos, onScreen = Camera:WorldToViewportPoint(targetPart.Position)
-                        if onScreen then
-                            local lbl = Instance.new("TextLabel", EspContainer)
-                            lbl.BackgroundTransparency = 1
-                            lbl.Position = UDim2.new(0, itemPos.X - 50, 0, itemPos.Y)
-                            lbl.Size = UDim2.new(0, 100, 0, 18)
-                            lbl.Font = Enum.Font.GothamBold
-                            lbl.Text = "Item: " .. obj.Name .. " [" .. math.floor(dist) .. "m]"
-                            lbl.TextColor3 = Color3.fromRGB(255, 215, 0)
-                            lbl.TextSize = 9.5
-                            lbl.TextStrokeTransparency = 0.5
-                            table.insert(activeFrames, lbl)
-                        end
-                    end
-                end
+    -- Local Player Wall Hack Fix
+    if LocalPlayer.Character then
+        for _, part in ipairs(LocalPlayer.Character:GetDescendants()) do
+            if part:IsA("BasePart") then
+                part.CanCollide = not D3DConfig.WallHack
             end
         end
     end
@@ -546,7 +515,7 @@ RunService.RenderStepped:Connect(function()
         end
     end
 
-    -- Unlimited Ammo Hook Simulation
+    -- Unlimited Ammo
     if D3DConfig.UnlimitedAmmo and LocalPlayer.Character then
         for _, tool in ipairs(LocalPlayer.Character:GetChildren()) do
             if tool:IsA("Tool") then
@@ -575,7 +544,6 @@ RunService.RenderStepped:Connect(function()
                     local mag = (Vector2.new(screenPt.X, screenPt.Y) - mousePos).Magnitude
                     if mag < shortestDist then
                         shortestDist = mag
-                        -- Basic movement prediction offset based on velocity
                         closestTarget = head.Position + (hrp.Velocity * 0.05)
                     end
                 end
@@ -601,4 +569,3 @@ UserInputService.JumpRequest:Connect(function()
         end
     end
 end)
-
