@@ -1,4 +1,4 @@
--- ===================================================================== -- ULTIMATE ANDROID D3D MENU: FISHING EDITION v8 -- ===================================================================== 
+#v1.0.0
 local Players = game:GetService("Players") 
 local UserInputService = game:GetService("UserInputService") 
 local Lighting = game:GetService("Lighting") 
@@ -392,7 +392,7 @@ CreateColorPicker(TabContentFrames["Visual"], "Chams Circle Color Picker", funct
     UpdateChams() 
 end) 
 
--- PLAYER TAB CONTROLS (BERSIH DARI FITUR DIHAPUS)
+-- PLAYER TAB CONTROLS
 CreateToggle(TabContentFrames["Player"], "Speed Run", function(v) 
     PlayerConfig.SpeedHack = v 
     if not v and LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
@@ -402,9 +402,18 @@ end)
 CreateSlider(TabContentFrames["Player"], "Speed Value", 16, 200, 16, function(val) PlayerConfig.SpeedValue = val end) 
 CreateToggle(TabContentFrames["Player"], "Fly (Hold Jump)", function(v) PlayerConfig.Fly = v end) 
 CreateToggle(TabContentFrames["Player"], "Multi Jump (Tap to Ascend)", function(v) PlayerConfig.MultiJump = v end) 
-CreateToggle(TabContentFrames["Player"], "Wall Hack", function(v) PlayerConfig.WallHack = v end) 
+CreateToggle(TabContentFrames["Player"], "Wall Hack", function(v) 
+    PlayerConfig.WallHack = v 
+    if not v and LocalPlayer.Character then
+        for _, part in ipairs(LocalPlayer.Character:GetDescendants()) do
+            if part:IsA("BasePart") then
+                part.CanCollide = true
+            end
+        end
+    end
+end) 
 
--- WORLD TAB CONTROLS (NIGHT & DAYLIGHT FULL INDOOR/OUTDOOR)
+-- WORLD TAB CONTROLS
 CreateToggle(TabContentFrames["world"], "Night Mode (Indoor & Outdoor)", function(v) 
     WorldConfig.NightMode = v
     if v then
@@ -466,14 +475,24 @@ tpButton.TextSize = 11.5
 tpButton.Font = Enum.Font.GothamBold 
 Instance.new("UICorner", tpButton).CornerRadius = UDim.new(0, 8) 
 
--- MULTI JUMP LISTENER
+-- MULTI JUMP LISTENER FIX
+local canDoubleJump = false
+
 UserInputService.JumpRequest:Connect(function()
     if PlayerConfig.MultiJump then
         local char = LocalPlayer.Character
         local hrp = char and char:FindFirstChild("HumanoidRootPart")
-        if hrp then
-            hrp.Velocity = Vector3.new(hrp.Velocity.X, 60, hrp.Velocity.Z)
-            hrp.AssemblyLinearVelocity = Vector3.new(hrp.AssemblyLinearVelocity.X, 60, hrp.AssemblyLinearVelocity.Z)
+        local hum = char and char:FindFirstChildOfClass("Humanoid")
+        if hrp and hum then
+            if hum:GetState() == Enum.HumanoidStateType.Freefall then
+                if canDoubleJump then
+                    hrp.Velocity = Vector3.new(hrp.Velocity.X, 50, hrp.Velocity.Z)
+                    hrp.AssemblyLinearVelocity = Vector3.new(hrp.AssemblyLinearVelocity.X, 50, hrp.AssemblyLinearVelocity.Z)
+                    canDoubleJump = false
+                end
+            else
+                canDoubleJump = true
+            end
         end
     end
 end)
@@ -489,6 +508,11 @@ RunService.Stepped:Connect(function()
         -- 1. Speed Hack Engine
         if PlayerConfig.SpeedHack then
             hum.WalkSpeed = PlayerConfig.SpeedValue
+        end
+
+        -- Reset multi-jump state when landed
+        if hum.FloorMaterial ~= Enum.Material.Air then
+            canDoubleJump = false
         end
     end
 
@@ -541,8 +565,13 @@ RunService.Stepped:Connect(function()
     end
 end)
 
--- RENDER LOOP FOR VISUAL UPDATES
+-- RENDER LOOP FOR VISUAL UPDATES & LONG POV
 RunService.RenderStepped:Connect(function()
+    -- Long View POV real-time enforcement fix
+    if WorldConfig.LongView then
+        LocalPlayer.CameraMaxZoomDistance = WorldConfig.ViewDistance
+    end
+
     for player, esp in pairs(ESPCache) do
         local char = player.Character
         local hrp = char and char:FindFirstChild("HumanoidRootPart")
