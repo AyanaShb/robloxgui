@@ -1,8 +1,4 @@
-Perbaikan Bug:
- * Multi Jump: Diperbaiki dengan memisahkan fungsi lompatan agar mendeteksi input lompatan secara konsisten pada perangkat Android maupun PC.
- * Wall Hack (Noclip): Ditambahkan sistem penyimpanan status kolaborasi awal (CanCollide) sehingga saat fitur dimatikan, bagian tubuh kembali normal (Collision aktif kembali).
- * ESP Distance: Satuan jarak diubah dari ft menjadi m (meter).
- * Long View POV: Diperbaiki dengan menggunakan properti kamera secara langsung (CFrame dan CameraSubject) agar jarak pandang maksimal (MaxZoomDistance) merespons dengan benar.
+
 -- ===================================================================== -- ULTIMATE ANDROID D3D MENU: FIXED v9 -- ===================================================================== 
 local Players = game:GetService("Players") 
 local UserInputService = game:GetService("UserInputService") 
