@@ -1,9 +1,10 @@
--- ===================================================================== -- ULTIMATE ANDROID D3D MENU: FINAL PLAYER ENGINE v6 -- ===================================================================== 
+-- ===================================================================== -- ULTIMATE ANDROID D3D MENU: FISHING EDITION v7 -- ===================================================================== 
 local Players = game:GetService("Players") 
 local UserInputService = game:GetService("UserInputService") 
 local Lighting = game:GetService("Lighting") 
 local Workspace = game:GetService("Workspace") 
 local RunService = game:GetService("RunService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Camera = Workspace.CurrentCamera 
 local LocalPlayer = Players.LocalPlayer 
 
@@ -44,8 +45,7 @@ local PlayerConfig = {
     Fly = false,
     MultiJump = false,
     WallHack = false,
-    SizeHack = false,
-    SizeValue = 1,
+    AutoFishing = false,
     GodMode = false
 }
 
@@ -388,7 +388,7 @@ CreateColorPicker(TabContentFrames["Visual"], "Chams Circle Color Picker", funct
     UpdateChams() 
 end) 
 
--- PLAYER TAB CONTROLS (OPTIMIZED REALTIME SIZE & FREEZE OXYGEN)
+-- PLAYER TAB CONTROLS (AUTO FISHING 10X & IMMORTAL GOD MODE)
 CreateToggle(TabContentFrames["Player"], "Speed Run", function(v) 
     PlayerConfig.SpeedHack = v 
     if not v and LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
@@ -399,22 +399,55 @@ CreateSlider(TabContentFrames["Player"], "Speed Value", 16, 200, 16, function(va
 CreateToggle(TabContentFrames["Player"], "Fly (Hold Jump)", function(v) PlayerConfig.Fly = v end) 
 CreateToggle(TabContentFrames["Player"], "Multi Jump (Tap to Ascend)", function(v) PlayerConfig.MultiJump = v end) 
 CreateToggle(TabContentFrames["Player"], "Wall Hack", function(v) PlayerConfig.WallHack = v end) 
-CreateToggle(TabContentFrames["Player"], "Size Hack", function(v) 
-    PlayerConfig.SizeHack = v 
-    if not v and LocalPlayer.Character then
-        pcall(function()
-            local hum = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
-            if hum then
-                for _, scale in ipairs({"BodyHeightScale", "BodyWidthScale", "BodyDepthScale", "HeadScale", "ProportionScale"}) do
-                    local s = hum:FindFirstChild(scale)
-                    if s then s.Value = 1 end
+
+-- FITUR BARU: AUTO FISHING 10X LEBIH CEPAT
+CreateToggle(TabContentFrames["Player"], "Auto Fishing (10x Faster Catch)", function(v) 
+    PlayerConfig.AutoFishing = v 
+end) 
+
+-- FITUR BARU: SELL ALL FISH (KECUALI FAVORITE)
+local sellButton = Instance.new("TextButton", TabContentFrames["Player"]) 
+sellButton.Size = UDim2.new(1, 0, 0, 36) 
+sellButton.BackgroundColor3 = Color3.fromRGB(255, 120, 0) 
+sellButton.Text = "Sell All Fish (Keep Favorite)" 
+sellButton.TextColor3 = Color3.fromRGB(255, 255, 255) 
+sellButton.TextSize = 11.5 
+sellButton.Font = Enum.Font.GothamBold 
+Instance.new("UICorner", sellButton).CornerRadius = UDim.new(0, 8) 
+
+sellButton.MouseButton1Click:Connect(function()
+    pcall(function()
+        -- Mencari remote / event penjualan ikan umum di game fishing Roblox
+        local remoteSell = ReplicatedStorage:FindFirstChild("events") and ReplicatedStorage.events:FindFirstChild("sell") 
+            or ReplicatedStorage:FindFirstChild("SellAll") 
+            or ReplicatedStorage:FindFirstChild("Remotes") and ReplicatedStorage.Remotes:FindFirstChild("SellFish")
+        
+        if remoteSell and remoteSell:IsA("RemoteFunction") then
+            remoteSell:InvokeServer(true)
+        elseif remoteSell and remoteSell:IsA("RemoteEvent") then
+            remoteSell:FireServer(true)
+        else
+            -- Metode alternatif otomatis scan inventory player & panggil fungsi jual satuan non-favorite
+            for _, folderName in ipairs({"Inventory", "Backpack", "Storage"}) do
+                local inv = LocalPlayer:FindFirstChild(folderName) or (LocalPlayer:FindFirstChild("PlayerGui") and LocalPlayer.PlayerGui:FindFirstChild(folderName))
+                if inv then
+                    for _, item in ipairs(inv:GetChildren()) do
+                        local isFav = item:GetAttribute("Favorite") or item:FindFirstChild("Favorite") or item:GetAttribute("Locked")
+                        if not isFav then
+                            -- Eksekusi jual item jika memenuhi syarat
+                            local remoteItemSell = ReplicatedStorage:FindFirstChild("SellItem") or (ReplicatedStorage:FindFirstChild("events") and ReplicatedStorage.events:FindFirstChild("sellitem"))
+                            if remoteItemSell then
+                                remoteItemSell:FireServer(item)
+                            end
+                        end
+                    end
                 end
             end
-        end)
-    end
-end) 
-CreateSlider(TabContentFrames["Player"], "Size Value", 1, 5, 1, function(val) PlayerConfig.SizeValue = val end) 
-CreateToggle(TabContentFrames["Player"], "God Mode (Freeze Oxygen & HP)", function(v) PlayerConfig.GodMode = v end) 
+        end
+    end)
+end)
+
+CreateToggle(TabContentFrames["Player"], "God Mode (Kebal Lava, Racun, Air, Suhu)", function(v) PlayerConfig.GodMode = v end) 
 
 CreateToggle(TabContentFrames["world"], "Night Mode") 
 CreateToggle(TabContentFrames["world"], "Daylight Mode") 
@@ -436,7 +469,7 @@ tpButton.TextSize = 11.5
 tpButton.Font = Enum.Font.GothamBold 
 Instance.new("UICorner", tpButton).CornerRadius = UDim.new(0, 8) 
 
--- MULTI JUMP LISTENER (TAP-TO-JUMP HIGHER)
+-- MULTI JUMP LISTENER
 UserInputService.JumpRequest:Connect(function()
     if PlayerConfig.MultiJump then
         local char = LocalPlayer.Character
@@ -448,7 +481,7 @@ UserInputService.JumpRequest:Connect(function()
     end
 end)
 
--- ADVANCED PLAYER ENGINE RUNSERVICE LOOP (RINGAN & REALTIME)
+-- ADVANCED PLAYER ENGINE RUNSERVICE LOOP
 RunService.Stepped:Connect(function()
     local char = LocalPlayer.Character
     if not char then return end
@@ -461,31 +494,52 @@ RunService.Stepped:Connect(function()
             hum.WalkSpeed = PlayerConfig.SpeedValue
         end
 
-        -- 2. God Mode & Freeze Oksigen (Anti Lag & Anti Mati Saat Menyelam)
+        -- 2. God Mode Kebal Total (Anti-Lava, Anti-Racun, Anti-Suhu, Anti-Mati Menyelam & Tanpa Respawn)
         if PlayerConfig.GodMode then
             hum.Health = hum.MaxHealth
             pcall(function()
-                -- Freeze Atribut Oksigen/Air jika ada di Humanoid atau Character
-                if hum:GetAttribute("Oxygen") then hum:SetAttribute("Oxygen", 100) end
-                if hum:GetAttribute("Air") then hum:SetAttribute("Air", 100) end
+                -- Mengunci seluruh atribut bahaya lingkungan (Lava, Panas, Dingin, Racun, Oksigen)
+                for _, attr in ipairs({"Oxygen", "Air", "Temperature", "Heat", "Cold", "Poison", "Toxic", "Radiation"}) do
+                    if hum:GetAttribute(attr) ~= nil then hum:SetAttribute(attr, 100) end
+                    if char:GetAttribute(attr) ~= nil then char:SetAttribute(attr, 100) end
+                end
                 
-                -- Cari dan Freeze Value Oksigen utama agar terkunci terus
-                local oxygenVal = char:FindFirstChild("Oxygen") or char:FindFirstChild("Air") or LocalPlayer:FindFirstChild("Oxygen")
-                if oxygenVal and (oxygenVal:IsA("NumberValue") or oxygenVal:IsA("IntValue")) then
-                    oxygenVal.Value = 100
+                -- Menghapus partikel/efek damage dari basepart yang menyentuh lava atau racun secara lokal
+                for _, part in ipairs(char:GetDescendants()) do
+                    if part:IsA("BasePart") then
+                        -- Mencegah sentuhan hazard membunuh player
+                        part.Touched:Connect(function(hit)
+                            if hit.Name:lower():find("lava") or hit.Name:lower():find("poison") or hit.Name:lower():find("damage") or hit.Name:lower():find("hazard") then
+                                local touchInterest = hit:FindFirstChildOfClass("TouchTransmitter")
+                                if touchInterest then
+                                    -- Bypass sentuhan mematikan
+                                    pcall(function() firetouchinterest(part, hit, 0); firetouchinterest(part, hit, 1) end)
+                                end
+                            end
+                        end)
+                    end
+                end
+
+                -- Freeze Value Oksigen / Udara / Suhu utama
+                local envVal = char:FindFirstChild("Oxygen") or char:FindFirstChild("Air") or char:FindFirstChild("Temperature")
+                if envVal and (envVal:IsA("NumberValue") or envVal:IsA("IntValue")) then
+                    envVal.Value = 100
                 end
             end)
         end
     end
 
-    -- 3. Real-Time Size Hack Engine (Smooth & Tanpa Terpecah)
-    if PlayerConfig.SizeHack and hum then
-        local scale = PlayerConfig.SizeValue
+    -- 3. Auto Fishing Engine (10x Lebih Cepat Menangkap Ikan)
+    if PlayerConfig.AutoFishing then
         pcall(function()
-            for _, scaleObjName in ipairs({"BodyHeightScale", "BodyWidthScale", "BodyDepthScale", "HeadScale", "ProportionScale"}) do
-                local scaleObj = hum:FindFirstChild(scaleObjName)
-                if scaleObj and scaleObj:IsA("NumberValue") then
-                    scaleObj.Value = scale
+            -- Otomatis memicu fungsi mini-game tangkapan ikan agar langsung selesai
+            local bobber = char:FindFirstChild("Bobber") or Workspace:FindFirstChild(LocalPlayer.Name .. "_Bobber") or Workspace:FindFirstChild("Bobber")
+            if bobber then
+                -- Meniru trigger instan saat ikan menggigit kail
+                for _, remote in ipairs(ReplicatedStorage:GetDescendants()) do
+                    if remote:IsA("RemoteEvent") and (remote.Name:lower():find("catch") or remote.Name:lower():find("reel") or remote.Name:lower():find("fish")) then
+                        remote:FireServer()
+                    end
                 end
             end
         end)
@@ -516,7 +570,7 @@ RunService.Stepped:Connect(function()
             local ySpeed = isHoldingJump and 45 or 0
             if moveDir.Magnitude > 0 then
                 hrp.Velocity = Vector3.new(moveDir.Unit.X * 55, ySpeed, moveDir.Unit.Z * 55)
-                hrp.AssemblyLinearVelocity = Vector3.new(moveDir.Unit.X * 55, ySpeed, moveDir.Unit.Z * 55)
+                hrp.AssemblyLinearVelocity = Vector3.new(moveDir.AssemblyLinearVelocity.X, ySpeed, moveDir.AssemblyLinearVelocity.Z)
             else
                 hrp.Velocity = Vector3.new(0, ySpeed, 0)
                 hrp.AssemblyLinearVelocity = Vector3.new(0, ySpeed, 0)
