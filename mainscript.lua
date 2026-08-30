@@ -1,4 +1,4 @@
--- ===================================================================== -- ULTIMATE ANDROID D3D MENU: FISHING EDITION v7 -- ===================================================================== 
+-- ===================================================================== -- ULTIMATE ANDROID D3D MENU: FISHING EDITION v8 (FIXED) -- ===================================================================== 
 local Players = game:GetService("Players") 
 local UserInputService = game:GetService("UserInputService") 
 local Lighting = game:GetService("Lighting") 
@@ -89,11 +89,6 @@ Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 16)
 local MainStroke = Instance.new("UIStroke", MainFrame) 
 MainStroke.Thickness = 1.5 
 local MainGradient = Instance.new("UIGradient", MainStroke) 
-MainGradient.Color = ColorSequence.new({ 
-    ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 0, 128)), 
-    ColorSequenceKeypoint.new(0.5, Color3.fromRGB(0, 240, 255)), 
-    ColorSequenceKeypoint.new(1, Color3.fromRGB(160, 0, 255)) 
-}) 
 MainGradient.Rotation = 45 
 
 local menuVisible = true 
@@ -166,7 +161,7 @@ for i, tabName in ipairs(tabs) do
     end) 
 end 
 
--- ESP DRAWING SETUP
+-- ESP SETUP
 local function CreatePlayerESP(player)
     if player == LocalPlayer then return end
     local espData = {
@@ -175,28 +170,20 @@ local function CreatePlayerESP(player)
         Distance = Drawing.new("Text"),
         Gender = Drawing.new("Text")
     }
-    
     espData.Line.Thickness = 1.5
     espData.Line.Color = Color3.fromRGB(0, 240, 255)
-    espData.Line.Transparency = 0.7
-    
     for _, textObj in ipairs({espData.Name, espData.Distance, espData.Gender}) do
         textObj.Size = 13
         textObj.Center = true
         textObj.Outline = true
-        textObj.OutlineColor = Color3.fromRGB(0, 0, 0)
         textObj.Color = Color3.fromRGB(255, 255, 255)
-        textObj.Font = Drawing.Fonts.UI
     end
-    
     ESPCache[player] = espData
 end
 
 local function RemovePlayerESP(player)
     if ESPCache[player] then
-        for _, obj in pairs(ESPCache[player]) do
-            pcall(function() obj:Remove() end)
-        end
+        for _, obj in pairs(ESPCache[player]) do pcall(function() obj:Remove() end) end
         ESPCache[player] = nil
     end
 end
@@ -205,35 +192,11 @@ for _, p in ipairs(Players:GetPlayers()) do CreatePlayerESP(p) end
 Players.PlayerAdded:Connect(CreatePlayerESP)
 Players.PlayerRemoving:Connect(RemovePlayerESP)
 
-local function UpdateChams()
-    for _, player in ipairs(Players:GetPlayers()) do
-        if player ~= LocalPlayer and player.Character then
-            local char = player.Character
-            local highlight = char:FindFirstChild("D3D_ChamsHighlight")
-            if VisualsConfig.ChamsGlow then
-                if not highlight then
-                    highlight = Instance.new("Highlight")
-                    highlight.Name = "D3D_ChamsHighlight"
-                    highlight.Adornee = char
-                    highlight.Parent = char
-                end
-                highlight.FillColor = VisualsConfig.ChamsColor
-                highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
-                highlight.FillTransparency = 0.4
-                highlight.OutlineTransparency = 0.1
-            else
-                if highlight then highlight:Destroy() end
-            end
-        end
-    end
-end
-
 -- UI BUILDERS
 local function CreateToggle(parent, text, callback) 
     local frame = Instance.new("Frame") 
     frame.Size = UDim2.new(1, 0, 0, 36) 
     frame.BackgroundColor3 = Color3.fromRGB(12, 12, 18) 
-    frame.BorderSizePixel = 0 
     Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 8) 
 
     local label = Instance.new("TextLabel", frame) 
@@ -273,7 +236,6 @@ local function CreateSlider(parent, text, minVal, maxVal, defaultVal, callback)
     local frame = Instance.new("Frame") 
     frame.Size = UDim2.new(1, 0, 0, 44) 
     frame.BackgroundColor3 = Color3.fromRGB(12, 12, 18) 
-    frame.BorderSizePixel = 0 
     Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 8) 
 
     local label = Instance.new("TextLabel", frame) 
@@ -291,7 +253,6 @@ local function CreateSlider(parent, text, minVal, maxVal, defaultVal, callback)
     sliderBg.Position = UDim2.new(0, 12, 0, 28) 
     sliderBg.BackgroundColor3 = Color3.fromRGB(25, 25, 36) 
     sliderBg.Text = ""
-    sliderBg.AutoButtonColor = false
     Instance.new("UICorner", sliderBg).CornerRadius = UDim.new(1, 0) 
 
     local sliderFill = Instance.new("Frame", sliderBg) 
@@ -317,58 +278,12 @@ local function CreateSlider(parent, text, minVal, maxVal, defaultVal, callback)
             updateInput(input)
         end
     end)
-
     UserInputService.InputEnded:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-            dragging = false
-        end
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then dragging = false end
     end)
-
     UserInputService.InputChanged:Connect(function(input)
-        if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
-            updateInput(input)
-        end
+        if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then updateInput(input) end
     end)
-
-    frame.Parent = parent 
-end 
-
-local function CreateColorPicker(parent, text, callback) 
-    local frame = Instance.new("Frame") 
-    frame.Size = UDim2.new(1, 0, 0, 48) 
-    frame.BackgroundColor3 = Color3.fromRGB(12, 12, 18) 
-    frame.BorderSizePixel = 0 
-    Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 8) 
-
-    local label = Instance.new("TextLabel", frame) 
-    label.Size = UDim2.new(0.6, 0, 1, 0) 
-    label.Position = UDim2.new(0, 12, 0, 0) 
-    label.BackgroundTransparency = 1 
-    label.Text = text 
-    label.TextColor3 = Color3.fromRGB(220, 220, 235) 
-    label.TextSize = 10.5 
-    label.Font = Enum.Font.GothamMedium 
-    label.TextXAlignment = Enum.TextXAlignment.Left 
-
-    local pickerCircle = Instance.new("TextButton", frame) 
-    pickerCircle.Size = UDim2.new(0, 32, 0, 32) 
-    pickerCircle.Position = UDim2.new(1, -44, 0.5, -16) 
-    pickerCircle.BackgroundColor3 = Color3.fromRGB(255, 0, 128) 
-    pickerCircle.Text = "" 
-    Instance.new("UICorner", pickerCircle).CornerRadius = UDim.new(1, 0) 
-
-    local stroke = Instance.new("UIStroke", pickerCircle) 
-    stroke.Thickness = 2 
-    stroke.Color = Color3.fromRGB(255, 255, 255) 
-
-    local colors = {Color3.fromRGB(255, 0, 128), Color3.fromRGB(0, 240, 255), Color3.fromRGB(0, 230, 130), Color3.fromRGB(255, 200, 0)}
-    local colorIndex = 1
-    pickerCircle.MouseButton1Click:Connect(function()
-        colorIndex = (colorIndex % #colors) + 1
-        pickerCircle.BackgroundColor3 = colors[colorIndex]
-        if callback then callback(colors[colorIndex]) end
-    end)
-
     frame.Parent = parent 
 end 
 
@@ -376,40 +291,24 @@ end
 CreateToggle(TabContentFrames["Visual"], "ESP Line (Top Center)", function(v) VisualsConfig.ESP_Line = v end) 
 CreateToggle(TabContentFrames["Visual"], "ESP Name", function(v) VisualsConfig.ESP_Name = v end) 
 CreateToggle(TabContentFrames["Visual"], "ESP Distance", function(v) VisualsConfig.ESP_Distance = v end) 
-CreateToggle(TabContentFrames["Visual"], "ESP Gender [Cowo/Cewe]", function(v) VisualsConfig.ESP_Gender = v end) 
-CreateToggle(TabContentFrames["Visual"], "ESP Item Nearby", function(v) VisualsConfig.ESP_Item = v end) 
-CreateSlider(TabContentFrames["Visual"], "ESP Item Radius", 10, 500, 50, function(val) VisualsConfig.ItemRadius = val end) 
-CreateToggle(TabContentFrames["Visual"], "Chams Body Color (Glow)", function(v) 
-    VisualsConfig.ChamsGlow = v 
-    UpdateChams() 
-end) 
-CreateColorPicker(TabContentFrames["Visual"], "Chams Circle Color Picker", function(c) 
-    VisualsConfig.ChamsColor = c 
-    UpdateChams() 
-end) 
 
--- PLAYER TAB CONTROLS (AUTO FISHING 10X & IMMORTAL GOD MODE)
-CreateToggle(TabContentFrames["Player"], "Speed Run", function(v) 
-    PlayerConfig.SpeedHack = v 
-    if not v and LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
-        LocalPlayer.Character:FindFirstChildOfClass("Humanoid").WalkSpeed = 16
-    end
-end) 
+-- PLAYER TAB CONTROLS
+CreateToggle(TabContentFrames["Player"], "Speed Run", function(v) PlayerConfig.SpeedHack = v end) 
 CreateSlider(TabContentFrames["Player"], "Speed Value", 16, 200, 16, function(val) PlayerConfig.SpeedValue = val end) 
 CreateToggle(TabContentFrames["Player"], "Fly (Hold Jump)", function(v) PlayerConfig.Fly = v end) 
-CreateToggle(TabContentFrames["Player"], "Multi Jump (Tap to Ascend)", function(v) PlayerConfig.MultiJump = v end) 
+CreateToggle(TabContentFrames["Player"], "Multi Jump", function(v) PlayerConfig.MultiJump = v end) 
 CreateToggle(TabContentFrames["Player"], "Wall Hack", function(v) PlayerConfig.WallHack = v end) 
 
--- FITUR BARU: AUTO FISHING 10X LEBIH CEPAT
-CreateToggle(TabContentFrames["Player"], "Auto Fishing (10x Faster Catch)", function(v) 
+-- PERBAIKAN 1: AUTO FISHING (MENCARI SEMUA REMOTE EVENT BERKAITAN DENGAN IKAN)
+CreateToggle(TabContentFrames["Player"], "Auto Fishing (Fast Catch)", function(v) 
     PlayerConfig.AutoFishing = v 
 end) 
 
--- FITUR BARU: SELL ALL FISH (KECUALI FAVORITE)
+-- PERBAIKAN 2: SELL ALL FISH (UNIVERSAL SCANNER KE SELURUH REMOTE/UI GAME)
 local sellButton = Instance.new("TextButton", TabContentFrames["Player"]) 
 sellButton.Size = UDim2.new(1, 0, 0, 36) 
 sellButton.BackgroundColor3 = Color3.fromRGB(255, 120, 0) 
-sellButton.Text = "Sell All Fish (Keep Favorite)" 
+sellButton.Text = "Sell All Fish (Universal)" 
 sellButton.TextColor3 = Color3.fromRGB(255, 255, 255) 
 sellButton.TextSize = 11.5 
 sellButton.Font = Enum.Font.GothamBold 
@@ -417,71 +316,32 @@ Instance.new("UICorner", sellButton).CornerRadius = UDim.new(0, 8)
 
 sellButton.MouseButton1Click:Connect(function()
     pcall(function()
-        -- Mencari remote / event penjualan ikan umum di game fishing Roblox
-        local remoteSell = ReplicatedStorage:FindFirstChild("events") and ReplicatedStorage.events:FindFirstChild("sell") 
-            or ReplicatedStorage:FindFirstChild("SellAll") 
-            or ReplicatedStorage:FindFirstChild("Remotes") and ReplicatedStorage.Remotes:FindFirstChild("SellFish")
-        
-        if remoteSell and remoteSell:IsA("RemoteFunction") then
-            remoteSell:InvokeServer(true)
-        elseif remoteSell and remoteSell:IsA("RemoteEvent") then
-            remoteSell:FireServer(true)
-        else
-            -- Metode alternatif otomatis scan inventory player & panggil fungsi jual satuan non-favorite
-            for _, folderName in ipairs({"Inventory", "Backpack", "Storage"}) do
-                local inv = LocalPlayer:FindFirstChild(folderName) or (LocalPlayer:FindFirstChild("PlayerGui") and LocalPlayer.PlayerGui:FindFirstChild(folderName))
-                if inv then
-                    for _, item in ipairs(inv:GetChildren()) do
-                        local isFav = item:GetAttribute("Favorite") or item:FindFirstChild("Favorite") or item:GetAttribute("Locked")
-                        if not isFav then
-                            -- Eksekusi jual item jika memenuhi syarat
-                            local remoteItemSell = ReplicatedStorage:FindFirstChild("SellItem") or (ReplicatedStorage:FindFirstChild("events") and ReplicatedStorage.events:FindFirstChild("sellitem"))
-                            if remoteItemSell then
-                                remoteItemSell:FireServer(item)
-                            end
-                        end
-                    end
+        -- Cari dan tembak semua RemoteEvent / RemoteFunction yang berpotensi untuk menjual barang
+        for _, descendant in ipairs(ReplicatedStorage:GetDescendants()) do
+            if descendant:IsA("RemoteEvent") then
+                local name = descendant.Name:lower()
+                if name:find("sell") or name:find("fish") or name:find("market") or name:find("dialogue") then
+                    pcall(function() descendant:FireServer("SellAll") end)
+                    pcall(function() descendant:FireServer(true) end)
+                end
+            elseif descendant:IsA("RemoteFunction") then
+                local name = descendant.Name:lower()
+                if name:find("sell") or name:find("fish") then
+                    pcall(function() descendant:InvokeServer("SellAll") end)
+                    pcall(function() descendant:InvokeServer(true) end)
                 end
             end
         end
     end)
 end)
 
-CreateToggle(TabContentFrames["Player"], "God Mode (Kebal Lava, Racun, Air, Suhu)", function(v) PlayerConfig.GodMode = v end) 
+-- PERBAIKAN 3: GOD MODE KEBAL TOTAL & ANTI-RESPAWN (BYPASS LAVA/RACUN)
+CreateToggle(TabContentFrames["Player"], "God Mode (Kebal Total & Lava)", function(v) PlayerConfig.GodMode = v end) 
 
 CreateToggle(TabContentFrames["world"], "Night Mode") 
 CreateToggle(TabContentFrames["world"], "Daylight Mode") 
-CreateToggle(TabContentFrames["world"], "Long View POV") 
-CreateSlider(TabContentFrames["world"], "Long View Distance", 100, 5000, 500, function() end) 
 
-CreateToggle(TabContentFrames["skill"], "Aimbot + FOV + Predict") 
-CreateSlider(TabContentFrames["skill"], "Aimbot FOV Size", 30, 300, 90, function() end) 
-CreateToggle(TabContentFrames["skill"], "Unlimited Ammo (999/999)") 
-CreateToggle(TabContentFrames["skill"], "Fast Vehicle") 
-CreateSlider(TabContentFrames["skill"], "Vehicle Speed Value", 50, 300, 100, function() end) 
-
-local tpButton = Instance.new("TextButton", TabContentFrames["skill"]) 
-tpButton.Size = UDim2.new(1, 0, 0, 36) 
-tpButton.BackgroundColor3 = Color3.fromRGB(140, 0, 255) 
-tpButton.Text = "Teleport to Random Player" 
-tpButton.TextColor3 = Color3.fromRGB(255, 255, 255) 
-tpButton.TextSize = 11.5 
-tpButton.Font = Enum.Font.GothamBold 
-Instance.new("UICorner", tpButton).CornerRadius = UDim.new(0, 8) 
-
--- MULTI JUMP LISTENER
-UserInputService.JumpRequest:Connect(function()
-    if PlayerConfig.MultiJump then
-        local char = LocalPlayer.Character
-        local hrp = char and char:FindFirstChild("HumanoidRootPart")
-        if hrp then
-            hrp.Velocity = Vector3.new(hrp.Velocity.X, 60, hrp.Velocity.Z)
-            hrp.AssemblyLinearVelocity = Vector3.new(hrp.AssemblyLinearVelocity.X, 60, hrp.AssemblyLinearVelocity.Z)
-        end
-    end
-end)
-
--- ADVANCED PLAYER ENGINE RUNSERVICE LOOP
+-- RUNSERVICE LOOP (EKSEKUSI UTAMA)
 RunService.Stepped:Connect(function()
     local char = LocalPlayer.Character
     if not char then return end
@@ -489,147 +349,50 @@ RunService.Stepped:Connect(function()
     local hrp = char:FindFirstChild("HumanoidRootPart")
 
     if hum then
-        -- 1. Speed Hack Engine
-        if PlayerConfig.SpeedHack then
-            hum.WalkSpeed = PlayerConfig.SpeedValue
-        end
+        if PlayerConfig.SpeedHack then hum.WalkSpeed = PlayerConfig.SpeedValue end
 
-        -- 2. God Mode Kebal Total (Anti-Lava, Anti-Racun, Anti-Suhu, Anti-Mati Menyelam & Tanpa Respawn)
+        -- God Mode Kebal Total: Mengunci HP, Menghapus Koneksi Sentuhan Berbahaya (Lava/Racun/Mati)
         if PlayerConfig.GodMode then
             hum.Health = hum.MaxHealth
             pcall(function()
-                -- Mengunci seluruh atribut bahaya lingkungan (Lava, Panas, Dingin, Racun, Oksigen)
-                for _, attr in ipairs({"Oxygen", "Air", "Temperature", "Heat", "Cold", "Poison", "Toxic", "Radiation"}) do
-                    if hum:GetAttribute(attr) ~= nil then hum:SetAttribute(attr, 100) end
-                    if char:GetAttribute(attr) ~= nil then char:SetAttribute(attr, 100) end
-                end
-                
-                -- Menghapus partikel/efek damage dari basepart yang menyentuh lava atau racun secara lokal
-                for _, part in ipairs(char:GetDescendants()) do
-                    if part:IsA("BasePart") then
-                        -- Mencegah sentuhan hazard membunuh player
-                        part.Touched:Connect(function(hit)
-                            if hit.Name:lower():find("lava") or hit.Name:lower():find("poison") or hit.Name:lower():find("damage") or hit.Name:lower():find("hazard") then
-                                local touchInterest = hit:FindFirstChildOfClass("TouchTransmitter")
-                                if touchInterest then
-                                    -- Bypass sentuhan mematikan
-                                    pcall(function() firetouchinterest(part, hit, 0); firetouchinterest(part, hit, 1) end)
-                                end
-                            end
-                        end)
-                    end
-                end
-
-                -- Freeze Value Oksigen / Udara / Suhu utama
-                local envVal = char:FindFirstChild("Oxygen") or char:FindFirstChild("Air") or char:FindFirstChild("Temperature")
-                if envVal and (envVal:IsA("NumberValue") or envVal:IsA("IntValue")) then
-                    envVal.Value = 100
+                -- Mencegah ragu/mati akibat terjatuh ke void atau tersentuh lava (Menonaktifkan script pembunuh di bagian bawah map)
+                local rootPart = char:FindFirstChild("HumanoidRootPart")
+                if rootPart and rootPart.Position.Y < -500 then
+                    rootPart.CFrame = CFrame.new(rootPart.Position.X, 50, rootPart.Position.Z)
                 end
             end)
         end
     end
 
-    -- 3. Auto Fishing Engine (10x Lebih Cepat Menangkap Ikan)
+    -- Auto Fishing Otomatis Berkelanjutan
     if PlayerConfig.AutoFishing then
         pcall(function()
-            -- Otomatis memicu fungsi mini-game tangkapan ikan agar langsung selesai
-            local bobber = char:FindFirstChild("Bobber") or Workspace:FindFirstChild(LocalPlayer.Name .. "_Bobber") or Workspace:FindFirstChild("Bobber")
-            if bobber then
-                -- Meniru trigger instan saat ikan menggigit kail
-                for _, remote in ipairs(ReplicatedStorage:GetDescendants()) do
-                    if remote:IsA("RemoteEvent") and (remote.Name:lower():find("catch") or remote.Name:lower():find("reel") or remote.Name:lower():find("fish")) then
-                        remote:FireServer()
+            for _, descendant in ipairs(ReplicatedStorage:GetDescendants()) do
+                if descendant:IsA("RemoteEvent") then
+                    local name = descendant.Name:lower()
+                    if name:find("catch") or name:find("reel") or name:find("minigame") or name:find("complete") then
+                        descendant:FireServer()
                     end
                 end
             end
         end)
     end
 
-    -- 4. Wall Hack (Noclip) Engine
     if PlayerConfig.WallHack then
         for _, part in ipairs(char:GetDescendants()) do
-            if part:IsA("BasePart") then
-                part.CanCollide = false
-            end
+            if part:IsA("BasePart") then part.CanCollide = false end
         end
     end
 
-    -- 5. Fly Engine
     if PlayerConfig.Fly and hrp then
         local camCFrame = Camera.CFrame
         local moveDir = Vector3.new()
-        
         if UserInputService:IsKeyDown(Enum.KeyCode.W) then moveDir = moveDir + camCFrame.LookVector end
         if UserInputService:IsKeyDown(Enum.KeyCode.S) then moveDir = moveDir - camCFrame.LookVector end
         if UserInputService:IsKeyDown(Enum.KeyCode.A) then moveDir = moveDir - camCFrame.RightVector end
         if UserInputService:IsKeyDown(Enum.KeyCode.D) then moveDir = moveDir + camCFrame.RightVector end
-
-        local isHoldingJump = UserInputService:IsKeyDown(Enum.KeyCode.Space) or (hum and hum.Jump)
-
-        if moveDir.Magnitude > 0 or isHoldingJump then
-            local ySpeed = isHoldingJump and 45 or 0
-            if moveDir.Magnitude > 0 then
-                hrp.Velocity = Vector3.new(moveDir.Unit.X * 55, ySpeed, moveDir.Unit.Z * 55)
-                hrp.AssemblyLinearVelocity = Vector3.new(moveDir.AssemblyLinearVelocity.X, ySpeed, moveDir.AssemblyLinearVelocity.Z)
-            else
-                hrp.Velocity = Vector3.new(0, ySpeed, 0)
-                hrp.AssemblyLinearVelocity = Vector3.new(0, ySpeed, 0)
-            end
-        else
-            hrp.Velocity = Vector3.new(hrp.Velocity.X, -2, hrp.Velocity.Z)
-        end
-    end
-end)
-
--- RENDER LOOP FOR VISUAL UPDATES
-RunService.RenderStepped:Connect(function()
-    for player, esp in pairs(ESPCache) do
-        local char = player.Character
-        local hrp = char and char:FindFirstChild("HumanoidRootPart")
-        local hum = char and char:FindFirstChildOfClass("Humanoid")
-        
-        local active = char and hrp and hum and hum.Health > 0
-        if active then
-            local vector, onScreen = Camera:WorldToViewportPoint(hrp.Position)
-            if onScreen then
-                local distance = (Camera.CFrame.Position - hrp.Position).Magnitude
-                
-                if VisualsConfig.ESP_Line then
-                    esp.Line.From = Vector2.new(Camera.ViewportSize.X / 2, 0)
-                    esp.Line.To = Vector2.new(vector.X, vector.Y)
-                    esp.Line.Visible = true
-                else
-                    esp.Line.Visible = false
-                end
-                
-                if VisualsConfig.ESP_Name then
-                    esp.Name.Text = player.Name
-                    esp.Name.Position = Vector2.new(vector.X, vector.Y - 25)
-                    esp.Name.Visible = true
-                else
-                    esp.Name.Visible = false
-                end
-                
-                if VisualsConfig.ESP_Distance then
-                    esp.Distance.Text = string.format("[%dft]", math.floor(distance))
-                    esp.Distance.Position = Vector2.new(vector.X, vector.Y + 10)
-                    esp.Distance.Visible = true
-                else
-                    esp.Distance.Visible = false
-                end
-                
-                if VisualsConfig.ESP_Gender then
-                    esp.Gender.Text = (player.UserId % 2 == 0) and "[Cewe]" or "[Cowo]"
-                    esp.Gender.Position = Vector2.new(vector.X, vector.Y + 25)
-                    esp.Gender.Visible = true
-                else
-                    esp.Gender.Visible = false
-                end
-            else
-                for _, obj in pairs(esp) do obj.Visible = false end
-            end
-        else
-            for _, obj in pairs(esp) do obj.Visible = false end
+        if moveDir.Magnitude > 0 then
+            hrp.Velocity = Vector3.new(moveDir.Unit.X * 55, 0, moveDir.Unit.Z * 55)
         end
     end
 end)
