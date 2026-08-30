@@ -372,7 +372,7 @@ end
 -- =====================================================================
 
 local vis = TabContentFrames["Visual"]
-CreateToggle(vis, "ESP Line (Top-Screen Edge)", function(v) D3DConfig.EspLine = v end)
+CreateToggle(vis, "ESP Line", function(v) D3DConfig.EspLine = v end)
 CreateToggle(vis, "ESP Name", function(v) D3DConfig.EspName = v end)
 CreateToggle(vis, "ESP Distance", function(v) D3DConfig.EspDistance = v end)
 CreateToggle(vis, "ESP Gender [Cowo/Cewe]", function(v) D3DConfig.EspGender = v end)
@@ -470,11 +470,11 @@ RunService.RenderStepped:Connect(function()
                     if D3DConfig.EspLine then
                         local line = Drawing.new("Line")
                         line.Visible = true
-                        -- Garis ditarik dari pinggir/tepi atas layar (tengah-atas border 0) menuju kepala player
-                        line.From = Vector2.new(Camera.ViewportSize.X / 2, 0)
+                        -- Di-draw dari atas tengah layar (Y = 15 agar pasti terlihat dan tidak terpotong border atas) menuju kepala player
+                        line.From = Vector2.new(Camera.ViewportSize.X / 2, 15)
                         line.To = Vector2.new(headPos.X, headPos.Y)
                         line.Color = Color3.fromRGB(255, 0, 0)
-                        line.Thickness = 1.2
+                        line.Thickness = 1.5
                         table.insert(activeDrawings, line)
                     end
 
@@ -636,7 +636,7 @@ RunService.RenderStepped:Connect(function()
 
         for _, p in ipairs(Players:GetPlayers()) do
             if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("Head") and p.Character:FindFirstChild("Humanoid") and p.Character.Humanoid.Health > 0 then
-                local head = p.Category and p.Character.Head or p.Character.Head
+                local head = p.Character.Head
                 local screenPoint, onScreen = Camera:WorldToViewportPoint(head.Position)
                 if onScreen then
                     local magnitude = (Vector2.new(screenPoint.X, screenPoint.Y) - mousePos).Magnitude
