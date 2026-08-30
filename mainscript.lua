@@ -1,4 +1,4 @@
--- ===================================================================== -- ULTIMATE ANDROID D3D MENU: FINAL PLAYER ENGINE v4 -- ===================================================================== 
+-- ===================================================================== -- ULTIMATE ANDROID D3D MENU: FINAL PLAYER ENGINE v5 -- ===================================================================== 
 local Players = game:GetService("Players") 
 local UserInputService = game:GetService("UserInputService") 
 local Lighting = game:GetService("Lighting") 
@@ -388,7 +388,7 @@ CreateColorPicker(TabContentFrames["Visual"], "Chams Circle Color Picker", funct
     UpdateChams() 
 end) 
 
--- PLAYER TAB CONTROLS (UPDATED)
+-- PLAYER TAB CONTROLS (FIXED)
 CreateToggle(TabContentFrames["Player"], "Speed Run", function(v) 
     PlayerConfig.SpeedHack = v 
     if not v and LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
@@ -409,11 +409,6 @@ CreateToggle(TabContentFrames["Player"], "Size Hack", function(v)
                 for _, scale in ipairs({"BodyHeightScale", "BodyWidthScale", "BodyDepthScale", "HeadScale"}) do
                     local s = hum:FindFirstChild(scale)
                     if s then s.Value = 1 end
-                end
-            end
-            for _, part in ipairs(char:GetChildren()) do
-                if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
-                    part.Size = part.Size / (PlayerConfig.SizeValue > 0 and PlayerConfig.SizeValue or 1)
                 end
             end
         end)
@@ -467,20 +462,25 @@ RunService.Stepped:Connect(function()
             hum.WalkSpeed = PlayerConfig.SpeedValue
         end
 
-        -- 2. Ultimate God Mode / Immunity Engine (HP, Oxygen, Drowning, Temperature, Poison)
+        -- 2. Ultimate God Mode & Oxygen Engine (Menyelam & Tenggelam Diatasi Menyeluruh)
         if PlayerConfig.GodMode then
             hum.Health = hum.MaxHealth
             pcall(function()
-                -- Proteksi Oxygen / Pernafasan di Air & Hazard Lingkungan
-                if hum:GetAttribute("Oxygen") then hum:SetAttribute("Oxygen", 100) end
-                if hum:GetAttribute("Air") then hum:SetAttribute("Air", 100) end
+                -- Paksa set atribut oxygen/air ke nilai maksimal jika ada
+                if hum:GetAttribute("Oxygen") then hum:SetAttribute("Oxygen", 9999) end
+                if hum:GetAttribute("Air") then hum:SetAttribute("Air", 9999) end
                 
-                for _, child in ipairs(char:GetChildren()) do
-                    if child:IsA("Folder") or child:IsA("Model") or child:IsA("ValueBase") then
-                        local n = child.Name:lower()
-                        if n:match("oxygen") or n:match("air") or n:match("drown") or n:match("poison") or n:match("status") or n:match("temp") or n:match("cold") or n:match("heat") then
-                            if child:IsA("NumberValue") or child:IsA("IntValue") then
-                                child.Value = 9999
+                -- Deteksi folder status/breath/drown/oxygen di dalam Character, Player, PlayerGui, dan StarterGui/Core jika ada
+                for _, container in ipairs({char, LocalPlayer, LocalPlayer:FindFirstChild("PlayerGui")}) do
+                    if container then
+                        for _, child in ipairs(container:GetDescendants()) do
+                            local n = child.Name:lower()
+                            if n:match("oxygen") or n:match("air") or n:match("drown") or n:match("breath") or n:match("suffocat") or n:match("lung") or n:match("poison") or n:match("temp") or n:match("cold") or n:match("heat") then
+                                if child:IsA("NumberValue") or child:IsA("IntValue") then
+                                    child.Value = 9999
+                                elseif child:IsA("BindableEvent") or child:IsA("RemoteEvent") then
+                                    -- Kadang ada event kehabisan napas yang bisa diputus atau dicegah
+                                end
                             end
                         end
                     end
@@ -499,29 +499,18 @@ RunService.Stepped:Connect(function()
         end
     end
 
-    -- 3. Robust Size Hack Engine (Direct Parts Scaling + Roblox Scales)
-    if PlayerConfig.SizeHack and hum and hrp then
+    -- 3. Robust Size Hack Engine (Menggunakan Roblox Humanoid Scales tanpa merusak bagian tubuh/part terpecah)
+    if PlayerConfig.SizeHack and hum then
         local scale = PlayerConfig.SizeValue
         pcall(function()
-            -- Ubah Roblox Humanoid Scales
-            for _, scaleObj in ipairs({hum:FindFirstChild("BodyHeightScale"), hum:FindFirstChild("BodyWidthScale"), hum:FindFirstChild("BodyDepthScale"), hum:FindFirstChild("HeadScale")}) do
+            for _, scaleObj in ipairs({
+                hum:FindFirstChild("BodyHeightScale"), 
+                hum:FindFirstChild("BodyWidthScale"), 
+                hum:FindFirstChild("BodyDepthScale"), 
+                hum:FindFirstChild("HeadScale")
+            }) do
                 if scaleObj and scaleObj:IsA("NumberValue") then
                     scaleObj.Value = scale
-                end
-            end
-            -- Paksa ubah ukuran ukuran mesh/part fisik karakter secara instan
-            for _, part in ipairs(char:GetDescendants()) do
-                if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
-                    if not part:FindFirstChild("OriginalSize") then
-                        local orig = Instance.new("Vector3Value")
-                        orig.Name = "OriginalSize"
-                        orig.Value = part.Size
-                        orig.Parent = part
-                    end
-                    local origSize = part.FindFirstChild("OriginalSize")
-                    if origSize then
-                        part.Size = origSize.Value * scale
-                    end
                 end
             end
         end)
