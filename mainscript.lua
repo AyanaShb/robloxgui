@@ -1,10 +1,4 @@
-Versi sebelumnya gagal berjalan karena ada fungsi Drawing API (Drawing.new) bawaan PC yang dipaksa masuk ke executor Android sehingga script langsung mengalami error total di baris pertama sebelum menu sempat dibuat.
-Script di bawah ini dikembalikan ke struktur versi sebelumnya (menggunakan sistem Drawing yang mulus dan responsif seperti sedia kala), namun seluruh bug yang kamu laporkan sebelumnya sudah diperbaiki dengan benar:
- * Multi Jump: Diperbaiki menggunakan detector lompatan yang aktif dan responsif.
- * Wall Hack (Noclip): Ditambahkan sistem penyimpanan status asli (OriginalCanCollide) sehingga saat di-off-kan, karakter langsung kembali normal.
- * ESP Distance: Satuan jarak diubah dari ft menjadi m (meter).
- * Long View POV: Diperbaiki dengan mengunci MaxZoomDistance langsung pada kamera pemain secara real-time.
--- ===================================================================== -- ULTIMATE ANDROID D3D MENU: RESTORED & FIXED v11 -- ===================================================================== 
+-- ===================================================================== -- ULTIMATE ANDROID D3D MENU: FISHING EDITION v8 -- ===================================================================== 
 local Players = game:GetService("Players") 
 local UserInputService = game:GetService("UserInputService") 
 local Lighting = game:GetService("Lighting") 
@@ -60,7 +54,6 @@ local WorldConfig = {
 }
 
 local ESPCache = {}
-local OriginalCanCollide = {}
 
 -- FLOATING BUTTON UI 
 local FloatButton = Instance.new("TextButton") 
@@ -177,18 +170,15 @@ for i, tabName in ipairs(tabs) do
     end) 
 end 
 
--- ESP DRAWING SETUP (SAFE CHECK)
+-- ESP DRAWING SETUP
 local function CreatePlayerESP(player)
     if player == LocalPlayer then return end
-    local success, espData = pcall(function()
-        return {
-            Line = Drawing.new("Line"),
-            Name = Drawing.new("Text"),
-            Distance = Drawing.new("Text"),
-            Gender = Drawing.new("Text")
-        }
-    end)
-    if not success or not espData then return end
+    local espData = {
+        Line = Drawing.new("Line"),
+        Name = Drawing.new("Text"),
+        Distance = Drawing.new("Text"),
+        Gender = Drawing.new("Text")
+    }
     
     espData.Line.Thickness = 1.5
     espData.Line.Color = Color3.fromRGB(0, 240, 255)
@@ -389,8 +379,10 @@ end
 -- POPULATE TABS
 CreateToggle(TabContentFrames["Visual"], "ESP Line (Top Center)", function(v) VisualsConfig.ESP_Line = v end) 
 CreateToggle(TabContentFrames["Visual"], "ESP Name", function(v) VisualsConfig.ESP_Name = v end) 
-CreateToggle(TabContentFrames["Visual"], "ESP Distance [m]", function(v) VisualsConfig.ESP_Distance = v end) 
+CreateToggle(TabContentFrames["Visual"], "ESP Distance", function(v) VisualsConfig.ESP_Distance = v end) 
 CreateToggle(TabContentFrames["Visual"], "ESP Gender [Cowo/Cewe]", function(v) VisualsConfig.ESP_Gender = v end) 
+CreateToggle(TabContentFrames["Visual"], "ESP Item Nearby", function(v) VisualsConfig.ESP_Item = v end) 
+CreateSlider(TabContentFrames["Visual"], "ESP Item Radius", 10, 500, 50, function(val) VisualsConfig.ItemRadius = val end) 
 CreateToggle(TabContentFrames["Visual"], "Chams Body Color (Glow)", function(v) 
     VisualsConfig.ChamsGlow = v 
     UpdateChams() 
@@ -400,7 +392,7 @@ CreateColorPicker(TabContentFrames["Visual"], "Chams Circle Color Picker", funct
     UpdateChams() 
 end) 
 
--- PLAYER TAB CONTROLS
+-- PLAYER TAB CONTROLS (BERSIH DARI FITUR DIHAPUS)
 CreateToggle(TabContentFrames["Player"], "Speed Run", function(v) 
     PlayerConfig.SpeedHack = v 
     if not v and LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
@@ -410,30 +402,9 @@ end)
 CreateSlider(TabContentFrames["Player"], "Speed Value", 16, 200, 16, function(val) PlayerConfig.SpeedValue = val end) 
 CreateToggle(TabContentFrames["Player"], "Fly (Hold Jump)", function(v) PlayerConfig.Fly = v end) 
 CreateToggle(TabContentFrames["Player"], "Multi Jump (Tap to Ascend)", function(v) PlayerConfig.MultiJump = v end) 
-CreateToggle(TabContentFrames["Player"], "Wall Hack", function(v) 
-    PlayerConfig.WallHack = v 
-    local char = LocalPlayer.Character
-    if char then
-        for _, part in ipairs(char:GetDescendants()) do
-            if part:IsA("BasePart") then
-                if v then
-                    if OriginalCanCollide[part] == nil then
-                        OriginalCanCollide[part] = part.CanCollide
-                    end
-                    part.CanCollide = false
-                else
-                    if OriginalCanCollide[part] ~= nil then
-                        part.CanCollide = OriginalCanCollide[part]
-                    else
-                        part.CanCollide = true
-                    end
-                end
-            end
-        end
-    end
-end) 
+CreateToggle(TabContentFrames["Player"], "Wall Hack", function(v) PlayerConfig.WallHack = v end) 
 
--- WORLD TAB CONTROLS
+-- WORLD TAB CONTROLS (NIGHT & DAYLIGHT FULL INDOOR/OUTDOOR)
 CreateToggle(TabContentFrames["world"], "Night Mode (Indoor & Outdoor)", function(v) 
     WorldConfig.NightMode = v
     if v then
@@ -495,14 +466,14 @@ tpButton.TextSize = 11.5
 tpButton.Font = Enum.Font.GothamBold 
 Instance.new("UICorner", tpButton).CornerRadius = UDim.new(0, 8) 
 
--- MULTI JUMP HANDLER
+-- MULTI JUMP LISTENER
 UserInputService.JumpRequest:Connect(function()
     if PlayerConfig.MultiJump then
         local char = LocalPlayer.Character
         local hrp = char and char:FindFirstChild("HumanoidRootPart")
         if hrp then
-            hrp.Velocity = Vector3.new(hrp.Velocity.X, 55, hrp.Velocity.Z)
-            hrp.AssemblyLinearVelocity = Vector3.new(hrp.AssemblyLinearVelocity.X, 55, hrp.AssemblyLinearVelocity.Z)
+            hrp.Velocity = Vector3.new(hrp.Velocity.X, 60, hrp.Velocity.Z)
+            hrp.AssemblyLinearVelocity = Vector3.new(hrp.AssemblyLinearVelocity.X, 60, hrp.AssemblyLinearVelocity.Z)
         end
     end
 end)
@@ -514,10 +485,14 @@ RunService.Stepped:Connect(function()
     local hum = char:FindFirstChildOfClass("Humanoid")
     local hrp = char:FindFirstChild("HumanoidRootPart")
 
-    if hum and PlayerConfig.SpeedHack then
-        hum.WalkSpeed = PlayerConfig.SpeedValue
+    if hum then
+        -- 1. Speed Hack Engine
+        if PlayerConfig.SpeedHack then
+            hum.WalkSpeed = PlayerConfig.SpeedValue
+        end
     end
 
+    -- 2. Memastikan Night/Daylight terus mengunci area Indoor & Outdoor secara real-time
     if WorldConfig.NightMode then
         Lighting.ClockTime = 0
         Lighting.Brightness = 0.1
@@ -530,17 +505,16 @@ RunService.Stepped:Connect(function()
         Lighting.OutdoorAmbient = Color3.fromRGB(240, 240, 240)
     end
 
+    -- 3. Wall Hack (Noclip) Engine
     if PlayerConfig.WallHack then
         for _, part in ipairs(char:GetDescendants()) do
             if part:IsA("BasePart") then
-                if OriginalCanCollide[part] == nil then
-                    OriginalCanCollide[part] = part.CanCollide
-                end
                 part.CanCollide = false
             end
         end
     end
 
+    -- 4. Fly Engine
     if PlayerConfig.Fly and hrp then
         local camCFrame = Camera.CFrame
         local moveDir = Vector3.new()
@@ -569,12 +543,6 @@ end)
 
 -- RENDER LOOP FOR VISUAL UPDATES
 RunService.RenderStepped:Connect(function()
-    if WorldConfig.LongView then
-        if LocalPlayer.CameraMaxZoomDistance ~= WorldConfig.ViewDistance then
-            LocalPlayer.CameraMaxZoomDistance = WorldConfig.ViewDistance
-        end
-    end
-
     for player, esp in pairs(ESPCache) do
         local char = player.Character
         local hrp = char and char:FindFirstChild("HumanoidRootPart")
@@ -603,7 +571,7 @@ RunService.RenderStepped:Connect(function()
                 end
                 
                 if VisualsConfig.ESP_Distance then
-                    esp.Distance.Text = string.format("[%dm]", math.floor(distance))
+                    esp.Distance.Text = string.format("[%dft]", math.floor(distance))
                     esp.Distance.Position = Vector2.new(vector.X, vector.Y + 10)
                     esp.Distance.Visible = true
                 else
@@ -625,4 +593,3 @@ RunService.RenderStepped:Connect(function()
         end
     end
 end)
-
