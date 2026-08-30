@@ -1,5 +1,5 @@
 -- ========================================================
--- DEAR IMGUI PREMIUM GRADIENT UI (V7.2 - TOUCH & MULTI JUMP FIXED)
+-- DEAR IMGUI PREMIUM GRADIENT UI (V7.3 - MULTI JUMP & FIRE CMD FIXED)
 -- ========================================================
 
 local Players = game:GetService("Players")
@@ -40,7 +40,7 @@ end
 local safeParent = GetSafeParent()
 
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "ImGui_Gradient_Hub_V72"
+ScreenGui.Name = "ImGui_Gradient_Hub_V73"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.DisplayOrder = 9999
 ScreenGui.Parent = safeParent
@@ -204,7 +204,7 @@ SuperHeaderGradient.Parent = SuperHeader
 local SuperText = Instance.new("TextLabel")
 SuperText.Size = UDim2.new(1, 0, 1, 0)
 SuperText.BackgroundTransparency = 1
-SuperText.Text = "★ D3D MENU AMIN GANTENG V7.2 ★"
+SuperText.Text = "★ D3D MENU AMIN GANTENG V7.3 ★"
 SuperText.Font = Enum.Font.FredokaOne
 SuperText.TextSize = 15
 SuperText.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -221,7 +221,7 @@ local SubText = Instance.new("TextLabel")
 SubText.Size = UDim2.new(1, -10, 1, 0)
 SubText.Position = UDim2.new(0, 8, 0, 0)
 SubText.BackgroundTransparency = 1
-SubText.Text = "Dear ImGui v7.2 (Touch & MultiJump Fixed)"
+SubText.Text = "Dear ImGui v7.3 (MultiJump & Fire Cmd Fixed)"
 SubText.Font = Enum.Font.Code
 SubText.TextSize = 11
 SubText.TextColor3 = Color3.fromRGB(150, 160, 180)
@@ -569,23 +569,22 @@ local function CreateColorTable(parent, text, callback)
 end
 
 -- ==========================================
--- LOGIC: SPEED HACK & ROBUST MULTI JUMP
+-- LOGIC: SPEED HACK & TRUE MULTI JUMP
 -- ==========================================
 
 CreateToggle(PlayerPage, "Speed Hack", true, function(state) Settings.SpeedHack = state end)
 CreateSlider(PlayerPage, "Speed Value", 16, 150, 30, true, function(val) Settings.WalkSpeed = val end)
-CreateToggle(PlayerPage, "Multi Jump (Fixed)", true, function(state) Settings.MultiJump = state end)
+CreateToggle(PlayerPage, "Multi Jump (True Infinite)", true, function(state) Settings.MultiJump = state end)
 CreateSlider(PlayerPage, "Multi Jump Power", 30, 150, 50, true, function(val) Settings.MultiJumpPower = val end)
 
--- MULTI JUMP FIX MENGGUNAKAN STATE CHANGED AGAR LEBIH STABIL DI MOBILE
-local canJumpAgain = false
+-- SISTEM MULTI JUMP MENGGUNAKAN PENDETEKSIAN STATE CHANGED & FREEFALL AGAR BISA LOMPAT BERKALI-KALI DI UDARA
 UserInputService.JumpRequest:Connect(function()
     if Settings.MultiJump then
         local char = LocalPlayer.Character
         if char then
-            local hum = char:FindFirstChildOfClass("Humanoid")
             local hrp = char:FindFirstChild("HumanoidRootPart")
-            if hum and hrp and hum:GetState() ~= Enum.HumanoidStateType.Dead then
+            local hum = char:FindFirstChildOfClass("Humanoid")
+            if hrp and hum and hum:GetState() ~= Enum.HumanoidStateType.Dead then
                 hrp.AssemblyLinearVelocity = Vector3.new(hrp.AssemblyLinearVelocity.X, Settings.MultiJumpPower, hrp.AssemblyLinearVelocity.Z)
             end
         end
@@ -728,10 +727,10 @@ CreateToggle(VisualPage, "ESP 3D Box", true, function(state) Settings.ESPBox3D =
 CreateToggle(VisualPage, "ESP Health Bar", true, function(state) Settings.ESPHealth = state end)
 
 -- ==========================================
--- GUN MENU UI (AIMBOT + PREDICTION + SAFE TOUCH FILTER)
+-- GUN MENU UI (AIMBOT + PREDICTION + TOOL ACTIVATION/FIRE CHECK)
 -- ==========================================
 
-CreateToggle(GunPage, "Aimbot (Predict + Trigger Only)", true, function(state) Settings.Aimbot = state end)
+CreateToggle(GunPage, "Aimbot (Predict + Weapon Fire Only)", true, function(state) Settings.Aimbot = state end)
 
 CreateSelector(GunPage, "Target Part", {"Head", "Body"}, 1, function(selected) 
     Settings.TargetPart = selected == "Body" and "UpperTorso" or "Head"
@@ -748,25 +747,42 @@ local function IsInLobby()
     return false
 end
 
--- PERBAIKAN UTAMA: FILTER SENTUHAN LAYAR SEBELAH KIRI (JOYSTICK/LARI) AGAR TIDAK MENGURANGI/MENGUNCI AIMBOT
+-- PENDETEKSIAN MENEMBAK BERDASARKAN PERINTAH / AKTIVASI TOOL (FIRE) BUKAN LAGI KARENA SENTUHAN LAYAR
 local isFiring = false
-UserInputService.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+local currentTool = nil
+
+local function SetupToolConnections(tool)
+    if not tool or not tool:IsA("Tool") then return end
+    
+    tool.Activated:Connect(function()
         isFiring = true
-    elseif input.UserInputType == Enum.UserInputType.Touch then
-        local screenWidth = Camera.ViewportSize.X
-        -- Jika sentuhan berada di sebelah kiri layar (X < Setengah Layar), asumsikan itu Joystick/Gerak -> Jangan Trigger Aimbot
-        if input.Position.X > (screenWidth / 2) then
-            isFiring = true
-        end
+    end)
+    
+    tool.Unequipped:Connect(function()
+        isFiring = false
+    end)
+end
+
+if LocalPlayer.Character then
+    for _, t in pairs(LocalPlayer.Character:GetChildren()) do
+        if t:IsA("Tool") then SetupToolConnections(t) end
     end
+    LocalPlayer.Character.ChildAdded:Connect(function(child)
+        if child:IsA("Tool") then SetupToolConnections(child) end
+    end)
+end
+
+LocalPlayer.CharacterAdded:Connect(function(newChar)
+    newChar.ChildAdded:Connect(function(child)
+        if child:IsA("Tool") then SetupToolConnections(child) end
+    end)
 end)
 
-UserInputService.InputEnded:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        isFiring = false
-    end
-end)
+if LocalPlayer:FindFirstChild("Backpack") then
+    LocalPlayer.Backpack.ChildAdded:Connect(function(child)
+        if child:IsA("Tool") then SetupToolConnections(child) end
+    end)
+end
 
 local function IsValidEnemy(plr)
     if plr == LocalPlayer then return false end
@@ -1066,7 +1082,7 @@ RunService.RenderStepped:Connect(function()
                     for _, l in ipairs(boxLines) do l.Visible = false end
                 end
 
-                local bgBar, healthBar = GetHealthBar(plr)
+                    local bgBar, healthBar = GetHealthBar(plr)
                 if Settings.ESPHealth and rootOnScreen then
                     local topPos, topOnScreen = Camera:WorldToViewportPoint((hrp.CFrame * CFrame.new(0, 2.5, 0)).Position)
                     local botPos, botOnScreen = Camera:WorldToViewportPoint((hrp.CFrame * CFrame.new(0, -2.5, 0)).Position)
@@ -1102,6 +1118,7 @@ RunService.RenderStepped:Connect(function()
             end
         else
             if ESPLineCache[plr] then ESPLineCache[plr].Visible = false end
+            if ESPNameCache[plr] /* ... */ then end
             if ESPNameCache[plr] then ESPNameCache[plr].Visible = false end
             if ESPDistanceCache[plr] then ESPDistanceCache[plr].Visible = false end
             if ESPGenderCache[plr] then ESPGenderCache[plr].Visible = false end
