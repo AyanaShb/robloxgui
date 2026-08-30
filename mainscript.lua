@@ -53,6 +53,11 @@ else
     ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 end
 
+-- Container khusus untuk ESP agar rapi
+local EspContainer = Instance.new("Folder")
+EspContainer.Name = "D3D_EspContainer"
+EspContainer.Parent = ScreenGui
+
 -- Floating Mini Icon (Glow Capsule)
 local FloatButton = Instance.new("TextButton")
 FloatButton.Size = UDim2.new(0, 48, 0, 48)
@@ -372,7 +377,7 @@ end
 -- =====================================================================
 
 local vis = TabContentFrames["Visual"]
-CreateToggle(vis, "ESP Line", function(v) D3DConfig.EspLine = v end)
+CreateToggle(vis, "ESP Line (Top to Head)", function(v) D3DConfig.EspLine = v end)
 CreateToggle(vis, "ESP Name", function(v) D3DConfig.EspName = v end)
 CreateToggle(vis, "ESP Distance", function(v) D3DConfig.EspDistance = v end)
 CreateToggle(vis, "ESP Gender [Cowo/Cewe]", function(v) D3DConfig.EspGender = v end)
@@ -439,10 +444,11 @@ tpButton.MouseButton1Click:Connect(function()
 end)
 
 -- =====================================================================
--- FULL FUNCTIONAL CHEAT LOOP
+-- FULL FUNCTIONAL CHEAT LOOP (UI Frame ESP Line for Android Support)
 -- =====================================================================
 
 local activeDrawings = {}
+local activeFrames = {}
 
 local function clearDrawings()
     for _, obj in pairs(activeDrawings) do
@@ -451,6 +457,29 @@ local function clearDrawings()
         end
     end
     activeDrawings = {}
+
+    for _, frame in pairs(activeFrames) do
+        if frame and frame.Destroy then
+            frame:Destroy()
+        end
+    end
+    activeFrames = {}
+end
+
+-- Fungsi matematika untuk membuat Frame GUI berfungsi menyerupai garis lurus (Line)
+local function DrawUILine(p1, p2, color, thickness, parent)
+    local frame = Instance.new("Frame")
+    frame.BackgroundColor3 = color
+    frame.BorderSizePixel = 0
+    frame.AnchorPoint = Vector2.new(0.5, 0.5)
+    
+    local distance = (p2 - p1).Magnitude
+    frame.Size = UDim2.new(0, distance, 0, thickness)
+    frame.Position = UDim2.new(0, (p1.X + p2.X) / 2, 0, (p1.Y + p2.Y) / 2)
+    frame.Rotation = math.deg(math.atan2(p2.Y - p1.Y, p2.X - p1.X))
+    frame.Parent = parent
+    
+    table.insert(activeFrames, frame)
 end
 
 RunService.RenderStepped:Connect(function()
@@ -468,14 +497,10 @@ RunService.RenderStepped:Connect(function()
 
                 if onScreen then
                     if D3DConfig.EspLine then
-                        local line = Drawing.new("Line")
-                        line.Visible = true
-                        -- Di-draw dari atas tengah layar (Y = 15 agar pasti terlihat dan tidak terpotong border atas) menuju kepala player
-                        line.From = Vector2.new(Camera.ViewportSize.X / 2, 15)
-                        line.To = Vector2.new(headPos.X, headPos.Y)
-                        line.Color = Color3.fromRGB(255, 0, 0)
-                        line.Thickness = 1.5
-                        table.insert(activeDrawings, line)
+                        -- Titik awal dari tengah atas layar (X tengah, Y = 15) menuju kepala player
+                        local p1 = Vector2.new(Camera.ViewportSize.X / 2, 15)
+                        local p2 = Vector2.new(headPos.X, headPos.Y)
+                        DrawUILine(p1, p2, Color3.fromRGB(255, 0, 0), 1.5, EspContainer)
                     end
 
                     if D3DConfig.EspName then
