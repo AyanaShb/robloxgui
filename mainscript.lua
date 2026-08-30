@@ -1,4 +1,4 @@
-#v1.0.0
+--- v1.0.0
 local Players = game:GetService("Players") 
 local UserInputService = game:GetService("UserInputService") 
 local Lighting = game:GetService("Lighting") 
