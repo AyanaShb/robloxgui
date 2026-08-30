@@ -1,4 +1,4 @@
--- ===================================================================== -- ULTIMATE ANDROID D3D MENU: FINAL PLAYER ENGINE v5 -- ===================================================================== 
+-- ===================================================================== -- ULTIMATE ANDROID D3D MENU: FINAL PLAYER ENGINE v6 -- ===================================================================== 
 local Players = game:GetService("Players") 
 local UserInputService = game:GetService("UserInputService") 
 local Lighting = game:GetService("Lighting") 
@@ -388,7 +388,7 @@ CreateColorPicker(TabContentFrames["Visual"], "Chams Circle Color Picker", funct
     UpdateChams() 
 end) 
 
--- PLAYER TAB CONTROLS (FIXED)
+-- PLAYER TAB CONTROLS (OPTIMIZED REALTIME SIZE & FREEZE OXYGEN)
 CreateToggle(TabContentFrames["Player"], "Speed Run", function(v) 
     PlayerConfig.SpeedHack = v 
     if not v and LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
@@ -403,10 +403,9 @@ CreateToggle(TabContentFrames["Player"], "Size Hack", function(v)
     PlayerConfig.SizeHack = v 
     if not v and LocalPlayer.Character then
         pcall(function()
-            local char = LocalPlayer.Character
-            local hum = char:FindFirstChildOfClass("Humanoid")
+            local hum = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
             if hum then
-                for _, scale in ipairs({"BodyHeightScale", "BodyWidthScale", "BodyDepthScale", "HeadScale"}) do
+                for _, scale in ipairs({"BodyHeightScale", "BodyWidthScale", "BodyDepthScale", "HeadScale", "ProportionScale"}) do
                     local s = hum:FindFirstChild(scale)
                     if s then s.Value = 1 end
                 end
@@ -415,7 +414,7 @@ CreateToggle(TabContentFrames["Player"], "Size Hack", function(v)
     end
 end) 
 CreateSlider(TabContentFrames["Player"], "Size Value", 1, 5, 1, function(val) PlayerConfig.SizeValue = val end) 
-CreateToggle(TabContentFrames["Player"], "God Mode (Oxygen, Hazard, HP)", function(v) PlayerConfig.GodMode = v end) 
+CreateToggle(TabContentFrames["Player"], "God Mode (Freeze Oxygen & HP)", function(v) PlayerConfig.GodMode = v end) 
 
 CreateToggle(TabContentFrames["world"], "Night Mode") 
 CreateToggle(TabContentFrames["world"], "Daylight Mode") 
@@ -449,7 +448,7 @@ UserInputService.JumpRequest:Connect(function()
     end
 end)
 
--- ADVANCED PLAYER ENGINE RUNSERVICE LOOP
+-- ADVANCED PLAYER ENGINE RUNSERVICE LOOP (RINGAN & REALTIME)
 RunService.Stepped:Connect(function()
     local char = LocalPlayer.Character
     if not char then return end
@@ -462,53 +461,29 @@ RunService.Stepped:Connect(function()
             hum.WalkSpeed = PlayerConfig.SpeedValue
         end
 
-        -- 2. Ultimate God Mode & Oxygen Engine (Menyelam & Tenggelam Diatasi Menyeluruh)
+        -- 2. God Mode & Freeze Oksigen (Anti Lag & Anti Mati Saat Menyelam)
         if PlayerConfig.GodMode then
             hum.Health = hum.MaxHealth
             pcall(function()
-                -- Paksa set atribut oxygen/air ke nilai maksimal jika ada
-                if hum:GetAttribute("Oxygen") then hum:SetAttribute("Oxygen", 9999) end
-                if hum:GetAttribute("Air") then hum:SetAttribute("Air", 9999) end
+                -- Freeze Atribut Oksigen/Air jika ada di Humanoid atau Character
+                if hum:GetAttribute("Oxygen") then hum:SetAttribute("Oxygen", 100) end
+                if hum:GetAttribute("Air") then hum:SetAttribute("Air", 100) end
                 
-                -- Deteksi folder status/breath/drown/oxygen di dalam Character, Player, PlayerGui, dan StarterGui/Core jika ada
-                for _, container in ipairs({char, LocalPlayer, LocalPlayer:FindFirstChild("PlayerGui")}) do
-                    if container then
-                        for _, child in ipairs(container:GetDescendants()) do
-                            local n = child.Name:lower()
-                            if n:match("oxygen") or n:match("air") or n:match("drown") or n:match("breath") or n:match("suffocat") or n:match("lung") or n:match("poison") or n:match("temp") or n:match("cold") or n:match("heat") then
-                                if child:IsA("NumberValue") or child:IsA("IntValue") then
-                                    child.Value = 9999
-                                elseif child:IsA("BindableEvent") or child:IsA("RemoteEvent") then
-                                    -- Kadang ada event kehabisan napas yang bisa diputus atau dicegah
-                                end
-                            end
-                        end
-                    end
-                end
-
-                local stats = LocalPlayer:FindFirstChild("leaderstats")
-                if stats then
-                    for _, stat in ipairs(stats:GetChildren()) do
-                        local n = stat.Name:lower()
-                        if n:match("oxygen") or n:match("air") or n:match("hp") or n:match("breath") then
-                            stat.Value = 9999
-                        end
-                    end
+                -- Cari dan Freeze Value Oksigen utama agar terkunci terus
+                local oxygenVal = char:FindFirstChild("Oxygen") or char:FindFirstChild("Air") or LocalPlayer:FindFirstChild("Oxygen")
+                if oxygenVal and (oxygenVal:IsA("NumberValue") or oxygenVal:IsA("IntValue")) then
+                    oxygenVal.Value = 100
                 end
             end)
         end
     end
 
-    -- 3. Robust Size Hack Engine (Menggunakan Roblox Humanoid Scales tanpa merusak bagian tubuh/part terpecah)
+    -- 3. Real-Time Size Hack Engine (Smooth & Tanpa Terpecah)
     if PlayerConfig.SizeHack and hum then
         local scale = PlayerConfig.SizeValue
         pcall(function()
-            for _, scaleObj in ipairs({
-                hum:FindFirstChild("BodyHeightScale"), 
-                hum:FindFirstChild("BodyWidthScale"), 
-                hum:FindFirstChild("BodyDepthScale"), 
-                hum:FindFirstChild("HeadScale")
-            }) do
+            for _, scaleObjName in ipairs({"BodyHeightScale", "BodyWidthScale", "BodyDepthScale", "HeadScale", "ProportionScale"}) do
+                local scaleObj = hum:FindFirstChild(scaleObjName)
                 if scaleObj and scaleObj:IsA("NumberValue") then
                     scaleObj.Value = scale
                 end
