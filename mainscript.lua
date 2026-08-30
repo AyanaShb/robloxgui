@@ -1,5 +1,5 @@
 -- ========================================================
--- DEAR IMGUI PREMIUM GRADIENT UI (V6.9 - FIXED & UPGRADED)
+-- DEAR IMGUI PREMIUM GRADIENT UI (V7.0 - ULTIMATE FIX)
 -- ========================================================
 
 local Players = game:GetService("Players")
@@ -40,7 +40,7 @@ end
 local safeParent = GetSafeParent()
 
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "ImGui_Gradient_Hub_V69"
+ScreenGui.Name = "ImGui_Gradient_Hub_V70"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.DisplayOrder = 9999
 ScreenGui.Parent = safeParent
@@ -114,7 +114,7 @@ local Settings = {
     Noclip = false, AntiCrash = false, AntiKick = false,
     Aimbot = false, FOVRadius = 150, AimDistance = 500, TargetPart = "Head",
     ESPLine = false, ESPName = false, ESPDistance = false, ESPGender = false, ESPBox3D = false, ESPHealth = false,
-    PredictionMultiplier = 0.13
+    PredictionMultiplier = 0.15
 }
 
 local FOVCircle = Drawing.new("Circle")
@@ -221,7 +221,7 @@ local SubText = Instance.new("TextLabel")
 SubText.Size = UDim2.new(1, -10, 1, 0)
 SubText.Position = UDim2.new(0, 8, 0, 0)
 SubText.BackgroundTransparency = 1
-SubText.Text = "Dear ImGui v6.9 (Fixed Engine Hub)"
+SubText.Text = "Dear ImGui v7.0 (Ultimate Fix Hub)"
 SubText.Font = Enum.Font.Code
 SubText.TextSize = 11
 SubText.TextColor3 = Color3.fromRGB(150, 160, 180)
@@ -568,7 +568,7 @@ local function CreateColorTable(parent, text, callback)
 end
 
 -- ==========================================
--- LOGIC IMPLEMENTATIONS (PLAYER & MISC)
+-- LOGIC: SPEED HACK & TRUE ROBUST MULTI JUMP
 -- ==========================================
 
 CreateToggle(PlayerPage, "Speed Hack", true, function(state) Settings.SpeedHack = state end)
@@ -576,29 +576,18 @@ CreateSlider(PlayerPage, "Speed Value", 16, 150, 30, true, function(val) Setting
 CreateToggle(PlayerPage, "Multi Jump", true, function(state) Settings.MultiJump = state end)
 CreateSlider(PlayerPage, "Multi Jump Power", 30, 150, 50, true, function(val) Settings.MultiJumpPower = val end)
 
-CreateToggle(PlayerPage, "ESP Line", true, function(state) Settings.ESPLine = state end)
-CreateToggle(PlayerPage, "ESP Name", true, function(state) Settings.ESPName = state end)
-CreateToggle(PlayerPage, "ESP Distance", true, function(state) Settings.ESPDistance = state end)
-CreateToggle(PlayerPage, "ESP Gender", true, function(state) Settings.ESPGender = state end)
-CreateToggle(PlayerPage, "ESP Box 3D", true, function(state) Settings.ESPBox3D = state end)
-CreateToggle(PlayerPage, "ESP Health", true, function(state) Settings.ESPHealth = state end)
-
--- FIX MULTI JUMP MECHANIC (TRUE DOUBLE/MULTI JUMP SYSTEM)
-local jumpConnection = nil
-local airJumps = 0
-local maxAirJumps = 2
-
+-- ROBUST MULTI JUMP FIX (MENANGKAP KEYPRESS JUMP DI SEMUA GAME SECARA LANGSUNG)
+local jumpConn = nil
 local function SetupMultiJump(char)
     local hum = char:WaitForChild("Humanoid", 5)
     if not hum then return end
     
-    if jumpConnection then jumpConnection:Disconnect() end
+    if jumpConn then jumpConn:Disconnect() end
     
-    jumpConnection = UserInputService.JumpRequest:Connect(function()
+    jumpConn = UserInputService.JumpRequest:Connect(function()
         if Settings.MultiJump and hum and hum:GetState() ~= Enum.HumanoidStateType.Dead then
             local hrp = char:FindFirstChild("HumanoidRootPart")
             if hrp then
-                -- Apply upward velocity for multi jump
                 hrp.AssemblyLinearVelocity = Vector3.new(hrp.AssemblyLinearVelocity.X, Settings.MultiJumpPower, hrp.AssemblyLinearVelocity.Z)
             end
         end
@@ -661,7 +650,6 @@ end)
 
 CreateColorTable(PlayerPage, "Chams Body Color", function(col) Settings.ChamsColor = col end)
 CreateColorTable(PlayerPage, "Chams Glow / Outline Color", function(col) Settings.GlowColor = col end)
-
 CreateToggle(PlayerPage, "Wall Hack (Noclip)", true, function(state) Settings.Noclip = state end)
 
 RunService.Stepped:Connect(function()
@@ -682,13 +670,15 @@ RunService.Stepped:Connect(function()
 end)
 
 -- ==========================================
--- LIGHTING MODS (NIGHT MODE & DAYLIGHT - RESTORED & BUG-FREE)
+-- LIGHTING MODS: INDOOR & OUTDOOR FULL FIX
 -- ==========================================
 local originalLighting = {
     ClockTime = Lighting.ClockTime,
     Brightness = Lighting.Brightness,
     OutdoorAmbient = Lighting.OutdoorAmbient,
-    GlobalShadows = Lighting.GlobalShadows
+    Ambient = Lighting.Ambient,
+    GlobalShadows = Lighting.GlobalShadows,
+    FogEnd = Lighting.FogEnd
 }
 
 CreateToggle(MiscPage, "Night Mode (Indoor/Outdoor)", true, function(state)
@@ -697,29 +687,37 @@ CreateToggle(MiscPage, "Night Mode (Indoor/Outdoor)", true, function(state)
         if Settings.Daylight then Settings.Daylight = false end
         Lighting.ClockTime = 0
         Lighting.Brightness = 0
-        Lighting.OutdoorAmbient = Color3.fromRGB(15, 15, 25)
+        Lighting.OutdoorAmbient = Color3.fromRGB(10, 10, 15)
+        Lighting.Ambient = Color3.fromRGB(10, 10, 15)
         Lighting.GlobalShadows = false
+        Lighting.FogEnd = 999999
     else
         Lighting.ClockTime = originalLighting.ClockTime
         Lighting.Brightness = originalLighting.Brightness
         Lighting.OutdoorAmbient = originalLighting.OutdoorAmbient
+        Lighting.Ambient = originalLighting.Ambient
         Lighting.GlobalShadows = originalLighting.GlobalShadows
+        Lighting.FogEnd = originalLighting.FogEnd
     end
 end)
 
-CreateToggle(MiscPage, "Daylight (Full Bright)", true, function(state)
+CreateToggle(MiscPage, "Daylight (Indoor/Outdoor FullBright)", true, function(state)
     Settings.Daylight = state
     if state then
         if Settings.NightMode then Settings.NightMode = false end
         Lighting.ClockTime = 14
-        Lighting.Brightness = 3
-        Lighting.OutdoorAmbient = Color3.fromRGB(200, 200, 200)
-        Lighting.GlobalShadows = true
+        Lighting.Brightness = 5
+        Lighting.OutdoorAmbient = Color3.fromRGB(255, 255, 255)
+        Lighting.Ambient = Color3.fromRGB(255, 255, 255)
+        Lighting.GlobalShadows = false
+        Lighting.FogEnd = 999999
     else
         Lighting.ClockTime = originalLighting.ClockTime
         Lighting.Brightness = originalLighting.Brightness
         Lighting.OutdoorAmbient = originalLighting.OutdoorAmbient
+        Lighting.Ambient = originalLighting.Ambient
         Lighting.GlobalShadows = originalLighting.GlobalShadows
+        Lighting.FogEnd = originalLighting.FogEnd
     end
 end)
 
@@ -727,10 +725,10 @@ CreateToggle(MiscPage, "Anti Crash", true, function(state) Settings.AntiCrash = 
 CreateToggle(MiscPage, "Anti Kick", true, function(state) Settings.AntiKick = state end)
 
 -- ==========================================
--- GUN MENU UI (AIMBOT, INFINITE AMMO, DAMAGE)
+-- GUN MENU UI (AIMBOT + PREDICTION + NO RELOAD)
 -- ==========================================
 
-CreateToggle(GunPage, "Aimbot (Instant Snap + Predict)", true, function(state) Settings.Aimbot = state end)
+CreateToggle(GunPage, "Aimbot (Auto FOV + Line + Predict)", true, function(state) Settings.Aimbot = state end)
 
 CreateSelector(GunPage, "Target Part", {"Head", "Body"}, 1, function(selected) 
     Settings.TargetPart = selected == "Body" and "UpperTorso" or "Head"
@@ -747,15 +745,7 @@ local function IsInLobby()
     return false
 end
 
--- FUNCTION TO CHECK IF HOLDING A WEAPON / TOOL
-local function IsHoldingWeapon()
-    local char = LocalPlayer.Character
-    if not char then return false end
-    local tool = char:FindFirstChildOfClass("Tool")
-    return tool ~= nil
-end
-
--- TRACK ACTUAL FIRE BUTTON PRESS (MOUSE BUTTON 1 OR TOUCH FIRE)
+-- TRACK FIRE BUTTON / TOUCH
 local isFiring = false
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
@@ -798,6 +788,7 @@ local function GetClosestTargetWithPrediction()
             if targetPart and targetHrp and myRoot then
                 local worldDist = (targetPart.Position - myRoot.Position).Magnitude
                 if worldDist <= Settings.AimDistance then
+                    -- PREDICTION: Tambah titik koordinat masa depan berdasarkan kecepatan gerak (AssemblyLinearVelocity)
                     local predictedPosition = targetPart.Position + (targetHrp.AssemblyLinearVelocity * Settings.PredictionMultiplier)
                     local pos, onScreen = Camera:WorldToViewportPoint(predictedPosition)
                     
@@ -805,7 +796,7 @@ local function GetClosestTargetWithPrediction()
                         local dist = (Vector2.new(pos.X, pos.Y) - screenCenter).Magnitude
                         if dist < maxDist then
                             maxDist = dist
-                            closestTarget = {Part = targetPart, PredictedPos = predictedPosition}
+                            closestTarget = {Part = targetPart, PredictedPos = predictedPosition, ScreenPos = Vector2.new(pos.X, pos.Y)}
                         end
                     end
                 end
@@ -816,7 +807,7 @@ local function GetClosestTargetWithPrediction()
 end
 
 -- ==========================================
--- UNIVERSAL MODS (AUTO-APPLIED ON AIMBOT)
+-- UNLIMITED AMMO & NO RELOAD / NO RECOIL
 -- ==========================================
 RunService.Stepped:Connect(function()
     if Settings.Aimbot and not IsInLobby() then
@@ -834,10 +825,10 @@ RunService.Stepped:Connect(function()
                         local vName = obj.Name:lower()
                         if vName:find("ammo") or vName:find("clip") or vName:find("mag") then
                             obj.Value = 999
+                        elseif vName:find("reload") or vName:find("cooldown") then
+                            obj.Value = 0
                         elseif vName:find("damage") or vName:find("dmg") then
                             obj.Value = 99999
-                        elseif vName:find("speed") or vName:find("velocity") then
-                            obj.Value = 999999
                         end
                     end
                 end
@@ -935,7 +926,7 @@ Players.PlayerRemoving:Connect(function(plr)
         for _, l in ipairs(ESPBox3DLinesCache[plr]) do pcall(function() l:Remove() end) end
         ESPBox3DLinesCache[plr] = nil
     end
-    if ESPHealthBarCache[plr] + ESPHealthBgCache[plr] then
+    if ESPHealthBarCache[plr] then
         pcall(function() ESPHealthBarCache[plr]:Remove() end)
         pcall(function() ESPHealthBgCache[plr]:Remove() end)
         ESPHealthBarCache[plr] = nil
@@ -944,35 +935,29 @@ Players.PlayerRemoving:Connect(function(plr)
 end)
 
 -- ==========================================
--- RENDER LOOP (PERSISTENT FOV, AIM LINE & LOCK)
+-- RENDER LOOP (FOV, AIM LINE KE TARGET PALING DEKAT + PREDICT + TRIGGER)
 -- ==========================================
 
 RunService.RenderStepped:Connect(function()
     local center = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
     local topScreenCenter = Vector2.new(Camera.ViewportSize.X / 2, 0)
     
-    -- FOV & AIM LINE SELALU MUNCUL PERMANEN SAAT AIMBOT AKTIF (TIDAK PERLU NUNGGU TEMBAK)
     local showFov = Settings.Aimbot and not IsInLobby()
     FOVCircle.Position = center
     FOVCircle.Radius = Settings.FOVRadius
     FOVCircle.Visible = showFov
 
-    -- HANYA AKTIF SNAP LOCK JIKA: AIMBOT ON, TIDAK DI LOBBY, MEMEGANG SENJATA, DAN MENEKAN TOMBOL TEMBAK
-    local shouldSnap = Settings.Aimbot and not IsInLobby() and IsHoldingWeapon() and isFiring
-
-    if shouldSnap then
+    if showFov then
         local targetData = GetClosestTargetWithPrediction()
         if targetData then
-            local pos, onScreen = Camera:WorldToViewportPoint(targetData.PredictedPos)
-            if onScreen then
-                TargetLine.From = center
-                TargetLine.To = Vector2.new(pos.X, pos.Y)
-                TargetLine.Visible = true
-                
-                -- INSTANT SNAP 0 DETIK LANGSUNG KE TARGET
+            -- Aim Line selalu mengarah ke target paling dekat di dalam FOV
+            TargetLine.From = center
+            TargetLine.To = targetData.ScreenPos
+            TargetLine.Visible = true
+
+            -- Jika tombol tembak ditekan (isFiring), kamera langsung ngarah instant ke titik prediksi musuh
+            if isFiring then
                 Camera.CFrame = CFrame.new(Camera.CFrame.Position, targetData.PredictedPos)
-            else
-                TargetLine.Visible = false
             end
         else
             TargetLine.Visible = false
