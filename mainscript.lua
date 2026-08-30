@@ -1,5 +1,5 @@
 -- ========================================================
--- DEAR IMGUI PREMIUM GRADIENT UI (V6.8 - GODMODE AIM & BULLET)
+-- DEAR IMGUI PREMIUM GRADIENT UI (V6.9 - FIXED & UPGRADED)
 -- ========================================================
 
 local Players = game:GetService("Players")
@@ -8,6 +8,7 @@ local UserInputService = game:GetService("UserInputService")
 local Workspace = game:GetService("Workspace")
 local CoreGui = game:GetService("CoreGui")
 local TweenService = game:GetService("TweenService")
+local Lighting = game:GetService("Lighting")
 
 local LocalPlayer = Players.LocalPlayer
 local Camera = Workspace.CurrentCamera
@@ -39,7 +40,7 @@ end
 local safeParent = GetSafeParent()
 
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "ImGui_Gradient_Hub_V68"
+ScreenGui.Name = "ImGui_Gradient_Hub_V69"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.DisplayOrder = 9999
 ScreenGui.Parent = safeParent
@@ -108,6 +109,7 @@ end
 
 local Settings = {
     SpeedHack = false, WalkSpeed = 30, MultiJump = false, MultiJumpPower = 50,
+    NightMode = false, Daylight = false,
     Chams = false, ChamsColor = Color3.fromRGB(255, 0, 80), GlowColor = Color3.fromRGB(0, 235, 255), 
     Noclip = false, AntiCrash = false, AntiKick = false,
     Aimbot = false, FOVRadius = 150, AimDistance = 500, TargetPart = "Head",
@@ -219,7 +221,7 @@ local SubText = Instance.new("TextLabel")
 SubText.Size = UDim2.new(1, -10, 1, 0)
 SubText.Position = UDim2.new(0, 8, 0, 0)
 SubText.BackgroundTransparency = 1
-SubText.Text = "Dear ImGui v6.8 (Godmode Weapon Hub)"
+SubText.Text = "Dear ImGui v6.9 (Fixed Engine Hub)"
 SubText.Font = Enum.Font.Code
 SubText.TextSize = 11
 SubText.TextColor3 = Color3.fromRGB(150, 160, 180)
@@ -581,27 +583,30 @@ CreateToggle(PlayerPage, "ESP Gender", true, function(state) Settings.ESPGender 
 CreateToggle(PlayerPage, "ESP Box 3D", true, function(state) Settings.ESPBox3D = state end)
 CreateToggle(PlayerPage, "ESP Health", true, function(state) Settings.ESPHealth = state end)
 
-local function SetupJumpDetection()
-    local char = LocalPlayer.Character
-    if not char then return end
-    local hum = char:FindFirstChildOfClass("Humanoid")
-    local hrp = char:FindFirstChild("HumanoidRootPart")
-    if not hum or not hrp then return end
+-- FIX MULTI JUMP MECHANIC (TRUE DOUBLE/MULTI JUMP SYSTEM)
+local jumpConnection = nil
+local airJumps = 0
+local maxAirJumps = 2
 
-    hum.StateChanged:Connect(function(old, new)
-        if Settings.MultiJump and new == Enum.HumanoidStateType.Jumping then
-            hrp.Velocity = Vector3.new(hrp.Velocity.X, Settings.MultiJumpPower, hrp.Velocity.Z)
+local function SetupMultiJump(char)
+    local hum = char:WaitForChild("Humanoid", 5)
+    if not hum then return end
+    
+    if jumpConnection then jumpConnection:Disconnect() end
+    
+    jumpConnection = UserInputService.JumpRequest:Connect(function()
+        if Settings.MultiJump and hum and hum:GetState() ~= Enum.HumanoidStateType.Dead then
+            local hrp = char:FindFirstChild("HumanoidRootPart")
+            if hrp then
+                -- Apply upward velocity for multi jump
+                hrp.AssemblyLinearVelocity = Vector3.new(hrp.AssemblyLinearVelocity.X, Settings.MultiJumpPower, hrp.AssemblyLinearVelocity.Z)
+            end
         end
     end)
 end
 
-LocalPlayer.CharacterAdded:Connect(function(char)
-    char:WaitForChild("Humanoid")
-    task.delay(1, SetupJumpDetection)
-end)
-if LocalPlayer.Character then
-    task.spawn(SetupJumpDetection)
-end
+LocalPlayer.CharacterAdded:Connect(SetupMultiJump)
+if LocalPlayer.Character then task.spawn(function() SetupMultiJump(LocalPlayer.Character) end) end
 
 local function ApplyChams(plr)
     if plr == LocalPlayer then return end
@@ -676,6 +681,48 @@ RunService.Stepped:Connect(function()
     end
 end)
 
+-- ==========================================
+-- LIGHTING MODS (NIGHT MODE & DAYLIGHT - RESTORED & BUG-FREE)
+-- ==========================================
+local originalLighting = {
+    ClockTime = Lighting.ClockTime,
+    Brightness = Lighting.Brightness,
+    OutdoorAmbient = Lighting.OutdoorAmbient,
+    GlobalShadows = Lighting.GlobalShadows
+}
+
+CreateToggle(MiscPage, "Night Mode (Indoor/Outdoor)", true, function(state)
+    Settings.NightMode = state
+    if state then
+        if Settings.Daylight then Settings.Daylight = false end
+        Lighting.ClockTime = 0
+        Lighting.Brightness = 0
+        Lighting.OutdoorAmbient = Color3.fromRGB(15, 15, 25)
+        Lighting.GlobalShadows = false
+    else
+        Lighting.ClockTime = originalLighting.ClockTime
+        Lighting.Brightness = originalLighting.Brightness
+        Lighting.OutdoorAmbient = originalLighting.OutdoorAmbient
+        Lighting.GlobalShadows = originalLighting.GlobalShadows
+    end
+end)
+
+CreateToggle(MiscPage, "Daylight (Full Bright)", true, function(state)
+    Settings.Daylight = state
+    if state then
+        if Settings.NightMode then Settings.NightMode = false end
+        Lighting.ClockTime = 14
+        Lighting.Brightness = 3
+        Lighting.OutdoorAmbient = Color3.fromRGB(200, 200, 200)
+        Lighting.GlobalShadows = true
+    else
+        Lighting.ClockTime = originalLighting.ClockTime
+        Lighting.Brightness = originalLighting.Brightness
+        Lighting.OutdoorAmbient = originalLighting.OutdoorAmbient
+        Lighting.GlobalShadows = originalLighting.GlobalShadows
+    end
+end)
+
 CreateToggle(MiscPage, "Anti Crash", true, function(state) Settings.AntiCrash = state end)
 CreateToggle(MiscPage, "Anti Kick", true, function(state) Settings.AntiKick = state end)
 
@@ -700,6 +747,7 @@ local function IsInLobby()
     return false
 end
 
+-- FUNCTION TO CHECK IF HOLDING A WEAPON / TOOL
 local function IsHoldingWeapon()
     local char = LocalPlayer.Character
     if not char then return false end
@@ -707,6 +755,7 @@ local function IsHoldingWeapon()
     return tool ~= nil
 end
 
+-- TRACK ACTUAL FIRE BUTTON PRESS (MOUSE BUTTON 1 OR TOUCH FIRE)
 local isFiring = false
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
@@ -771,7 +820,6 @@ end
 -- ==========================================
 RunService.Stepped:Connect(function()
     if Settings.Aimbot and not IsInLobby() then
-        -- 1. Auto No Recoil & Super Fast Bullet/Hitscan Hook
         pcall(function()
             local char = LocalPlayer.Character
             if char then
@@ -782,7 +830,6 @@ RunService.Stepped:Connect(function()
                             obj:Destroy()
                         end
                     end
-                    -- Peluru Super Cepat & Infinite Ammo / Damage Ga Ngotak via Value Manipulation
                     if obj:IsA("NumberValue") or obj:IsA("IntValue") then
                         local vName = obj.Name:lower()
                         if vName:find("ammo") or vName:find("clip") or vName:find("mag") then
@@ -796,7 +843,6 @@ RunService.Stepped:Connect(function()
                 end
             end
             
-            -- Hack Backpack/PlayerGui ammo properties across any map
             if LocalPlayer:FindFirstChild("Backpack") then
                 for _, tool in pairs(LocalPlayer.Backpack:GetChildren()) do
                     for _, v in pairs(tool:GetDescendants()) do
@@ -889,24 +935,32 @@ Players.PlayerRemoving:Connect(function(plr)
         for _, l in ipairs(ESPBox3DLinesCache[plr]) do pcall(function() l:Remove() end) end
         ESPBox3DLinesCache[plr] = nil
     end
-    if ESPHealthBarCache[plr] then pcall(function() ESPHealthBarCache[plr]:Remove() end) ESPHealthBarCache[plr] = nil end
-    if ESPHealthBgCache[plr] then pcall(function() ESPHealthBgCache[plr]:Remove() end) ESPHealthBgCache[plr] = nil end
+    if ESPHealthBarCache[plr] + ESPHealthBgCache[plr] then
+        pcall(function() ESPHealthBarCache[plr]:Remove() end)
+        pcall(function() ESPHealthBgCache[plr]:Remove() end)
+        ESPHealthBarCache[plr] = nil
+        ESPHealthBgCache[plr] = nil
+    end
 end)
 
 -- ==========================================
--- RENDER LOOP (AIMBOT TRIGGER & ESP)
+-- RENDER LOOP (PERSISTENT FOV, AIM LINE & LOCK)
 -- ==========================================
 
 RunService.RenderStepped:Connect(function()
     local center = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
     local topScreenCenter = Vector2.new(Camera.ViewportSize.X / 2, 0)
     
-    local showFovCheck = Settings.Aimbot and not IsInLobby() and (IsHoldingWeapon() or isFiring)
+    -- FOV & AIM LINE SELALU MUNCUL PERMANEN SAAT AIMBOT AKTIF (TIDAK PERLU NUNGGU TEMBAK)
+    local showFov = Settings.Aimbot and not IsInLobby()
     FOVCircle.Position = center
     FOVCircle.Radius = Settings.FOVRadius
-    FOVCircle.Visible = showFovCheck
+    FOVCircle.Visible = showFov
 
-    if Settings.Aimbot and not IsInLobby() and (IsHoldingWeapon() or isFiring) then
+    -- HANYA AKTIF SNAP LOCK JIKA: AIMBOT ON, TIDAK DI LOBBY, MEMEGANG SENJATA, DAN MENEKAN TOMBOL TEMBAK
+    local shouldSnap = Settings.Aimbot and not IsInLobby() and IsHoldingWeapon() and isFiring
+
+    if shouldSnap then
         local targetData = GetClosestTargetWithPrediction()
         if targetData then
             local pos, onScreen = Camera:WorldToViewportPoint(targetData.PredictedPos)
@@ -1057,7 +1111,6 @@ RunService.RenderStepped:Connect(function()
         else
             if ESPLineCache[plr] then ESPLineCache[plr].Visible = false end
             if ESPNameCache[plr] then ESPNameCache[plr].Visible = false end
-            if ESPDistanceCache[plr] then ESPDistanceCache[plr].Visible = false end
             if ESPDistanceCache[plr] then ESPDistanceCache[plr].Visible = false end
             if ESPGenderCache[plr] then ESPGenderCache[plr].Visible = false end
             if ESPBox3DLinesCache[plr] then for _, l in ipairs(ESPBox3DLinesCache[plr]) do l.Visible = false end end
