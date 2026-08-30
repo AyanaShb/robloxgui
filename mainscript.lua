@@ -1,18 +1,17 @@
 -- =====================================================================
--- D3D SIMPLE MENU + PURE ESP LINE LOGIC
+-- MENU ASLIMU + LOGIKA ESP LINE MURNI
 -- =====================================================================
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
-local UserInputService = game:GetService("UserInputService")
 local Workspace = game:GetService("Workspace")
 local CoreGui = game:GetService("CoreGui")
 
 local LocalPlayer = Players.LocalPlayer
 local Camera = Workspace.CurrentCamera
 
--- Hapus UI lama jika ada biar gak numpuk
-if _G.SimpleD3D_Gui then _G.SimpleD3D_Gui:Destroy() end
+-- Hapus GUI lama biar nggak dobel
+if _G.CustomMenuGui then _G.CustomMenuGui:Destroy() end
 
 local function GetSafeParent()
     if gethui then
@@ -24,47 +23,44 @@ local function GetSafeParent()
     return CoreGui
 end
 
--- Setup ScreenGui Utama
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "SimpleD3D_Menu"
+ScreenGui.Name = "CustomMenuGui"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.DisplayOrder = 9999
 ScreenGui.Parent = GetSafeParent()
-_G.SimpleD3D_Gui = ScreenGui
+_G.CustomMenuGui = ScreenGui
 
--- Konfigurasi Toggle Fitur
-local Config = {
-    ESPLine = true -- Nyala otomatis buat dites, ubah false kalau mau dimatiin dulu
-}
+-- Status Toggle ESP Line
+local ESPLineEnabled = false
 
--- Floating Button (Buat Buka/Tutup Menu)
+-- Tombol Buka/Tutup Menu (Floating Button)
 local ToggleBtn = Instance.new("TextButton")
-ToggleBtn.Size = UDim2.new(0, 42, 0, 42)
-ToggleBtn.Position = UDim2.new(0.05, 0, 0.18, 0)
-ToggleBtn.BackgroundColor3 = Color3.fromRGB(25, 20, 40)
+ToggleBtn.Size = UDim2.new(0, 45, 0, 45)
+ToggleBtn.Position = UDim2.new(0.05, 0, 0.2, 0)
+ToggleBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
 ToggleBtn.BorderSizePixel = 0
-ToggleBtn.Text = "UI"
+ToggleBtn.Text = "MENU"
 ToggleBtn.Font = Enum.Font.SourceSansBold
-ToggleBtn.TextSize = 16
-ToggleBtn.TextColor3 = Color3.fromRGB(0, 235, 255)
+ToggleBtn.TextSize = 12
+ToggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 ToggleBtn.Active = true
 ToggleBtn.Draggable = true
 ToggleBtn.Parent = ScreenGui
 
 local BtnCorner = Instance.new("UICorner")
-BtnCorner.CornerRadius = UDim.new(0, 10)
+BtnCorner.CornerRadius = UDim.new(0, 8)
 BtnCorner.Parent = ToggleBtn
 
 local BtnStroke = Instance.new("UIStroke")
 BtnStroke.Thickness = 1.5
-BtnStroke.Color = Color3.fromRGB(0, 235, 255)
+BtnStroke.Color = Color3.fromRGB(0, 170, 255)
 BtnStroke.Parent = ToggleBtn
 
--- Main Window Frame
+-- Main Frame Menu
 local MainFrame = Instance.new("Frame")
-MainFrame.Size = UDim2.new(0, 300, 0, 250)
-MainFrame.Position = UDim2.new(0.3, 0, 0.2, 0)
-MainFrame.BackgroundColor3 = Color3.fromRGB(18, 18, 26)
+MainFrame.Size = UDim2.new(0, 260, 0, 200)
+MainFrame.Position = UDim2.new(0.3, 0, 0.25, 0)
+MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 28)
 MainFrame.BorderSizePixel = 0
 MainFrame.Active = true
 MainFrame.Draggable = true
@@ -76,24 +72,63 @@ MainCorner.Parent = MainFrame
 
 local MainStroke = Instance.new("UIStroke")
 MainStroke.Thickness = 1.5
-MainStroke.Color = Color3.fromRGB(140, 60, 255)
+MainStroke.Color = Color3.fromRGB(0, 170, 255)
 MainStroke.Parent = MainFrame
 
--- Tombol Buka/Tutup
+-- Judul Menu
+local TitleLabel = Instance.new("TextLabel")
+TitleLabel.Size = UDim2.new(1, 0, 0, 35)
+TitleLabel.BackgroundTransparency = 1
+TitleLabel.Text = "SIMPLE MENU"
+TitleLabel.Font = Enum.Font.SourceSansBold
+TitleLabel.TextSize = 14
+TitleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+TitleLabel.Parent = MainFrame
+
+-- Tombol Toggle ESP Line di dalam Menu
+local ESPIsOnBtn = Instance.new("TextButton")
+ESPIsOnBtn.Size = UDim2.new(0.9, 0, 0, 40)
+ESPIsOnBtn.Position = UDim2.new(0.05, 0, 0, 50)
+ESPIsOnBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 55)
+ESPIsOnBtn.BorderSizePixel = 0
+ESPIsOnBtn.Text = "ESP Line: OFF"
+ESPIsOnBtn.Font = Enum.Font.SourceSansBold
+ESPIsOnBtn.TextSize = 13
+ESPIsOnBtn.TextColor3 = Color3.fromRGB(255, 100, 100)
+ESPIsOnBtn.Parent = MainFrame
+
+local ESPBtnCorner = Instance.new("UICorner")
+ESPBtnCorner.CornerRadius = UDim.new(0, 6)
+ESPBtnCorner.Parent = ESPIsOnBtn
+
+-- Fungsi Buka Tutup Menu
 ToggleBtn.MouseButton1Click:Connect(function()
     MainFrame.Visible = not MainFrame.Visible
 end)
 
--- Container khusus garis ESP supaya rapi
+-- Fungsi Tombol ESP Line
+ESPIsOnBtn.MouseButton1Click:Connect(function()
+    ESPLineEnabled = not ESPLineEnabled
+    if ESPLineEnabled then
+        ESPIsOnBtn.Text = "ESP Line: ON"
+        ESPIsOnBtn.TextColor3 = Color3.fromRGB(100, 255, 100)
+        ESPIsOnBtn.BackgroundColor3 = Color3.fromRGB(30, 70, 50)
+    else
+        ESPIsOnBtn.Text = "ESP Line: OFF"
+        ESPIsOnBtn.TextColor3 = Color3.fromRGB(255, 100, 100)
+        ESPIsOnBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 55)
+    end
+end)
+
+-- =====================================================================
+-- RENDER LOOP ESP LINE (Sesuai Logika Pilihanmu)
+-- =====================================================================
 local LineContainer = Instance.new("Folder")
-LineContainer.Name = "ESPLineContainer"
+LineContainer.Name = "LineContainer"
 LineContainer.Parent = ScreenGui
 
 local ActiveLines = {}
 
--- =====================================================================
--- RENDER LOOP (LOGIKA UTAMA ESP LINE)
--- =====================================================================
 RunService.RenderStepped:Connect(function()
     -- Bersihkan garis frame sebelumnya
     for _, line in pairs(ActiveLines) do
@@ -103,8 +138,8 @@ RunService.RenderStepped:Connect(function()
     end
     ActiveLines = {}
 
-    -- Kalau fitur ESP Line dimatikan di config, hentikan proses di sini
-    if not Config.ESPLine then return end
+    -- Jika fitur dimatikan, lewati
+    if not ESPLineEnabled then return end
 
     local bottomScreenCenter = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y)
 
@@ -118,10 +153,9 @@ RunService.RenderStepped:Connect(function()
                 local headPos, headOnScreen = Camera:WorldToViewportPoint(head.Position)
 
                 if headOnScreen then
-                    -- Buat garis UI Frame dari contoh script yang kamu mau
                     local snapLine = Instance.new("Frame")
                     snapLine.AnchorPoint = Vector2.new(0.5, 0)
-                    snapLine.BackgroundColor3 = Color3.fromRGB(255, 0, 0) -- Warna Garis (Merah)
+                    snapLine.BackgroundColor3 = Color3.fromRGB(255, 0, 0) -- Warna Garis Merah
                     snapLine.BorderSizePixel = 0
                     snapLine.Size = UDim2.new(0, 1, 0, 0)
                     
