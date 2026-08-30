@@ -1,5 +1,5 @@
 -- ========================================================
--- DEAR IMGUI PREMIUM GRADIENT UI (V7.0 - ULTIMATE FIX)
+-- DEAR IMGUI PREMIUM GRADIENT UI (V7.1 - ULTIMATE RESTORE & FIX)
 -- ========================================================
 
 local Players = game:GetService("Players")
@@ -40,7 +40,7 @@ end
 local safeParent = GetSafeParent()
 
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "ImGui_Gradient_Hub_V70"
+ScreenGui.Name = "ImGui_Gradient_Hub_V71"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.DisplayOrder = 9999
 ScreenGui.Parent = safeParent
@@ -204,9 +204,9 @@ SuperHeaderGradient.Parent = SuperHeader
 local SuperText = Instance.new("TextLabel")
 SuperText.Size = UDim2.new(1, 0, 1, 0)
 SuperText.BackgroundTransparency = 1
-SuperText.Text = "★ D3D MENU AMIN GANTENG ★"
+SuperText.Text = "★ D3D MENU AMIN GANTENG V7.1 ★"
 SuperText.Font = Enum.Font.FredokaOne
-SuperText.TextSize = 16
+SuperText.TextSize = 15
 SuperText.TextColor3 = Color3.fromRGB(255, 255, 255)
 SuperText.Parent = SuperHeader
 
@@ -221,7 +221,7 @@ local SubText = Instance.new("TextLabel")
 SubText.Size = UDim2.new(1, -10, 1, 0)
 SubText.Position = UDim2.new(0, 8, 0, 0)
 SubText.BackgroundTransparency = 1
-SubText.Text = "Dear ImGui v7.0 (Ultimate Fix Hub)"
+SubText.Text = "Dear ImGui v7.1 (All Fixes Applied)"
 SubText.Font = Enum.Font.Code
 SubText.TextSize = 11
 SubText.TextColor3 = Color3.fromRGB(150, 160, 180)
@@ -278,6 +278,7 @@ local function CreatePage(name)
 end
 
 local PlayerPage = CreatePage("PLAYER")
+local VisualPage = CreatePage("VISUAL")
 local MiscPage = CreatePage("MISC")
 local GunPage = CreatePage("GUN")
 
@@ -303,15 +304,15 @@ local function SelectTab(tabName, btn)
     Grad.Parent = btn
 end
 
-local tabs = {"PLAYER", "MISC", "GUN"}
+local tabs = {"PLAYER", "VISUAL", "MISC", "GUN"}
 for i, name in ipairs(tabs) do
     local Btn = Instance.new("TextButton")
-    Btn.Size = UDim2.new(0.32, 0, 1, 0)
+    Btn.Size = UDim2.new(0.24, 0, 1, 0)
     Btn.BackgroundColor3 = Color3.fromRGB(24, 24, 36)
     Btn.BorderSizePixel = 0
     Btn.Text = name
     Btn.Font = Enum.Font.Code
-    Btn.TextSize = 12
+    Btn.TextSize = 11
     Btn.TextColor3 = Color3.fromRGB(160, 160, 180)
     Btn.Parent = TabFrame
     
@@ -573,29 +574,22 @@ end
 
 CreateToggle(PlayerPage, "Speed Hack", true, function(state) Settings.SpeedHack = state end)
 CreateSlider(PlayerPage, "Speed Value", 16, 150, 30, true, function(val) Settings.WalkSpeed = val end)
-CreateToggle(PlayerPage, "Multi Jump", true, function(state) Settings.MultiJump = state end)
+CreateToggle(PlayerPage, "Multi Jump (Fixed)", true, function(state) Settings.MultiJump = state end)
 CreateSlider(PlayerPage, "Multi Jump Power", 30, 150, 50, true, function(val) Settings.MultiJumpPower = val end)
 
--- ROBUST MULTI JUMP FIX (MENANGKAP KEYPRESS JUMP DI SEMUA GAME SECARA LANGSUNG)
-local jumpConn = nil
-local function SetupMultiJump(char)
-    local hum = char:WaitForChild("Humanoid", 5)
-    if not hum then return end
-    
-    if jumpConn then jumpConn:Disconnect() end
-    
-    jumpConn = UserInputService.JumpRequest:Connect(function()
-        if Settings.MultiJump and hum and hum:GetState() ~= Enum.HumanoidStateType.Dead then
+-- MULTI JUMP ULTRA FIX (MENDUKUNG TOMBOL JUMP BAWAAN & KEYPRESS)
+UserInputService.JumpRequest:Connect(function()
+    if Settings.MultiJump then
+        local char = LocalPlayer.Character
+        if char then
+            local hum = char:FindFirstChildOfClass("Humanoid")
             local hrp = char:FindFirstChild("HumanoidRootPart")
-            if hrp then
+            if hum and hrp and hum:GetState() ~= Enum.HumanoidStateType.Dead then
                 hrp.AssemblyLinearVelocity = Vector3.new(hrp.AssemblyLinearVelocity.X, Settings.MultiJumpPower, hrp.AssemblyLinearVelocity.Z)
             end
         end
-    end)
-end
-
-LocalPlayer.CharacterAdded:Connect(SetupMultiJump)
-if LocalPlayer.Character then task.spawn(function() SetupMultiJump(LocalPlayer.Character) end) end
+    end
+end)
 
 local function ApplyChams(plr)
     if plr == LocalPlayer then return end
@@ -654,10 +648,8 @@ CreateToggle(PlayerPage, "Wall Hack (Noclip)", true, function(state) Settings.No
 
 RunService.Stepped:Connect(function()
     local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
-    if hum then
-        if Settings.SpeedHack then
-            hum.WalkSpeed = Settings.WalkSpeed
-        end
+    if hum and Settings.SpeedHack then
+        hum.WalkSpeed = Settings.WalkSpeed
     end
 
     if Settings.Noclip and LocalPlayer.Character then
@@ -681,14 +673,14 @@ local originalLighting = {
     FogEnd = Lighting.FogEnd
 }
 
-CreateToggle(MiscPage, "Night Mode (Indoor/Outdoor)", true, function(state)
+CreateToggle(MiscPage, "Night Mode (Indoor/Outdoor Fixed)", true, function(state)
     Settings.NightMode = state
     if state then
         if Settings.Daylight then Settings.Daylight = false end
         Lighting.ClockTime = 0
         Lighting.Brightness = 0
-        Lighting.OutdoorAmbient = Color3.fromRGB(10, 10, 15)
-        Lighting.Ambient = Color3.fromRGB(10, 10, 15)
+        Lighting.OutdoorAmbient = Color3.fromRGB(15, 15, 25)
+        Lighting.Ambient = Color3.fromRGB(15, 15, 25)
         Lighting.GlobalShadows = false
         Lighting.FogEnd = 999999
     else
@@ -725,10 +717,20 @@ CreateToggle(MiscPage, "Anti Crash", true, function(state) Settings.AntiCrash = 
 CreateToggle(MiscPage, "Anti Kick", true, function(state) Settings.AntiKick = state end)
 
 -- ==========================================
+-- FULL ESP RESTORE (VISUAL PAGE)
+-- ==========================================
+CreateToggle(VisualPage, "ESP Snapline", true, function(state) Settings.ESPLine = state end)
+CreateToggle(VisualPage, "ESP Name", true, function(state) Settings.ESPName = state end)
+CreateToggle(VisualPage, "ESP Distance", true, function(state) Settings.ESPDistance = state end)
+CreateToggle(VisualPage, "ESP Gender", true, function(state) Settings.ESPGender = state end)
+CreateToggle(VisualPage, "ESP 3D Box", true, function(state) Settings.ESPBox3D = state end)
+CreateToggle(VisualPage, "ESP Health Bar", true, function(state) Settings.ESPHealth = state end)
+
+-- ==========================================
 -- GUN MENU UI (AIMBOT + PREDICTION + NO RELOAD)
 -- ==========================================
 
-CreateToggle(GunPage, "Aimbot (Auto FOV + Line + Predict)", true, function(state) Settings.Aimbot = state end)
+CreateToggle(GunPage, "Aimbot (Predict + Trigger Only)", true, function(state) Settings.Aimbot = state end)
 
 CreateSelector(GunPage, "Target Part", {"Head", "Body"}, 1, function(selected) 
     Settings.TargetPart = selected == "Body" and "UpperTorso" or "Head"
@@ -745,9 +747,9 @@ local function IsInLobby()
     return false
 end
 
--- TRACK FIRE BUTTON / TOUCH
+-- DETEKSI TOMBAK TEMBAK KHUSUS (MOUSE BUTTON 1 ATAU TOUCHFIRE/FIRE BUTTON)
 local isFiring = false
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
+UserInputService.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
         isFiring = true
     end
@@ -788,7 +790,7 @@ local function GetClosestTargetWithPrediction()
             if targetPart and targetHrp and myRoot then
                 local worldDist = (targetPart.Position - myRoot.Position).Magnitude
                 if worldDist <= Settings.AimDistance then
-                    -- PREDICTION: Tambah titik koordinat masa depan berdasarkan kecepatan gerak (AssemblyLinearVelocity)
+                    -- PREDICTION: Maju sedikit titik koordinat sesuai kecepatan gerak musuh
                     local predictedPosition = targetPart.Position + (targetHrp.AssemblyLinearVelocity * Settings.PredictionMultiplier)
                     local pos, onScreen = Camera:WorldToViewportPoint(predictedPosition)
                     
@@ -935,7 +937,7 @@ Players.PlayerRemoving:Connect(function(plr)
 end)
 
 -- ==========================================
--- RENDER LOOP (FOV, AIM LINE KE TARGET PALING DEKAT + PREDICT + TRIGGER)
+-- RENDER LOOP (FOV, AIM LINE KE TARGET PALING DEKAT + PREDICT + TRIGGER TEMBAK)
 -- ==========================================
 
 RunService.RenderStepped:Connect(function()
@@ -950,12 +952,12 @@ RunService.RenderStepped:Connect(function()
     if showFov then
         local targetData = GetClosestTargetWithPrediction()
         if targetData then
-            -- Aim Line selalu mengarah ke target paling dekat di dalam FOV
+            -- Garis Aim Line dari tengah layar ke target terdekat
             TargetLine.From = center
             TargetLine.To = targetData.ScreenPos
             TargetLine.Visible = true
 
-            -- Jika tombol tembak ditekan (isFiring), kamera langsung ngarah instant ke titik prediksi musuh
+            -- HANYA NGARAH OTOMATIS SAAT TOMBOL TEMBAK DITEKAN (isFiring)
             if isFiring then
                 Camera.CFrame = CFrame.new(Camera.CFrame.Position, targetData.PredictedPos)
             end
