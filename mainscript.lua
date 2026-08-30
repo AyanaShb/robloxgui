@@ -1,6 +1,6 @@
 -- =====================================================================
--- FULL FEATURED LUA SCRIPT: × D3D MENU BG AMIN ×
--- Complete 100% Mobile ImGui Script for Roblox Android (Executor Ready)
+-- PREMIUM MODIFIED LUA SCRIPT: × D3D MENU BG AMIN ×
+-- Modern UI ImGui Style with Vertical Scrolling Lists & Aesthetic Design
 -- =====================================================================
 
 local Players = game:GetService("Players")
@@ -11,7 +11,7 @@ local Workspace = game:GetService("Workspace")
 local Camera = Workspace.CurrentCamera
 local LocalPlayer = Players.LocalPlayer
 
--- Global Configuration Table holding all parameters requested
+-- Global Configuration Table
 getgenv().D3DConfig = {
     MenuVisible = true,
     CurrentTab = "Visual",
@@ -50,9 +50,9 @@ getgenv().D3DConfig = {
     VehicleSpeedValue = 150
 }
 
--- Safe GUI Parent Assignment
+-- Safe GUI Setup
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "D3D_Menu_BG_AMIN_Full"
+ScreenGui.Name = "D3D_Menu_BG_AMIN_Pro"
 ScreenGui.ResetOnSpawn = false
 if syn and syn.protect_gui then
     syn.protect_gui(ScreenGui)
@@ -66,14 +66,14 @@ end
 -- Floating Mini Icon "UI" for Hide/Show Menu
 local FloatButton = Instance.new("TextButton")
 FloatButton.Name = "FloatUI"
-FloatButton.Size = UDim2.new(0, 48, 0, 48)
-FloatButton.Position = UDim2.new(0, 40, 0, 40)
-FloatButton.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
-FloatButton.BorderColor3 = Color3.fromRGB(255, 0, 128)
+FloatButton.Size = UDim2.new(0, 50, 0, 50)
+FloatButton.Position = UDim2.new(0, 30, 0, 30)
+FloatButton.BackgroundColor3 = Color3.fromRGB(22, 22, 32)
+FloatButton.BorderColor3 = Color3.fromRGB(255, 0, 150)
 FloatButton.BorderSizePixel = 2
 FloatButton.Text = "UI"
 FloatButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-FloatButton.TextSize = 16
+FloatButton.TextSize = 18
 FloatButton.Font = Enum.Font.GothamBold
 FloatButton.Active = true
 FloatButton.Draggable = true
@@ -83,38 +83,50 @@ local UICornerBtn = Instance.new("UICorner")
 UICornerBtn.CornerRadius = UDim.new(1, 0)
 UICornerBtn.Parent = FloatButton
 
--- Main Window Frame with Gradient
+-- Drop Shadow for Floating Button Style
+local FloatShadow = Instance.new("UIStroke")
+FloatShadow.Color = Color3.fromRGB(255, 0, 150)
+FloatShadow.Thickness = 2
+FloatShadow.Parent = FloatButton
+
+-- Main Window Frame (Aesthetic Size & Padding)
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
-MainFrame.Size = UDim2.new(0, 480, 0, 340)
-MainFrame.Position = UDim2.new(0.5, -240, 0.5, -170)
-MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
+MainFrame.Size = UDim2.new(0, 480, 0, 360)
+MainFrame.Position = UDim2.new(0.5, -240, 0.5, -180)
+MainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 25)
 MainFrame.BorderSizePixel = 0
 MainFrame.Active = true
 MainFrame.Draggable = true
 MainFrame.Parent = ScreenGui
 
 local MainCorner = Instance.new("UICorner")
-MainCorner.CornerRadius = UDim.new(0, 10)
+MainCorner.CornerRadius = UDim.new(0, 12)
 MainCorner.Parent = MainFrame
 
--- Gradient background styling (Warna cerah gradient)
+-- Gradient background styling (Warna cerah gradient mewah)
 local UIGradient = Instance.new("UIGradient")
 UIGradient.Color = ColorSequence.new({
-    ColorSequenceKeypoint.new(0, Color3.fromRGB(60, 20, 90)),
-    ColorSequenceKeypoint.new(0.5, Color3.fromRGB(20, 30, 60)),
-    ColorSequenceKeypoint.new(1, Color3.fromRGB(15, 50, 45))
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(50, 15, 80)),
+    ColorSequenceKeypoint.new(0.5, Color3.fromRGB(15, 25, 50)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(10, 40, 35))
 })
 UIGradient.Rotation = 45
 UIGradient.Parent = MainFrame
 
+-- Outline Stroke for Main Window
+local MainStroke = Instance.new("UIStroke")
+MainStroke.Color = Color3.fromRGB(120, 60, 200)
+MainStroke.Thickness = 1.5
+MainStroke.Parent = MainFrame
+
 -- Title Header: " × D3D MENU BG AMIN ×"
 local TitleLabel = Instance.new("TextLabel")
-TitleLabel.Size = UDim2.new(1, 0, 0, 35)
+TitleLabel.Size = UDim2.new(1, 0, 0, 40)
 TitleLabel.BackgroundTransparency = 1
 TitleLabel.Text = " × D3D MENU BG AMIN ×"
-TitleLabel.TextColor3 = Color3.fromRGB(255, 120, 220)
-TitleLabel.TextSize = 15
+TitleLabel.TextColor3 = Color3.fromRGB(255, 130, 220)
+TitleLabel.TextSize = 16
 TitleLabel.Font = Enum.Font.GothamBold
 TitleLabel.Parent = MainFrame
 
@@ -126,10 +138,14 @@ end)
 
 -- Tab Headers Container ("Visual", "Player", "world", "skill")
 local TabContainer = Instance.new("Frame")
-TabContainer.Size = UDim2.new(1, 0, 0, 32)
-TabContainer.Position = UDim2.new(0, 0, 0, 35)
-TabContainer.BackgroundTransparency = 1
+TabContainer.Size = UDim2.new(1, -20, 0, 35)
+TabContainer.Position = UDim2.new(0, 10, 0, 42)
+TabContainer.BackgroundColor3 = Color3.fromRGB(20, 20, 32)
 TabContainer.Parent = MainFrame
+
+local TabContainerCorner = Instance.new("UICorner")
+TabContainerCorner.CornerRadius = UDim.new(0, 8)
+TabContainerCorner.Parent = TabContainer
 
 local tabs = {"Visual", "Player", "world", "skill"}
 local TabButtons = {}
@@ -139,22 +155,34 @@ for i, tabName in ipairs(tabs) do
     local btn = Instance.new("TextButton")
     btn.Size = UDim2.new(0.25, 0, 1, 0)
     btn.Position = UDim2.new((i-1)*0.25, 0, 0, 0)
-    btn.BackgroundColor3 = Color3.fromRGB(30, 30, 45)
-    btn.BorderColor3 = Color3.fromRGB(70, 70, 90)
+    btn.BackgroundTransparency = 1
     btn.Text = tabName:gsub("^%l", string.upper)
-    btn.TextColor3 = Color3.fromRGB(180, 180, 180)
+    btn.TextColor3 = (i == 1) and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(150, 150, 170)
     btn.TextSize = 13
-    btn.Font = Enum.Font.GothamSemibold
+    btn.Font = Enum.Font.GothamBold
     btn.Parent = TabContainer
     
+    -- Content Scrolling Frame (Vertical Layout Engine)
     local content = Instance.new("ScrollingFrame")
-    content.Size = UDim2.new(1, -10, 1, -78)
-    content.Position = UDim2.new(0, 5, 0, 72)
+    content.Size = UDim2.new(1, -20, 1, -95)
+    content.Position = UDim2.new(0, 10, 0, 85)
     content.BackgroundTransparency = 1
     content.BorderSizePixel = 0
-    content.CanvasSize = UDim2.new(0, 0, 0, 650)
+    content.ScrollBarThickness = 4
+    content.ScrollBarImageColor3 = Color3.fromRGB(150, 50, 200)
     content.Visible = (i == 1)
     content.Parent = MainFrame
+    
+    -- UIListLayout for strict vertical arrangement
+    local uiList = Instance.new("UIListLayout")
+    uiList.SortOrder = Enum.SortOrder.LayoutOrder
+    uiList.Padding = UDim.new(0, 8)
+    uiList.Parent = content
+    
+    -- Auto scale CanvasSize based on elements
+    uiList:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+        content.CanvasSize = UDim2.new(0, 0, 0, uiList.AbsoluteContentSize.Y + 15)
+    end)
     
     TabButtons[tabName] = btn
     TabContentFrames[tabName] = content
@@ -162,7 +190,7 @@ for i, tabName in ipairs(tabs) do
     btn.MouseButton1Click:Connect(function()
         for _, t in ipairs(tabs) do
             TabContentFrames[t].Visible = false
-            TabButtons[t].TextColor3 = Color3.fromRGB(180, 180, 180)
+            TabButtons[t].TextColor3 = Color3.fromRGB(150, 150, 170)
         end
         content.Visible = true
         btn.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -170,37 +198,46 @@ for i, tabName in ipairs(tabs) do
     end)
 end
 
--- UI Component Helpers (Toggles, Sliders, Pickers)
+-- =====================================================================
+-- PROFESSIONAL COMPONENT CREATORS (Clean Vertical Rows)
+-- =====================================================================
+
 local function CreateToggle(parent, text, callback, defaultVal)
     local frame = Instance.new("Frame")
-    frame.Size = UDim2.new(1, -10, 0, 35)
-    frame.BackgroundTransparency = 1
+    frame.Size = UDim2.new(1, 0, 0, 40)
+    frame.BackgroundColor3 = Color3.fromRGB(22, 22, 35)
+    frame.BorderSizePixel = 0
+    
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 8)
+    corner.Parent = frame
     
     local label = Instance.new("TextLabel")
-    label.Size = UDim2.new(0.7, 0, 1, 0)
+    label.Size = UDim2.new(0.75, 0, 1, 0)
+    label.Position = UDim2.new(0, 12, 0, 0)
     label.BackgroundTransparency = 1
     label.Text = text
-    label.TextColor3 = Color3.fromRGB(230, 230, 230)
-    label.TextSize = 11
-    label.Font = Enum.Font.Gotham
+    label.TextColor3 = Color3.fromRGB(235, 235, 235)
+    label.TextSize = 12
+    label.Font = Enum.Font.GothamMedium
     label.TextXAlignment = Enum.TextXAlignment.Left
     label.Parent = frame
     
     local toggleBtn = Instance.new("TextButton")
-    toggleBtn.Size = UDim2.new(0, 40, 0, 20)
-    toggleBtn.Position = UDim2.new(0.83, 0, 0.5, -10)
-    toggleBtn.BackgroundColor3 = defaultVal and Color3.fromRGB(0, 180, 100) or Color3.fromRGB(60, 60, 70)
+    toggleBtn.Size = UDim2.new(0, 44, 0, 22)
+    toggleBtn.Position = UDim2.new(1, -54, 0.5, -11)
+    toggleBtn.BackgroundColor3 = defaultVal and Color3.fromRGB(0, 200, 110) or Color3.fromRGB(50, 50, 65)
     toggleBtn.Text = ""
     toggleBtn.Parent = frame
     
-    local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(1, 0)
-    corner.Parent = toggleBtn
+    local tCorner = Instance.new("UICorner")
+    tCorner.CornerRadius = UDim.new(1, 0)
+    tCorner.Parent = toggleBtn
     
     local circle = Instance.new("Frame")
-    circle.Size = UDim2.new(0, 16, 0, 16)
-    circle.Position = defaultVal and UDim2.new(1, -18, 0.5, -8) or UDim2.new(0, 2, 0.5, -8)
-    circle.BackgroundColor3 = Color3.fromRGB(240, 240, 240)
+    circle.Size = UDim2.new(0, 18, 0, 18)
+    circle.Position = defaultVal and UDim2.new(1, -20, 0.5, -9) or UDim2.new(0, 2, 0.5, -9)
+    circle.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
     circle.Parent = toggleBtn
     
     local cCorner = Instance.new("UICorner")
@@ -212,11 +249,11 @@ local function CreateToggle(parent, text, callback, defaultVal)
         active = not active
         callback(active)
         if active then
-            toggleBtn.BackgroundColor3 = Color3.fromRGB(0, 180, 100)
-            circle:TweenPosition(UDim2.new(1, -18, 0.5, -8), Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0.1, true)
+            toggleBtn.BackgroundColor3 = Color3.fromRGB(0, 200, 110)
+            circle:TweenPosition(UDim2.new(1, -20, 0.5, -9), Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0.12, true)
         else
-            toggleBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 70)
-            circle:TweenPosition(UDim2.new(0, 2, 0.5, -8), Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0.1, true)
+            toggleBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 65)
+            circle:TweenPosition(UDim2.new(0, 2, 0.5, -9), Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0.12, true)
         end
     end)
     
@@ -225,23 +262,29 @@ end
 
 local function CreateSlider(parent, text, min, max, default, callback)
     local frame = Instance.new("Frame")
-    frame.Size = UDim2.new(1, -10, 0, 45)
-    frame.BackgroundTransparency = 1
+    frame.Size = UDim2.new(1, 0, 0, 55)
+    frame.BackgroundColor3 = Color3.fromRGB(22, 22, 35)
+    frame.BorderSizePixel = 0
+    
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 8)
+    corner.Parent = frame
     
     local label = Instance.new("TextLabel")
-    label.Size = UDim2.new(1, 0, 0, 20)
+    label.Size = UDim2.new(1, -24, 0, 25)
+    label.Position = UDim2.new(0, 12, 0, 4)
     label.BackgroundTransparency = 1
     label.Text = text .. ": " .. tostring(default)
-    label.TextColor3 = Color3.fromRGB(220, 220, 220)
-    label.TextSize = 11
-    label.Font = Enum.Font.Gotham
+    label.TextColor3 = Color3.fromRGB(235, 235, 235)
+    label.TextSize = 12
+    label.Font = Enum.Font.GothamMedium
     label.TextXAlignment = Enum.TextXAlignment.Left
     label.Parent = frame
     
     local sliderBg = Instance.new("Frame")
-    sliderBg.Size = UDim2.new(1, 0, 0, 8)
-    sliderBg.Position = UDim2.new(0, 0, 0, 28)
-    sliderBg.BackgroundColor3 = Color3.fromRGB(45, 45, 60)
+    sliderBg.Size = UDim2.new(1, -24, 0, 8)
+    sliderBg.Position = UDim2.new(0, 12, 0, 34)
+    sliderBg.BackgroundColor3 = Color3.fromRGB(40, 40, 55)
     sliderBg.Parent = frame
     
     local sCorner = Instance.new("UICorner")
@@ -250,7 +293,7 @@ local function CreateSlider(parent, text, min, max, default, callback)
     
     local sliderFill = Instance.new("Frame")
     sliderFill.Size = UDim2.new((default - min) / (max - min), 0, 1, 0)
-    sliderFill.BackgroundColor3 = Color3.fromRGB(200, 50, 150)
+    sliderFill.BackgroundColor3 = Color3.fromRGB(200, 50, 180)
     sliderFill.Parent = sliderBg
     
     local fCorner = Instance.new("UICorner")
@@ -283,36 +326,40 @@ local function CreateSlider(parent, text, min, max, default, callback)
     frame.Parent = parent
 end
 
--- Colour Circle Picker Automation Component Implementation
 local function CreateColorCirclePicker(parent, callback)
     local frame = Instance.new("Frame")
-    frame.Size = UDim2.new(1, -10, 0, 55)
-    frame.BackgroundTransparency = 1
+    frame.Size = UDim2.new(1, 0, 0, 60)
+    frame.BackgroundColor3 = Color3.fromRGB(22, 22, 35)
+    frame.BorderSizePixel = 0
+    
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 8)
+    corner.Parent = frame
     
     local label = Instance.new("TextLabel")
-    label.Size = UDim2.new(1, 0, 0, 20)
+    label.Size = UDim2.new(1, -24, 0, 22)
+    label.Position = UDim2.new(0, 12, 0, 4)
     label.BackgroundTransparency = 1
-    label.Text = "Chams Color Circle Palette (Tap to Pick)"
-    label.TextColor3 = Color3.fromRGB(255, 150, 220)
-    label.TextSize = 11
-    label.Font = Enum.Font.GothamSemibold
+    label.Text = "Chams Colour Circle Palette (Tap to Pick)"
+    label.TextColor3 = Color3.fromRGB(255, 140, 220)
+    label.TextSize = 12
+    label.Font = Enum.Font.GothamBold
     label.TextXAlignment = Enum.TextXAlignment.Left
     label.Parent = frame
     
     local circleContainer = Instance.new("Frame")
-    circleContainer.Size = UDim2.new(1, 0, 0, 30)
-    circleContainer.Position = UDim2.new(0, 0, 0, 22)
+    circleContainer.Size = UDim2.new(1, -24, 0, 26)
+    circleContainer.Position = UDim2.new(0, 12, 0, 28)
     circleContainer.BackgroundTransparency = 1
     circleContainer.Parent = frame
     
-    -- Multiple multi-colored sub-circles simulating color palette picker
     local colors = {
         Color3.fromRGB(255, 0, 0),     -- Red
         Color3.fromRGB(0, 255, 0),     -- Green
-        Color3.fromRGB(0, 120, 255),   -- Blue
+        Color3.fromRGB(0, 140, 255),   -- Blue
         Color3.fromRGB(255, 255, 0),   -- Yellow
         Color3.fromRGB(255, 120, 0),   -- Orange
-        Color3.fromRGB(150, 0, 255),   -- Purple
+        Color3.fromRGB(180, 0, 255),   -- Purple
         Color3.fromRGB(0, 255, 255),   -- Cyan
         Color3.fromRGB(255, 255, 255)  -- White
     }
@@ -320,7 +367,7 @@ local function CreateColorCirclePicker(parent, callback)
     for i, col in ipairs(colors) do
         local colorBtn = Instance.new("TextButton")
         colorBtn.Size = UDim2.new(0, 26, 0, 26)
-        colorBtn.Position = UDim2.new(0, (i-1)*34, 0, 2)
+        colorBtn.Position = UDim2.new(0, (i-1)*34, 0, 0)
         colorBtn.BackgroundColor3 = col
         colorBtn.Text = ""
         colorBtn.Parent = circleContainer
@@ -338,18 +385,18 @@ local function CreateColorCirclePicker(parent, callback)
 end
 
 -- =====================================================================
--- POPULATING TABS WITH EXACT REQUIREMENTS
+-- POPULATING TABS VERTICALLY
 -- =====================================================================
 
 -- 1. VISUAL TAB
 local vis = TabContentFrames["Visual"]
-CreateToggle(vis, "ESP Line (Red top-center to head)", function(v) D3DConfig.EspLine = v end)
-CreateToggle(vis, "ESP Name (Above head)", function(v) D3DConfig.EspName = v end)
+CreateToggle(vis, "ESP Line (Top-Center to Head)", function(v) D3DConfig.EspLine = v end)
+CreateToggle(vis, "ESP Name (Above Head)", function(v) D3DConfig.EspName = v end)
 CreateToggle(vis, "ESP Distance (e.g. 120m)", function(v) D3DConfig.EspDistance = v end)
 CreateToggle(vis, "ESP Gender [Cowo/Cewe]", function(v) D3DConfig.EspGender = v end)
 CreateToggle(vis, "ESP Item Name (Nearby)", function(v) D3DConfig.EspItem = v end)
 CreateSlider(vis, "ESP Item Radius", 10, 200, 50, function(v) D3DConfig.ItemRadius = v end)
-CreateToggle(vis, "Chams Body Colour (Wallhack)", function(v) D3DConfig.Chams = v end)
+CreateToggle(vis, "Chams Body Colour & Wallhack", function(v) D3DConfig.Chams = v end)
 CreateColorCirclePicker(vis, function(col) D3DConfig.ChamsColor = col end)
 
 -- 2. PLAYER TAB
@@ -361,22 +408,21 @@ CreateToggle(ply, "Long Jump", function(v) D3DConfig.LongJump = v end)
 CreateToggle(ply, "Wall Hack (No-clip)", function(v) D3DConfig.WallHack = v end)
 CreateToggle(ply, "Size Hack Customiser", function(v) D3DConfig.SizeHack = v end)
 CreateSlider(ply, "Size Value", 0.5, 3, 1, function(v) D3DConfig.SizeValue = v end)
-CreateToggle(ply, "God Mode (Elements, Fall, Damage)", function(v) D3DConfig.GodMode = v end)
+CreateToggle(ply, "God Mode (Anti Elements/Fall/Damage)", function(v) D3DConfig.GodMode = v end)
 
 -- 3. WORLD TAB
 local wrd = TabContentFrames["world"]
-CreateToggle(wrd, "Night Mode (Indoor & Outdoor)", function(v) 
+CreateToggle(wrd, "Night Mode (Indoor/Outdoor)", function(v) 
     D3DConfig.NightMode = v
     if v then Lighting.ClockTime = 0 else Lighting.ClockTime = 14 end
 end)
-CreateToggle(wrd, "Daylight Mode (Indoor & Outdoor)", function(v) 
+CreateToggle(wrd, "Daylight Mode (Indoor/Outdoor)", function(v) 
     D3DConfig.DaylightMode = v
     if v then Lighting.ClockTime = 14 end
 end)
 CreateToggle(wrd, "Long View Distance", function(v) D3DConfig.LongView = v end)
 CreateSlider(wrd, "View Distance Value", 100, 5000, 1000, function(v) 
-    D3DConfig.LongViewValue = v
-    if Camera then Camera.FieldOfView = 70 end 
+    D3DConfig.LongViewValue = v 
 end)
 
 -- 4. SKILL TAB
@@ -387,18 +433,23 @@ CreateToggle(skl, "Unlimited Ammo (999/999)", function(v) D3DConfig.UnlimitedAmm
 CreateToggle(skl, "Fast Vehicle Customiser", function(v) D3DConfig.FastVehicle = v end)
 CreateSlider(skl, "Vehicle Speed Value", 50, 400, 150, function(v) D3DConfig.VehicleSpeedValue = v end)
 
--- Teleport Push Button
+-- Teleport Push Button Vertical Row
+local tpFrame = Instance.new("Frame")
+tpFrame.Size = UDim2.new(1, 0, 0, 42)
+tpFrame.BackgroundTransparency = 1
+tpFrame.Parent = skl
+
 local tpButton = Instance.new("TextButton")
-tpButton.Size = UDim2.new(1, -10, 0, 38)
-tpButton.BackgroundColor3 = Color3.fromRGB(120, 40, 160)
+tpButton.Size = UDim2.new(1, 0, 1, 0)
+tpButton.BackgroundColor3 = Color3.fromRGB(140, 40, 180)
 tpButton.Text = "Instant Random Player Teleport"
 tpButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-tpButton.TextSize = 12
+tpButton.TextSize = 13
 tpButton.Font = Enum.Font.GothamBold
-tpButton.Parent = skl
+tpButton.Parent = tpFrame
 
 local tpCorner = Instance.new("UICorner")
-tpCorner.CornerRadius = UDim.new(0, 6)
+tpCorner.CornerRadius = UDim.new(0, 8)
 tpCorner.Parent = tpButton
 
 tpButton.MouseButton1Click:Connect(function()
@@ -412,19 +463,14 @@ tpButton.MouseButton1Click:Connect(function()
 end)
 
 -- =====================================================================
--- RUNTIME EXECUTION & CHEAT LOGIC IMPLEMENTATION
+-- CHEAT EXECUTION LOOPS
 -- =====================================================================
 
--- Drawing / ESP System Containers
-local espDrawings = {}
-
 RunService.RenderStepped:Connect(function()
-    -- 1. Speed Run Logic
     if D3DConfig.SpeedRun and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
         LocalPlayer.Character.Humanoid.WalkSpeed = D3DConfig.SpeedValue
     end
     
-    -- 2. Fly Logic (Hold Jump button to continuously elevate)
     if D3DConfig.Fly and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
         local hrp = LocalPlayer.Character.HumanoidRootPart
         if UserInputService:IsKeyDown(Enum.KeyCode.Space) or UserInputService.TouchEnabled then
@@ -432,25 +478,18 @@ RunService.RenderStepped:Connect(function()
         end
     end
     
-    -- 3. Long Jump Logic
     if D3DConfig.LongJump and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
-        if LocalPlayer.Character.Humanoid.FloorMaterial ~= Enum.Material.Air then
-            if UserInputService:IsKeyDown(Enum.KeyCode.Space) then
-                LocalPlayer.Character.HumanoidRootPart.Velocity = LocalPlayer.Character.HumanoidRootPart.Velocity + (LocalPlayer.Character.HumanoidRootPart.CFrame.LookVector * 50) + Vector3.new(0, 60, 0)
-            end
+        if LocalPlayer.Character.Humanoid.FloorMaterial ~= Enum.Material.Air and UserInputService:IsKeyDown(Enum.KeyCode.Space) then
+            LocalPlayer.Character.HumanoidRootPart.Velocity = LocalPlayer.Character.HumanoidRootPart.Velocity + (LocalPlayer.Character.HumanoidRootPart.CFrame.LookVector * 50) + Vector3.new(0, 60, 0)
         end
     end
     
-    -- 4. Wall Hack / Noclip Logic
     if D3DConfig.WallHack and LocalPlayer.Character then
         for _, part in ipairs(LocalPlayer.Character:GetDescendants()) do
-            if part:IsA("BasePart") then
-                part.CanCollide = false
-            end
+            if part:IsA("BasePart") then part.CanCollide = false end
         end
     end
     
-    -- 5. Size Hack Logic
     if D3DConfig.SizeHack and LocalPlayer.Character then
         pcall(function()
             local humanoid = LocalPlayer.Character:FindFirstChild("Humanoid")
@@ -462,12 +501,10 @@ RunService.RenderStepped:Connect(function()
         end)
     end
     
-    -- 6. God Mode Logic (Anti-damage, heat, cold, suffocation, fall)
     if D3DConfig.GodMode and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
         LocalPlayer.Character.Humanoid.Health = LocalPlayer.Character.Humanoid.MaxHealth
     end
     
-    -- 7. Chams / Wall Transparent Colour Logic
     if D3DConfig.Chams then
         for _, p in ipairs(Players:GetPlayers()) do
             if p ~= LocalPlayer and p.Character then
@@ -481,22 +518,18 @@ RunService.RenderStepped:Connect(function()
         end
     end
     
-    -- 8. Unlimited Ammo Logic (Force values to 999/999 equivalent)
     if D3DConfig.UnlimitedAmmo and LocalPlayer.Character then
         for _, tool in ipairs(LocalPlayer.Character:GetChildren()) do
             if tool:IsA("Tool") then
                 for _, v in ipairs(tool:GetDescendants()) do
-                    if v:IsA("IntValue") or v:IsA("NumberValue") then
-                        if v.Name:lower():match("ammo") or v.Name:lower():match("clip") or v.Name:lower():match("bullet") then
-                            v.Value = 999
-                        end
+                    if (v:IsA("IntValue") or v:IsA("NumberValue")) and (v.Name:lower():match("ammo") or v.Name:lower():match("clip")) then
+                        v.Value = 999
                     end
                 end
             end
         end
     end
     
-    -- 9. Fast Vehicle Logic
     if D3DConfig.FastVehicle and LocalPlayer.Character and LocalPlayer.Character.SeatPart then
         local vehicle = LocalPlayer.Character.SeatPart.Parent
         if vehicle:IsA("Model") and vehicle:FindFirstChild("DriveSeat") then
@@ -504,7 +537,6 @@ RunService.RenderStepped:Connect(function()
         end
     end
     
-    -- 10. Aimbot & FOV & Target Head Lock with 0-sec Prediction
     if D3DConfig.Aimbot then
         local closestTarget = nil
         local shortestDistance = D3DConfig.AimbotFov
@@ -525,9 +557,7 @@ RunService.RenderStepped:Connect(function()
         end
         
         if closestTarget then
-            -- Instant 0-second prediction aim lock directing to head
             Camera.CFrame = CFrame.new(Camera.CFrame.Position, closestTarget.Position + (closestTarget.Velocity * 0.025))
         end
     end
 end)
-
