@@ -1,4 +1,4 @@
--- ===================================================================== -- ULTIMATE ANDROID D3D MENU: FULL WORKING VERSION (VISUAL + PLAYER) -- ===================================================================== 
+-- ===================================================================== -- ULTIMATE ANDROID D3D MENU: FULLY FIXED PLAYER & UI ENGINE -- ===================================================================== 
 local Players = game:GetService("Players") 
 local UserInputService = game:GetService("UserInputService") 
 local Lighting = game:GetService("Lighting") 
@@ -26,7 +26,7 @@ if not ScreenGui.Parent then
     ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui") 
 end 
 
--- CONFIG & STORAGE FOR VISUALS & PLAYER MODS
+-- CONFIG & STORAGE
 local VisualsConfig = {
     ESP_Line = false,
     ESP_Name = false,
@@ -228,7 +228,7 @@ local function UpdateChams()
     end
 end
 
--- UI BUILDERS 
+-- ROBUST UI BUILDERS (TOUCH & MOUSE FIXED)
 local function CreateToggle(parent, text, callback) 
     local frame = Instance.new("Frame") 
     frame.Size = UDim2.new(1, 0, 0, 36) 
@@ -286,10 +286,12 @@ local function CreateSlider(parent, text, minVal, maxVal, defaultVal, callback)
     label.Font = Enum.Font.GothamMedium 
     label.TextXAlignment = Enum.TextXAlignment.Left 
 
-    local sliderBg = Instance.new("Frame", frame) 
-    sliderBg.Size = UDim2.new(1, -24, 0, 5) 
+    local sliderBg = Instance.new("TextButton", frame) 
+    sliderBg.Size = UDim2.new(1, -24, 0, 6) 
     sliderBg.Position = UDim2.new(0, 12, 0, 28) 
     sliderBg.BackgroundColor3 = Color3.fromRGB(25, 25, 36) 
+    sliderBg.Text = ""
+    sliderBg.AutoButtonColor = false
     Instance.new("UICorner", sliderBg).CornerRadius = UDim.new(1, 0) 
 
     local sliderFill = Instance.new("Frame", sliderBg) 
@@ -299,7 +301,10 @@ local function CreateSlider(parent, text, minVal, maxVal, defaultVal, callback)
 
     local dragging = false
     local function updateInput(input)
-        local pos = math.clamp((input.Position.X - sliderBg.AbsolutePosition.X) / sliderBg.AbsoluteSize.X, 0, 1)
+        local absolutePosition = sliderBg.AbsolutePosition.X
+        local absoluteSize = sliderBg.AbsoluteSize.X
+        if absoluteSize <= 0 then return end
+        local pos = math.clamp((input.Position.X - absolutePosition) / absoluteSize, 0, 1)
         sliderFill.Size = UDim2.new(pos, 0, 1, 0)
         local val = math.floor(minVal + (maxVal - minVal) * pos)
         label.Text = text .. ": " .. tostring(val)
@@ -367,7 +372,7 @@ local function CreateColorPicker(parent, text, callback)
     frame.Parent = parent 
 end 
 
--- POPULATE TABS WITH FUNCTIONAL HOOKS
+-- POPULATE TABS
 CreateToggle(TabContentFrames["Visual"], "ESP Line (Top Center)", function(v) VisualsConfig.ESP_Line = v end) 
 CreateToggle(TabContentFrames["Visual"], "ESP Name", function(v) VisualsConfig.ESP_Name = v end) 
 CreateToggle(TabContentFrames["Visual"], "ESP Distance", function(v) VisualsConfig.ESP_Distance = v end) 
@@ -383,7 +388,7 @@ CreateColorPicker(TabContentFrames["Visual"], "Chams Circle Color Picker", funct
     UpdateChams() 
 end) 
 
--- PLAYER TAB CONTROLS (FIXED & FULLY WORKING)
+-- PLAYER TAB CONTROLS
 CreateToggle(TabContentFrames["Player"], "Speed Run", function(v) PlayerConfig.SpeedHack = v end) 
 CreateSlider(TabContentFrames["Player"], "Speed Value", 16, 200, 16, function(val) PlayerConfig.SpeedValue = val end) 
 CreateToggle(TabContentFrames["Player"], "Fly (Hold Jump)", function(v) PlayerConfig.Fly = v end) 
@@ -396,13 +401,13 @@ CreateToggle(TabContentFrames["Player"], "God Mode (Anti Hazard)", function(v) P
 CreateToggle(TabContentFrames["world"], "Night Mode") 
 CreateToggle(TabContentFrames["world"], "Daylight Mode") 
 CreateToggle(TabContentFrames["world"], "Long View POV") 
-CreateSlider(TabContentFrames["world"], "Long View Distance", 100, 5000, 500) 
+CreateSlider(TabContentFrames["world"], "Long View Distance", 100, 5000, 500, function() end) 
 
 CreateToggle(TabContentFrames["skill"], "Aimbot + FOV + Predict") 
-CreateSlider(TabContentFrames["skill"], "Aimbot FOV Size", 30, 300, 90) 
+CreateSlider(TabContentFrames["skill"], "Aimbot FOV Size", 30, 300, 90, function() end) 
 CreateToggle(TabContentFrames["skill"], "Unlimited Ammo (999/999)") 
 CreateToggle(TabContentFrames["skill"], "Fast Vehicle") 
-CreateSlider(TabContentFrames["skill"], "Vehicle Speed Value", 50, 300, 100) 
+CreateSlider(TabContentFrames["skill"], "Vehicle Speed Value", 50, 300, 100, function() end) 
 
 local tpButton = Instance.new("TextButton", TabContentFrames["skill"]) 
 tpButton.Size = UDim2.new(1, 0, 0, 36) 
@@ -413,60 +418,68 @@ tpButton.TextSize = 11.5
 tpButton.Font = Enum.Font.GothamBold 
 Instance.new("UICorner", tpButton).CornerRadius = UDim.new(0, 8) 
 
--- PLAYER MODS ENGINE RUNSERVICE LOOP
-RunService.RenderStepped:Connect(function()
+-- PLAYER HACKS EXECUTION ENGINE (BYPASSING HOOK LIMITATIONS)
+RunService.Stepped:Connect(function()
     local char = LocalPlayer.Character
-    local hum = char and char:FindFirstChildOfClass("Humanoid")
-    local hrp = char and char:FindFirstChild("HumanoidRootPart")
+    if not char then return end
+    local hum = char:FindFirstChildOfClass("Humanoid")
+    local hrp = char:FindFirstChild("HumanoidRootPart")
 
-    if char and hum and hrp then
-        -- 1. Speed Hack
+    if hum then
+        -- 1. Speed Hack Engine
         if PlayerConfig.SpeedHack then
             hum.WalkSpeed = PlayerConfig.SpeedValue
-        else
-            if hum.WalkSpeed > 100 then hum.WalkSpeed = 16 end
         end
 
-        -- 2. Long Jump
+        -- 2. Long Jump Engine
         if PlayerConfig.LongJump then
+            hum.UseJumpPower = true
             hum.JumpPower = 120
-        else
-            hum.JumpPower = 50
         end
 
-        -- 3. Size Hack (Scale Character Parts Safely)
-        if PlayerConfig.SizeHack then
-            local scale = PlayerConfig.SizeValue
-            pcall(function()
-                for _, part in ipairs(char:GetChildren()) do
-                    if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
-                        part.Size = part.Size * (scale / part.Size.Magnitude * 2) -- Scale multiplier safety
-                    end
-                end
-            end)
-        end
-
-        -- 4. God Mode (Anti Hazard / Health Lock)
+        -- 3. God Mode Engine
         if PlayerConfig.GodMode then
             hum.Health = hum.MaxHealth
         end
+    end
 
-        -- 5. Fly / Hover (Hold Jump Logic)
-        if PlayerConfig.Fly then
-            local cameraCFrame = Camera.CFrame
-            local moveDir = Vector3.new()
-            if UserInputService:IsKeyDown(Enum.KeyCode.W) then moveDir = moveDir + cameraCFrame.LookVector end
-            if UserInputService:IsKeyDown(Enum.KeyCode.S) then moveDir = moveDir - cameraCFrame.LookVector end
-            if UserInputService:IsKeyDown(Enum.KeyCode.A) then moveDir = moveDir - cameraCFrame.RightVector end
-            if UserInputService:IsKeyDown(Enum.KeyCode.D) then moveDir = moveDir + cameraCFrame.RightVector end
-            
-            if moveDir.Magnitude > 0 then
-                hrp.Velocity = moveDir.Unit * 50
-                hrp.AssemblyLinearVelocity = moveDir.Unit * 50
-            else
-                hrp.Velocity = Vector3.new(0, 1, 0)
-                hrp.AssemblyLinearVelocity = Vector3.new(0, 1, 0)
+    -- 4. Size Hack Engine
+    if PlayerConfig.SizeHack and char:FindFirstChild("Humanoid") then
+        local scale = PlayerConfig.SizeValue
+        pcall(function()
+            local humanoid = char:FindFirstChildOfClass("Humanoid")
+            for _, v in ipairs(humanoid:GetChildren()) do
+                if v:IsA("NumberValue") and (v.Name:match("Scale") or v.Name:match("Proportion")) then
+                    v.Value = scale
+                end
             end
+        end)
+    end
+
+    -- 5. Wall Hack (Noclip) Engine
+    if PlayerConfig.WallHack then
+        for _, part in ipairs(char:GetDescendants()) do
+            if part:IsA("BasePart") then
+                part.CanCollide = false
+            end
+        end
+    end
+
+    -- 6. Fly Engine
+    if PlayerConfig.Fly and hrp then
+        local camCFrame = Camera.CFrame
+        local flyVector = Vector3.new()
+        if UserInputService:IsKeyDown(Enum.KeyCode.W) then flyVector = flyVector + camCFrame.LookVector end
+        if UserInputService:IsKeyDown(Enum.KeyCode.S) then flyVector = flyVector - camCFrame.LookVector end
+        if UserInputService:IsKeyDown(Enum.KeyCode.A) then flyVector = flyVector - camCFrame.RightVector end
+        if UserInputService:IsKeyDown(Enum.KeyCode.D) then flyVector = flyVector + camCFrame.RightVector end
+
+        if flyVector.Magnitude > 0 then
+            hrp.Velocity = flyVector.Unit * 60
+            hrp.AssemblyLinearVelocity = flyVector.Unit * 60
+        else
+            hrp.Velocity = Vector3.new(0, 0.1, 0)
+            hrp.AssemblyLinearVelocity = Vector3.new(0, 0.1, 0)
         end
     end
 end)
