@@ -1,5 +1,5 @@
 -- =====================================================================
--- ULTIMATE ANDROID D3D MENU: ESP & CHAMS FULL REBUILD (100% WORK)
+-- ULTIMATE ANDROID D3D MENU: ESP LINE (DRAWING ADAPTED TO FRAME) & CHAMS
 -- =====================================================================
 
 local Players = game:GetService("Players")
@@ -53,6 +53,9 @@ pcall(function()
     end
 end)
 if not ScreenGui.Parent then ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui") end
+
+-- GLOBAL STORAGE UNTUK ESP (MENGIKUTI FORMAT _G.ImGuiV4_ESPs)
+_G.ImGuiV4_ESPs = {}
 
 -- FLOATING BUTTON UI
 local FloatButton = Instance.new("TextButton")
@@ -353,91 +356,131 @@ tpButton.MouseButton1Click:Connect(function()
     end
 end)
 
--- BULLETPROOF ROBLOX GUI BASED ESP CONTAINER (ANDROID 100% COMPATIBLE)
+-- CONTAINER GUI ESP
 local ESPFolder = Instance.new("Folder")
 ESPFolder.Name = "D3D_Android_ESP"
 ESPFolder.Parent = ScreenGui
 
-local function createEspBillboard(targetChar)
-    if targetChar:FindFirstChild("D3D_ESP_UI") then return end
-    
-    local head = targetChar:WaitForChild("Head", 3)
-    if not head then return end
-    
-    local billboard = Instance.new("BillboardGui")
-    billboard.Name = "D3D_ESP_UI"
-    billboard.Adornee = head
-    billboard.Size = UDim2.new(0, 200, 0, 100)
-    billboard.StudsOffset = Vector3.new(0, 2.5, 0)
-    billboard.AlwaysOnTop = true
-    billboard.Parent = ESPFolder
-    
-    local nameLbl = Instance.new("TextLabel", billboard)
-    nameLbl.Name = "NameLabel"
-    nameLbl.Size = UDim2.new(1, 0, 0, 22)
-    nameLbl.BackgroundTransparency = 1
-    nameLbl.Font = Enum.Font.GothamBold
-    nameLbl.TextSize = 12
-    nameLbl.TextColor3 = Color3.fromRGB(255, 255, 255)
-    nameLbl.TextStrokeTransparency = 0.3
-    nameLbl.Visible = false
-    
-    local distLbl = Instance.new("TextLabel", billboard)
-    distLbl.Name = "DistLabel"
-    distLbl.Size = UDim2.new(1, 0, 0, 22)
-    distLbl.Position = UDim2.new(0, 0, 0, 20)
-    distLbl.BackgroundTransparency = 1
-    distLbl.Font = Enum.Font.GothamBold
-    distLbl.TextSize = 11
-    distLbl.TextColor3 = Color3.fromRGB(0, 240, 255)
-    distLbl.TextStrokeTransparency = 0.3
-    distLbl.Visible = false
-    
-    local genderLbl = Instance.new("TextLabel", billboard)
-    genderLbl.Name = "GenderLabel"
-    genderLbl.Size = UDim2.new(1, 0, 0, 22)
-    genderLbl.Position = UDim2.new(0, 0, 0, 40)
-    genderLbl.BackgroundTransparency = 1
-    genderLbl.Font = Enum.Font.GothamBold
-    genderLbl.TextSize = 11
-    genderLbl.TextStrokeTransparency = 0.3
-    genderLbl.Visible = false
+-- FUNGSI HELPER UNTUK MENGGAMBAR GARIS MENGGUNAKAN FRAME UI (LOGIC ADAPTED DARI DRAWING LINE)
+local function UpdateLine(frame, fromPos, toPos)
+    local distance = (fromPos - toPos).Magnitude
+    frame.Size = UDim2.new(0, 1.5, 0, distance)
+    frame.Position = UDim2.new(0, (fromPos.X + toPos.X) / 2, 0, (fromPos.Y + toPos.Y) / 2)
+    frame.Rotation = math.deg(math.atan2(toPos.Y - fromPos.Y, toPos.X - fromPos.X)) - 90
 end
 
--- TRACK PLAYERS FOR ESP & CHAMS
-Players.PlayerAdded:Connect(function(p)
-    p.CharacterAdded:Connect(function(char)
-        createEspBillboard(char)
-    end)
+local function setupPlayerESP(plr)
+    if plr == LocalPlayer then return end
+    
+    local lineFrame = Instance.new("Frame")
+    lineFrame.Name = "ESP_Line"
+    lineFrame.AnchorPoint = Vector2.new(0.5, 0.5)
+    lineFrame.BackgroundColor3 = Color3.fromRGB(0, 235, 255)
+    lineFrame.BorderSizePixel = 0
+    lineFrame.Visible = false
+    lineFrame.Parent = ScreenGui
+
+    _G.ImGuiV4_ESPs[plr] = {
+        Line = lineFrame
+    }
+
+    local function createBillboard(char)
+        if char:FindFirstChild("D3D_ESP_UI") then return end
+        local head = char:WaitForChild("Head", 3)
+        if not head then return end
+        
+        local billboard = Instance.new("BillboardGui")
+        billboard.Name = "D3D_ESP_UI"
+        billboard.Adornee = head
+        billboard.Size = UDim2.new(0, 200, 0, 100)
+        billboard.StudsOffset = Vector3.new(0, 2.5, 0)
+        billboard.AlwaysOnTop = true
+        billboard.Parent = ESPFolder
+        
+        local nameLbl = Instance.new("TextLabel", billboard)
+        nameLbl.Name = "NameLabel"
+        nameLbl.Size = UDim2.new(1, 0, 0, 22)
+        nameLbl.BackgroundTransparency = 1
+        nameLbl.Font = Enum.Font.GothamBold
+        nameLbl.TextSize = 12
+        nameLbl.TextColor3 = Color3.fromRGB(255, 255, 255)
+        nameLbl.TextStrokeTransparency = 0.3
+        nameLbl.Visible = false
+        
+        local distLbl = Instance.new("TextLabel", billboard)
+        distLbl.Name = "DistLabel"
+        distLbl.Size = UDim2.new(1, 0, 0, 22)
+        distLbl.Position = UDim2.new(0, 0, 0, 20)
+        distLbl.BackgroundTransparency = 1
+        distLbl.Font = Enum.Font.GothamBold
+        distLbl.TextSize = 11
+        distLbl.TextColor3 = Color3.fromRGB(0, 240, 255)
+        distLbl.TextStrokeTransparency = 0.3
+        distLbl.Visible = false
+        
+        local genderLbl = Instance.new("TextLabel", billboard)
+        genderLbl.Name = "GenderLabel"
+        genderLbl.Size = UDim2.new(1, 0, 0, 22)
+        genderLbl.Position = UDim2.new(0, 0, 0, 40)
+        genderLbl.BackgroundTransparency = 1
+        genderLbl.Font = Enum.Font.GothamBold
+        genderLbl.TextSize = 11
+        genderLbl.TextStrokeTransparency = 0.3
+        genderLbl.Visible = false
+    end
+
+    if plr.Character then
+        createBillboard(plr.Character)
+    end
+    plr.CharacterAdded:Connect(createBillboard)
+end
+
+Players.PlayerAdded:Connect(setupPlayerESP)
+for _, p in ipairs(Players:GetPlayers()) do
+    setupPlayerESP(p)
+end
+
+Players.PlayerRemoving:Connect(function(plr)
+    if _G.ImGuiV4_ESPs[plr] then
+        if _G.ImGuiV4_ESPs[plr].Line then
+            _G.ImGuiV4_ESPs[plr].Line:Destroy()
+        end
+        _G.ImGuiV4_ESPs[plr] = nil
+    end
 end)
 
-for _, p in ipairs(Players:GetPlayers()) do
-    if p ~= LocalPlayer and p.Character then
-        createEspBillboard(p.Character)
-        p.CharacterAdded:Connect(function(char)
-            createEspBillboard(char)
-        end)
-    end
-end
-
--- HIGH-PERFORMANCE ENGINE LOOP
+-- LOOP UTAMA RENDERSTEPPED (MENGIKUTI STRUKTUR LOGIC ANDA)
 RunService.RenderStepped:Connect(function()
-    -- ESP Billboard Updater
-    for _, p in ipairs(Players:GetPlayers()) do
-        if p ~= LocalPlayer and p.Character then
-            local char = p.Character
-            local billboard = char:FindFirstChild("D3D_ESP_UI")
-            local hum = char:FindFirstChildOfClass("Humanoid")
-            local hrp = char:FindFirstChild("HumanoidRootPart")
+    for plr, esp in pairs(_G.ImGuiV4_ESPs) do
+        local char = plr.Character
+        local hum = char and char:FindFirstChildOfClass("Humanoid")
+        local hrp = char and char:FindFirstChild("HumanoidRootPart")
+        local head = char and char:FindFirstChild("Head")
+        local billboard = char and char:FindFirstChild("D3D_ESP_UI")
+        
+        if char and hum and hum.Health > 0 and hrp and head then
+            local headPos, onScreen = Camera:WorldToViewportPoint(head.Position)
             
-            if billboard and hum and hum.Health > 0 and hrp then
+            -- 1. LOGIKA RENDER & UPDATE LINE ESP (ADAPTASI DARI LOGIC ANDA)
+            if D3DConfig.EspLine and onScreen then
+                local screenCenter = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y)
+                local headScreenPos = Vector2.new(headPos.X, headPos.Y)
+                
+                UpdateLine(esp.Line, screenCenter, headScreenPos)
+                esp.Line.Visible = true
+            else
+                esp.Line.Visible = false
+            end
+            
+            -- 2. UPDATE BILLBOARD (NAME, DISTANCE, GENDER)
+            if billboard then
                 local nameLbl = billboard:FindFirstChild("NameLabel")
                 local distLbl = billboard:FindFirstChild("DistLabel")
                 local genderLbl = billboard:FindFirstChild("GenderLabel")
                 
                 if nameLbl then
                     nameLbl.Visible = D3DConfig.EspName
-                    nameLbl.Text = p.Name
+                    nameLbl.Text = plr.Name
                 end
                 
                 if distLbl and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
@@ -448,26 +491,28 @@ RunService.RenderStepped:Connect(function()
                 
                 if genderLbl then
                     genderLbl.Visible = D3DConfig.EspGender
-                    local isCewe = (p.UserId % 2 == 0)
+                    local isCewe = (plr.UserId % 2 == 0)
                     genderLbl.Text = isCewe and "[Cewe]" or "[Cowo]"
                     genderLbl.TextColor3 = isCewe and Color3.fromRGB(255, 105, 180) or Color3.fromRGB(100, 149, 237)
                 end
-                
-                -- Chams using SelectionBox (Guaranteed Android Wallhack Glow)
-                local highlight = char:FindFirstChild("D3D_ChamsBox")
-                if D3DConfig.Chams then
-                    if not highlight then
-                        highlight = Instance.new("SelectionBox")
-                        highlight.Name = "D3D_ChamsBox"
-                        highlight.Adornee = char
-                        highlight.Parent = char
-                    end
-                    highlight.Color3 = D3DConfig.ChamsColor
-                    highlight.Visible = true
-                else
-                    if highlight then highlight:Destroy() end
-                end
             end
+            
+            -- 3. CHAMS MENGGUNAKAN SELECTIONBOX (DIJAMIN TEMBUS TEMBOK DI ANDROID)
+            local highlight = char:FindFirstChild("D3D_ChamsBox")
+            if D3DConfig.Chams then
+                if not highlight then
+                    highlight = Instance.new("SelectionBox")
+                    highlight.Name = "D3D_ChamsBox"
+                    highlight.Adornee = char
+                    highlight.Parent = char
+                end
+                highlight.Color3 = D3DConfig.ChamsColor
+                highlight.Visible = true
+            else
+                if highlight then highlight:Destroy() end
+            end
+        else
+            if esp.Line then esp.Line.Visible = false end
         end
     end
 
