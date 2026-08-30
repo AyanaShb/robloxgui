@@ -1,5 +1,5 @@
 -- ========================================================
--- DEAR IMGUI MOBILE STABLE UI (V7.6 - STRICT TOOL ACTIVATED FIX)
+-- DEAR IMGUI MOBILE STABLE UI (V7.8 - TOP SNAPLINE & TRUE MULTIJUMP)
 -- ========================================================
 
 local Players = game:GetService("Players")
@@ -29,7 +29,7 @@ end
 local safeParent = GetSafeParent()
 
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "ImGui_Native_Hub_V76"
+ScreenGui.Name = "ImGui_Native_Hub_V78"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.DisplayOrder = 9999
 ScreenGui.Parent = safeParent
@@ -97,7 +97,7 @@ local function ShowToast(text, isSuccess)
 end
 
 local Settings = {
-    SpeedHack = false, WalkSpeed = 30, MultiJump = false, MultiJumpPower = 50,
+    SpeedHack = false, WalkSpeed = 30, MultiJump = false, MultiJumpPower = 55,
     NightMode = false, Daylight = false,
     Chams = false, ChamsColor = Color3.fromRGB(255, 0, 80), GlowColor = Color3.fromRGB(0, 235, 255), 
     Noclip = false, AntiCrash = false, AntiKick = false,
@@ -193,7 +193,7 @@ SuperHeaderGradient.Parent = SuperHeader
 local SuperText = Instance.new("TextLabel")
 SuperText.Size = UDim2.new(1, 0, 1, 0)
 SuperText.BackgroundTransparency = 1
-SuperText.Text = "★ D3D MENU AMIN GANTENG V7.6 ★"
+SuperText.Text = "★ D3D MENU AMIN GANTENG V7.8 ★"
 SuperText.Font = Enum.Font.FredokaOne
 SuperText.TextSize = 14
 SuperText.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -210,7 +210,7 @@ local SubText = Instance.new("TextLabel")
 SubText.Size = UDim2.new(1, -10, 1, 0)
 SubText.Position = UDim2.new(0, 8, 0, 0)
 SubText.BackgroundTransparency = 1
-SubText.Text = "Native GUI V7.6 (Strict Tool Fire Fixed)"
+SubText.Text = "Native GUI V7.8 (Top Snapline & Infinite Jump)"
 SubText.Font = Enum.Font.Code
 SubText.TextSize = 10
 SubText.TextColor3 = Color3.fromRGB(150, 160, 180)
@@ -559,9 +559,10 @@ end
 
 CreateToggle(PlayerPage, "Speed Hack", true, function(state) Settings.SpeedHack = state end)
 CreateSlider(PlayerPage, "Speed Value", 16, 150, 30, true, function(val) Settings.WalkSpeed = val end)
-CreateToggle(PlayerPage, "Multi Jump (True Infinite)", true, function(state) Settings.MultiJump = state end)
-CreateSlider(PlayerPage, "Multi Jump Power", 30, 150, 50, true, function(val) Settings.MultiJumpPower = val end)
+CreateToggle(PlayerPage, "Multi Jump (Infinite Fly Up)", true, function(state) Settings.MultiJump = state end)
+CreateSlider(PlayerPage, "Multi Jump Power", 30, 150, 55, true, function(val) Settings.MultiJumpPower = val end)
 
+-- Multi Jump Sistem (Terus menerus menambah dorongan lompatan ke atas setiap kali tombol loncat ditekan)
 UserInputService.JumpRequest:Connect(function()
     if Settings.MultiJump then
         local char = LocalPlayer.Character
@@ -570,7 +571,7 @@ UserInputService.JumpRequest:Connect(function()
             local hum = char:FindFirstChildOfClass("Humanoid")
             if hrp and hum and hum:GetState() ~= Enum.HumanoidStateType.Dead then
                 hum:ChangeState(Enum.HumanoidStateType.Jumping)
-                hrp.AssemblyLinearVelocity = Vector3.new(hrp.AssemblyLinearVelocity.X, Settings.MultiJumpPower, hrp.AssemblyLinearVelocity.Z)
+                hrp.Velocity = Vector3.new(hrp.Velocity.X, Settings.MultiJumpPower, hrp.Velocity.Z)
             end
         end
     end
@@ -772,10 +773,10 @@ Players.PlayerRemoving:Connect(function(plr)
 end)
 
 -- ==========================================
--- GUN MENU UI (STRICT TOOL ACTIVATED AIMBOT)
+-- GUN MENU UI (STABLE MOBILE AIMBOT & TRIGGER)
 -- ==========================================
 
-CreateToggle(GunPage, "Aimbot (Strict Tool Fire)", true, function(state) Settings.Aimbot = state end)
+CreateToggle(GunPage, "Aimbot (Mobile Safe)", true, function(state) Settings.Aimbot = state end)
 
 CreateSelector(GunPage, "Target Part", {"Head", "Body"}, 1, function(selected) 
     Settings.TargetPart = selected == "Body" and "UpperTorso" or "Head"
@@ -792,31 +793,15 @@ local function IsInLobby()
     return false
 end
 
--- SISTEM PENDETEKSIAN KETAT: Murni dari event bawaan Tool.Activated (tidak terpengaruh klik layar bebas/kamera)
 local isFiring = false
 
 local function BindTool(tool)
     if not tool or not tool:IsA("Tool") then return end
-    
-    local actConn, uneqConn
-    actConn = tool.Activated:Connect(function()
+    tool.Activated:Connect(function()
         isFiring = true
-        task.delay(0.15, function()
-            isFiring = false
-        end)
+        task.delay(0.2, function() isFiring = false end)
     end)
-    
-    uneqConn = tool.Unequipped:Connect(function()
-        isFiring = false
-    end)
-    
-    tool.AncestryChanged:Connect(function(_, parent)
-        if not parent or parent ~= LocalPlayer.Character then
-            isFiring = false
-            if actConn then actConn:Disconnect() end
-            if uneqConn then uneqConn:Disconnect() end
-        end
-    end)
+    tool.Unequipped:Connect(function() isFiring = false end)
 end
 
 local function MonitorCharacter(char)
@@ -830,6 +815,21 @@ end
 
 if LocalPlayer.Character then MonitorCharacter(LocalPlayer.Character) end
 LocalPlayer.CharacterAdded:Connect(MonitorCharacter)
+
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
+        local char = LocalPlayer.Character
+        if char and char:FindFirstChildOfClass("Tool") then
+            isFiring = true
+        end
+    end
+end)
+
+UserInputService.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
+        isFiring = false
+    end
+end)
 
 local function IsValidEnemy(plr)
     if plr == LocalPlayer then return false end
@@ -861,7 +861,7 @@ local function GetClosestTargetWithPrediction()
             if targetPart and targetHrp and myRoot then
                 local worldDist = (targetPart.Position - myRoot.Position).Magnitude
                 if worldDist <= Settings.AimDistance then
-                    local predictedPosition = targetPart.Position + (targetHrp.AssemblyLinearVelocity * Settings.PredictionMultiplier)
+                    local predictedPosition = targetPart.Position + (targetHrp.Velocity * Settings.PredictionMultiplier)
                     local pos, onScreen = Camera:WorldToViewportPoint(predictedPosition)
                     
                     if onScreen then
@@ -902,22 +902,13 @@ RunService.Stepped:Connect(function()
                     end
                 end
             end
-            
-            if LocalPlayer:FindFirstChild("Backpack") then
-                for _, tool in pairs(LocalPlayer.Backpack:GetChildren()) do
-                    for _, v in pairs(tool:GetDescendants()) do
-                        if (v:IsA("NumberValue") or v:IsA("IntValue")) and (v.Name:lower():find("ammo") or v.Name:lower():find("damage")) then
-                            v.Value = v.Name:lower():find("ammo") and 999 or 99999
-                        end
-                    end
-                end
-            end
         end)
     end
 end)
 
 RunService.RenderStepped:Connect(function()
     local center = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
+    -- Garis Snapline dimulai dari SUDUT ATAS TENGAH LAYAR
     local topScreenCenter = Vector2.new(Camera.ViewportSize.X / 2, 0)
     
     local showFov = Settings.Aimbot and not IsInLobby()
@@ -941,12 +932,11 @@ RunService.RenderStepped:Connect(function()
             local ui = GetESPUI(plr)
 
             if hum.Health > 0 then
-                local headPos, headOnScreen = Camera:WorldToViewportPoint(head.Position + Vector3.new(0, 0.8, 0))
-                local rootPos, rootOnScreen = Camera:WorldToViewportPoint(hrp.Position)
+                local headPos, headOnScreen = Camera:WorldToViewportPoint(head.Position)
                 
                 if headOnScreen then
                     ui.Holder.Visible = true
-                    ui.Holder.Position = UDim2.new(0, headPos.X - 50, 0, headPos.Y - 20)
+                    ui.Holder.Position = UDim2.new(0, headPos.X - 50, 0, headPos.Y - 35)
 
                     ui.Name.Visible = Settings.ESPName
                     ui.Name.Text = plr.Name
@@ -968,6 +958,7 @@ RunService.RenderStepped:Connect(function()
                     ui.Holder.Visible = false
                 end
 
+                -- Snapline ditarik dari ATAS TENGAH LAYAR langsung ke KEPALA character
                 if Settings.ESPLine and headOnScreen then
                     local line = ui.Line
                     line.Visible = true
