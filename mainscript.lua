@@ -1,5 +1,5 @@
 -- ========================================================
--- DEAR IMGUI PREMIUM GRADIENT UI (V7.4 - TRUE MULTI JUMP & TOOL FIRE FIX)
+-- DEAR IMGUI MOBILE STABLE UI (V7.6 - STRICT TOOL ACTIVATED FIX)
 -- ========================================================
 
 local Players = game:GetService("Players")
@@ -15,21 +15,10 @@ local Camera = Workspace.CurrentCamera
 
 if _G.ImGuiV4_ScreenGui then _G.ImGuiV4_ScreenGui:Destroy() end
 if _G.ImGuiV4_ToastGui then _G.ImGuiV4_ToastGui:Destroy() end
-if _G.ImGuiV4_FOV then pcall(function() _G.ImGuiV4_FOV:Remove() end) end
-if _G.ImGuiV4_Line then pcall(function() _G.ImGuiV4_Line:Remove() end) end
 
 local function GetSafeParent()
     if gethui then
         local success, parent = pcall(gethui)
-        if success and parent then return parent end
-    end
-    if syn and syn.protect_gui then
-        local success, parent = pcall(function()
-            local gui = Instance.new("Folder")
-            syn.protect_gui(gui)
-            gui:Destroy()
-            return CoreGui
-        end)
         if success and parent then return parent end
     end
     local playerGui = LocalPlayer:FindFirstChildOfClass("PlayerGui")
@@ -40,7 +29,7 @@ end
 local safeParent = GetSafeParent()
 
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "ImGui_Gradient_Hub_V74"
+ScreenGui.Name = "ImGui_Native_Hub_V76"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.DisplayOrder = 9999
 ScreenGui.Parent = safeParent
@@ -91,7 +80,7 @@ local function ShowToast(text, isSuccess)
     Label.TextSize = 11
     Label.TextColor3 = Color3.fromRGB(240, 240, 240)
     Label.TextXAlignment = Enum.TextXAlignment.Center
-    Label.Transparency = 1
+    Label.TextTransparency = 1
     Label.Parent = Toast
 
     TweenService:Create(Toast, TweenInfo.new(0.3), {BackgroundTransparency = 0.1}):Play()
@@ -113,34 +102,35 @@ local Settings = {
     Chams = false, ChamsColor = Color3.fromRGB(255, 0, 80), GlowColor = Color3.fromRGB(0, 235, 255), 
     Noclip = false, AntiCrash = false, AntiKick = false,
     Aimbot = false, FOVRadius = 150, AimDistance = 500, TargetPart = "Head",
-    ESPLine = false, ESPName = false, ESPDistance = false, ESPGender = false, ESPBox3D = false, ESPHealth = false,
+    ESPLine = false, ESPName = false, ESPDistance = false, ESPHealth = false,
     PredictionMultiplier = 0.15
 }
 
-local FOVCircle = Drawing.new("Circle")
-FOVCircle.Thickness = 1.5
-FOVCircle.Color = Color3.fromRGB(0, 235, 255)
-FOVCircle.Filled = false
-FOVCircle.Transparency = 1
-FOVCircle.Visible = false
-_G.ImGuiV4_FOV = FOVCircle
+local FOVCircleGui = Instance.new("Frame")
+FOVCircleGui.Name = "FOVCircle"
+FOVCircleGui.AnchorPoint = Vector2.new(0.5, 0.5)
+FOVCircleGui.BackgroundTransparency = 1
+FOVCircleGui.Visible = false
+FOVCircleGui.Parent = ScreenGui
 
-local TargetLine = Drawing.new("Line")
-TargetLine.Thickness = 2
-TargetLine.Color = Color3.fromRGB(255, 30, 80)
-TargetLine.Transparency = 1
-TargetLine.Visible = false
-_G.ImGuiV4_Line = TargetLine
+local FOVStroke = Instance.new("UIStroke")
+FOVStroke.Thickness = 1.5
+FOVStroke.Color = Color3.fromRGB(0, 235, 255)
+FOVStroke.Parent = FOVCircleGui
+
+local FOVCorner = Instance.new("UICorner")
+FOVCorner.CornerRadius = UDim.new(1, 0)
+FOVCorner.Parent = FOVCircleGui
 
 local ToggleBtn = Instance.new("TextButton")
 ToggleBtn.Name = "ImGui_ToggleIcon"
-ToggleBtn.Size = UDim2.new(0, 36, 0, 36)
-ToggleBtn.Position = UDim2.new(0.05, 0, 0.2, 0)
+ToggleBtn.Size = UDim2.new(0, 42, 0, 42)
+ToggleBtn.Position = UDim2.new(0.05, 0, 0.18, 0)
 ToggleBtn.BackgroundColor3 = Color3.fromRGB(25, 20, 40)
 ToggleBtn.BorderSizePixel = 0
 ToggleBtn.Text = "UI"
 ToggleBtn.Font = Enum.Font.SourceSansBold
-ToggleBtn.TextSize = 14
+ToggleBtn.TextSize = 16
 ToggleBtn.TextColor3 = Color3.fromRGB(0, 235, 255)
 ToggleBtn.Active = true
 ToggleBtn.Draggable = true
@@ -155,13 +145,12 @@ BtnGradient.Rotation = 45
 BtnGradient.Parent = ToggleBtn
 
 local BtnCorner = Instance.new("UICorner")
-BtnCorner.CornerRadius = UDim.new(0, 8)
+BtnCorner.CornerRadius = UDim.new(0, 10)
 BtnCorner.Parent = ToggleBtn
 
 local BtnStroke = Instance.new("UIStroke")
 BtnStroke.Thickness = 1.5
 BtnStroke.Color = Color3.fromRGB(0, 235, 255)
-BtnStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 BtnStroke.Parent = ToggleBtn
 
 local MainFrame = Instance.new("Frame")
@@ -204,9 +193,9 @@ SuperHeaderGradient.Parent = SuperHeader
 local SuperText = Instance.new("TextLabel")
 SuperText.Size = UDim2.new(1, 0, 1, 0)
 SuperText.BackgroundTransparency = 1
-SuperText.Text = "★ D3D MENU AMIN GANTENG V7.4 ★"
+SuperText.Text = "★ D3D MENU AMIN GANTENG V7.6 ★"
 SuperText.Font = Enum.Font.FredokaOne
-SuperText.TextSize = 15
+SuperText.TextSize = 14
 SuperText.TextColor3 = Color3.fromRGB(255, 255, 255)
 SuperText.Parent = SuperHeader
 
@@ -221,9 +210,9 @@ local SubText = Instance.new("TextLabel")
 SubText.Size = UDim2.new(1, -10, 1, 0)
 SubText.Position = UDim2.new(0, 8, 0, 0)
 SubText.BackgroundTransparency = 1
-SubText.Text = "Dear ImGui v7.4 (Fixed MultiJump & Tool Fire Aimbot)"
+SubText.Text = "Native GUI V7.6 (Strict Tool Fire Fixed)"
 SubText.Font = Enum.Font.Code
-SubText.TextSize = 11
+SubText.TextSize = 10
 SubText.TextColor3 = Color3.fromRGB(150, 160, 180)
 SubText.TextXAlignment = Enum.TextXAlignment.Left
 SubText.Parent = SubBar
@@ -377,7 +366,7 @@ local function CreateToggle(parent, text, isSupported, callback)
     FeatureName.BackgroundTransparency = 1
     FeatureName.Text = text
     FeatureName.Font = Enum.Font.Code
-    FeatureName.TextSize = 12
+    FeatureName.TextSize = 11
     FeatureName.TextColor3 = Color3.fromRGB(200, 200, 220)
     FeatureName.TextXAlignment = Enum.TextXAlignment.Left
     FeatureName.Parent = Container
@@ -506,9 +495,9 @@ local function CreateSelector(parent, text, options, defaultIndex, callback)
     local Btn = Instance.new("TextButton")
     Btn.Size = UDim2.new(1, 0, 1, 0)
     Btn.BackgroundTransparency = 1
-    Btn.Text = text .. ": " + options[defaultIndex]
+    Btn.Text = text .. ": " .. options[defaultIndex]
     Btn.Font = Enum.Font.Code
-    Btn.TextSize = 12
+    Btn.TextSize = 11
     Btn.TextColor3 = Color3.fromRGB(0, 235, 255)
     Btn.Parent = Frame
 
@@ -568,17 +557,11 @@ local function CreateColorTable(parent, text, callback)
     end
 end
 
--- ==========================================
--- LOGIC: SPEED HACK & FIXED TRUE MULTI JUMP
--- ==========================================
-
 CreateToggle(PlayerPage, "Speed Hack", true, function(state) Settings.SpeedHack = state end)
 CreateSlider(PlayerPage, "Speed Value", 16, 150, 30, true, function(val) Settings.WalkSpeed = val end)
 CreateToggle(PlayerPage, "Multi Jump (True Infinite)", true, function(state) Settings.MultiJump = state end)
 CreateSlider(PlayerPage, "Multi Jump Power", 30, 150, 50, true, function(val) Settings.MultiJumpPower = val end)
 
--- SISTEM MULTI JUMP DIPERBAIKI: Menggunakan deteksi tombol lompat mentah (Spacebar / Mobile Jump Button)
--- Tanpa mempedulikan state FreeFall/Jumping Roblox yang sering memblokir lompatan beruntun di udara.
 UserInputService.JumpRequest:Connect(function()
     if Settings.MultiJump then
         local char = LocalPlayer.Character
@@ -663,9 +646,6 @@ RunService.Stepped:Connect(function()
     end
 end)
 
--- ==========================================
--- LIGHTING MODS
--- ==========================================
 local originalLighting = {
     ClockTime = Lighting.ClockTime,
     Brightness = Lighting.Brightness,
@@ -675,7 +655,7 @@ local originalLighting = {
     FogEnd = Lighting.FogEnd
 }
 
-CreateToggle(MiscPage, "Night Mode (Indoor/Outdoor Fixed)", true, function(state)
+CreateToggle(MiscPage, "Night Mode", true, function(state)
     Settings.NightMode = state
     if state then
         if Settings.Daylight then Settings.Daylight = false end
@@ -695,7 +675,7 @@ CreateToggle(MiscPage, "Night Mode (Indoor/Outdoor Fixed)", true, function(state
     end
 end)
 
-CreateToggle(MiscPage, "Daylight (Indoor/Outdoor FullBright)", true, function(state)
+CreateToggle(MiscPage, "Daylight (FullBright)", true, function(state)
     Settings.Daylight = state
     if state then
         if Settings.NightMode then Settings.NightMode = false end
@@ -718,21 +698,84 @@ end)
 CreateToggle(MiscPage, "Anti Crash", true, function(state) Settings.AntiCrash = state end)
 CreateToggle(MiscPage, "Anti Kick", true, function(state) Settings.AntiKick = state end)
 
--- ==========================================
--- FULL ESP RESTORE (VISUAL PAGE)
--- ==========================================
 CreateToggle(VisualPage, "ESP Snapline", true, function(state) Settings.ESPLine = state end)
 CreateToggle(VisualPage, "ESP Name", true, function(state) Settings.ESPName = state end)
 CreateToggle(VisualPage, "ESP Distance", true, function(state) Settings.ESPDistance = state end)
-CreateToggle(VisualPage, "ESP Gender", true, function(state) Settings.ESPGender = state end)
-CreateToggle(VisualPage, "ESP 3D Box", true, function(state) Settings.ESPBox3D = state end)
 CreateToggle(VisualPage, "ESP Health Bar", true, function(state) Settings.ESPHealth = state end)
 
+local ESPContainer = Instance.new("Folder")
+ESPContainer.Name = "ESPContainer"
+ESPContainer.Parent = ScreenGui
+
+local ESPObjects = {}
+
+local function GetESPUI(plr)
+    if ESPObjects[plr] then return ESPObjects[plr] end
+    
+    local holder = Instance.new("Frame")
+    holder.Size = UDim2.new(0, 100, 0, 100)
+    holder.BackgroundTransparency = 1
+    holder.Visible = false
+    holder.Parent = ESPContainer
+
+    local nameLabel = Instance.new("TextLabel")
+    nameLabel.Size = UDim2.new(1, 0, 0, 14)
+    nameLabel.Position = UDim2.new(0, 0, 0, 0)
+    nameLabel.BackgroundTransparency = 1
+    nameLabel.Font = Enum.Font.Code
+    nameLabel.TextSize = 11
+    nameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    nameLabel.TextStrokeTransparency = 0.5
+    nameLabel.Parent = holder
+
+    local distLabel = Instance.new("TextLabel")
+    distLabel.Size = UDim2.new(1, 0, 0, 14)
+    distLabel.Position = UDim2.new(0, 0, 0, 14)
+    distLabel.BackgroundTransparency = 1
+    distLabel.Font = Enum.Font.Code
+    distLabel.TextSize = 10
+    distLabel.TextColor3 = Color3.fromRGB(0, 235, 255)
+    distLabel.TextStrokeTransparency = 0.5
+    distLabel.Parent = holder
+
+    local healthBg = Instance.new("Frame")
+    healthBg.Size = UDim2.new(0, 4, 0, 40)
+    healthBg.Position = UDim2.new(0, -8, 0, 0)
+    healthBg.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+    healthBg.BorderSizePixel = 0
+    healthBg.Parent = holder
+
+    local healthFill = Instance.new("Frame")
+    healthFill.Size = UDim2.new(1, 0, 1, 0)
+    healthFill.BackgroundColor3 = Color3.fromRGB(0, 255, 100)
+    healthFill.BorderSizePixel = 0
+    healthFill.Parent = healthBg
+
+    local snapLine = Instance.new("Frame")
+    snapLine.AnchorPoint = Vector2.new(0.5, 0)
+    snapLine.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
+    snapLine.BorderSizePixel = 0
+    snapLine.Size = UDim2.new(0, 1, 0, 0)
+    snapLine.Visible = false
+    snapLine.Parent = ScreenGui
+
+    ESPObjects[plr] = {Holder = holder, Name = nameLabel, Dist = distLabel, HealthBg = healthBg, HealthFill = healthFill, Line = snapLine}
+    return ESPObjects[plr]
+end
+
+Players.PlayerRemoving:Connect(function(plr)
+    if ESPObjects[plr] then
+        pcall(function() ESPObjects[plr].Holder:Destroy() end)
+        pcall(function() ESPObjects[plr].Line:Destroy() end)
+        ESPObjects[plr] = nil
+    end
+end)
+
 -- ==========================================
--- GUN MENU UI (AIMBOT + TOOL FIRE ONLY SYSTEM)
+-- GUN MENU UI (STRICT TOOL ACTIVATED AIMBOT)
 -- ==========================================
 
-CreateToggle(GunPage, "Aimbot (Strict Tool Fire Only)", true, function(state) Settings.Aimbot = state end)
+CreateToggle(GunPage, "Aimbot (Strict Tool Fire)", true, function(state) Settings.Aimbot = state end)
 
 CreateSelector(GunPage, "Target Part", {"Head", "Body"}, 1, function(selected) 
     Settings.TargetPart = selected == "Body" and "UpperTorso" or "Head"
@@ -749,16 +792,18 @@ local function IsInLobby()
     return false
 end
 
--- PENDETEKSIAN MENEMBAK MURNI BERDASARKAN TOOL ACTIVATED & MOUSEBUTTON1/TOUCH SAAT MEMEGANG SENJATA (BUKAN SENTUHAN LAYAR BEBAS)
+-- SISTEM PENDETEKSIAN KETAT: Murni dari event bawaan Tool.Activated (tidak terpengaruh klik layar bebas/kamera)
 local isFiring = false
 
 local function BindTool(tool)
     if not tool or not tool:IsA("Tool") then return end
     
-    local activatedConn, deactivatedConn, uneqConn
-    
-    activatedConn = tool.Activated:Connect(function()
+    local actConn, uneqConn
+    actConn = tool.Activated:Connect(function()
         isFiring = true
+        task.delay(0.15, function()
+            isFiring = false
+        end)
     end)
     
     uneqConn = tool.Unequipped:Connect(function()
@@ -768,7 +813,7 @@ local function BindTool(tool)
     tool.AncestryChanged:Connect(function(_, parent)
         if not parent or parent ~= LocalPlayer.Character then
             isFiring = false
-            if activatedConn then activatedConn:Disconnect() end
+            if actConn then actConn:Disconnect() end
             if uneqConn then uneqConn:Disconnect() end
         end
     end)
@@ -776,38 +821,15 @@ end
 
 local function MonitorCharacter(char)
     char.ChildAdded:Connect(function(child)
-        if child:IsA("Tool") then
-            BindTool(child)
-        end
+        if child:IsA("Tool") then BindTool(child) end
     end)
     for _, child in pairs(char:GetChildren()) do
-        if child:IsA("Tool") then
-            BindTool(child)
-        end
+        if child:IsA("Tool") then BindTool(child) end
     end
 end
 
-if LocalPlayer.Character then
-    MonitorCharacter(LocalPlayer.Character)
-end
+if LocalPlayer.Character then MonitorCharacter(LocalPlayer.Character) end
 LocalPlayer.CharacterAdded:Connect(MonitorCharacter)
-
--- Backup tambahan untuk mendeteksi penembakan via klik/sentuh khusus pada area layar jika tool aktif (mendukung game FPS mobile/PC)
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        local char = LocalPlayer.Character
-        if char and char:FindFirstChildOfClass("Tool") then
-            -- Hanya aktif jika benar-benar memegang tool/senjata di tangan
-            isFiring = true
-        end
-    end
-end)
-
-UserInputService.InputEnded:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        isFiring = false
-    end
-end)
 
 local function IsValidEnemy(plr)
     if plr == LocalPlayer then return false end
@@ -856,9 +878,6 @@ local function GetClosestTargetWithPrediction()
     return closestTarget
 end
 
--- ==========================================
--- UNLIMITED AMMO & NO RECOIL
--- ==========================================
 RunService.Stepped:Connect(function()
     if Settings.Aimbot and not IsInLobby() then
         pcall(function()
@@ -897,122 +916,20 @@ RunService.Stepped:Connect(function()
     end
 end)
 
--- ==========================================
--- ADVANCED ESP DRAWINGS CACHE
--- ==========================================
-local ESPLineCache = {}
-local ESPNameCache = {}
-local ESPDistanceCache = {}
-local ESPGenderCache = {}
-local ESPBox3DLinesCache = {}
-local ESPHealthBarCache = {}
-local ESPHealthBgCache = {}
-
-local function GetESPLine(plr)
-    if not ESPLineCache[plr] then
-        local line = Drawing.new("Line")
-        line.Thickness = 1.5
-        line.Color = Color3.fromRGB(255, 0, 0)
-        line.Transparency = 1
-        line.Visible = false
-        ESPLineCache[plr] = line
-    end
-    return ESPLineCache[plr]
-end
-
-local function GetESPText()
-    local text = Drawing.new("Text")
-    text.Size = 13
-    text.Center = true
-    text.Outline = true
-    text.Color = Color3.fromRGB(255, 255, 255)
-    text.Transparency = 1
-    text.Visible = false
-    return text
-end
-
-local function GetBox3DLines(plr)
-    if not ESPBox3DLinesCache[plr] then
-        local lines = {}
-        for i = 1, 12 do
-            local line = Drawing.new("Line")
-            line.Thickness = 1.2
-            line.Color = Color3.fromRGB(0, 235, 255)
-            line.Transparency = 1
-            line.Visible = false
-            table.insert(lines, line)
-        end
-        ESPBox3DLinesCache[plr] = lines
-    end
-    return ESPBox3DLinesCache[plr]
-end
-
-local function GetHealthBar(plr)
-    if not ESPHealthBarCache[plr] then
-        local bar = Drawing.new("Line")
-        bar.Thickness = 2.5
-        bar.Color = Color3.fromRGB(0, 255, 100)
-        bar.Transparency = 1
-        bar.Visible = false
-        ESPHealthBarCache[plr] = bar
-    end
-    if not ESPHealthBgCache[plr] then
-        local bg = Drawing.new("Line")
-        bg.Thickness = 3.5
-        bg.Color = Color3.fromRGB(40, 40, 40)
-        bg.Transparency = 1
-        bg.Visible = false
-        ESPHealthBgCache[plr] = bg
-    end
-    return ESPHealthBgCache[plr], ESPHealthBarCache[plr]
-end
-
-Players.PlayerRemoving:Connect(function(plr)
-    if ESPLineCache[plr] then pcall(function() ESPLineCache[plr]:Remove() end) ESPLineCache[plr] = nil end
-    if ESPNameCache[plr] then pcall(function() ESPNameCache[plr]:Remove() end) ESPNameCache[plr] = nil end
-    if ESPDistanceCache[plr] then pcall(function() ESPDistanceCache[plr]:Remove() end) ESPDistanceCache[plr] = nil end
-    if ESPGenderCache[plr] then pcall(function() ESPGenderCache[plr]:Remove() end) ESPGenderCache[plr] = nil end
-    if ESPBox3DLinesCache[plr] then
-        for _, l in ipairs(ESPBox3DLinesCache[plr]) do pcall(function() l:Remove() end) end
-        ESPBox3DLinesCache[plr] = nil
-    end
-    if ESPHealthBarCache[plr] then
-        pcall(function() ESPHealthBarCache[plr]:Remove() end)
-        pcall(function() ESPHealthBgCache[plr]:Remove() end)
-        ESPHealthBarCache[plr] = nil
-        ESPHealthBgCache[plr] = nil
-    end
-end)
-
--- ==========================================
--- RENDER LOOP
--- ==========================================
-
 RunService.RenderStepped:Connect(function()
     local center = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
     local topScreenCenter = Vector2.new(Camera.ViewportSize.X / 2, 0)
     
     local showFov = Settings.Aimbot and not IsInLobby()
-    FOVCircle.Position = center
-    FOVCircle.Radius = Settings.FOVRadius
-    FOVCircle.Visible = showFov
-
+    FOVCircleGui.Visible = showFov
     if showFov then
+        FOVCircleGui.Position = UDim2.new(0, center.X, 0, center.Y)
+        FOVCircleGui.Size = UDim2.new(0, Settings.FOVRadius * 2, 0, Settings.FOVRadius * 2)
+        
         local targetData = GetClosestTargetWithPrediction()
-        if targetData then
-            TargetLine.From = center
-            TargetLine.To = targetData.ScreenPos
-            TargetLine.Visible = true
-
-            -- Eksekusi Lock Aimbot hanya jika tombol tembak ditekan DAN sedang memegang tool
-            if isFiring then
-                Camera.CFrame = CFrame.new(Camera.CFrame.Position, targetData.PredictedPos)
-            end
-        else
-            TargetLine.Visible = false
+        if targetData and isFiring then
+            Camera.CFrame = CFrame.new(Camera.CFrame.Position, targetData.PredictedPos)
         end
-    else
-        TargetLine.Visible = false
     end
 
     for _, plr in pairs(Players:GetPlayers()) do
@@ -1021,135 +938,57 @@ RunService.RenderStepped:Connect(function()
             local hum = char:FindFirstChildOfClass("Humanoid")
             local hrp = char:FindFirstChild("HumanoidRootPart")
             local head = char:FindFirstChild("Head") or hrp
+            local ui = GetESPUI(plr)
 
             if hum.Health > 0 then
                 local headPos, headOnScreen = Camera:WorldToViewportPoint(head.Position + Vector3.new(0, 0.8, 0))
                 local rootPos, rootOnScreen = Camera:WorldToViewportPoint(hrp.Position)
                 
-                local line = GetESPLine(plr)
+                if headOnScreen then
+                    ui.Holder.Visible = true
+                    ui.Holder.Position = UDim2.new(0, headPos.X - 50, 0, headPos.Y - 20)
+
+                    ui.Name.Visible = Settings.ESPName
+                    ui.Name.Text = plr.Name
+
+                    local myRoot = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+                    if Settings.ESPDistance and myRoot then
+                        local distanceMeters = math.floor((hrp.Position - myRoot.Position).Magnitude)
+                        ui.Dist.Visible = true
+                        ui.Dist.Text = "[" .. tostring(distanceMeters) .. "m]"
+                    else
+                        ui.Dist.Visible = false
+                    end
+
+                    ui.HealthBg.Visible = Settings.ESPHealth
+                    local healthPercent = math.clamp(hum.Health / hum.MaxHealth, 0, 1)
+                    ui.HealthFill.Size = UDim2.new(1, 0, healthPercent, 0)
+                    ui.HealthFill.Position = UDim2.new(0, 0, 1 - healthPercent, 0)
+                else
+                    ui.Holder.Visible = false
+                end
+
                 if Settings.ESPLine and headOnScreen then
-                    line.From = topScreenCenter
-                    line.To = Vector2.new(headPos.X, headPos.Y)
+                    local line = ui.Line
                     line.Visible = true
+                    local fromPos = topScreenCenter
+                    local toPos = Vector2.new(headPos.X, headPos.Y)
+                    local magnitude = (toPos - fromPos).Magnitude
+                    line.Position = UDim2.new(0, (fromPos.X + toPos.X) / 2, 0, (fromPos.Y + toPos.Y) / 2)
+                    line.Size = UDim2.new(0, 1, 0, magnitude)
+                    line.Rotation = math.deg(math.atan2(toPos.Y - fromPos.Y, toPos.X - fromPos.X)) - 90
                 else
-                    line.Visible = false
-                end
-
-                if not ESPNameCache[plr] then ESPNameCache[plr] = GetESPText() end
-                local nameText = ESPNameCache[plr]
-                if Settings.ESPName and headOnScreen then
-                    nameText.Text = plr.Name
-                    nameText.Position = Vector2.new(headPos.X, headPos.Y - 16)
-                    nameText.Visible = true
-                else
-                    nameText.Visible = false
-                end
-
-                if not ESPDistanceCache[plr] then ESPDistanceCache[plr] = GetESPText() end
-                local distText = ESPDistanceCache[plr]
-                local myRoot = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-                if Settings.ESPDistance and headOnScreen and myRoot then
-                    local distanceMeters = math.floor((hrp.Position - myRoot.Position).Magnitude)
-                    distText.Text = "[" .. tostring(distanceMeters) .. "m]"
-                    distText.Position = Vector2.new(headPos.X, headPos.Y - 32)
-                    distText.Visible = true
-                else
-                    distText.Visible = false
-                end
-
-                if not ESPGenderCache[plr] then ESPGenderCache[plr] = GetESPText() end
-                local genderText = ESPGenderCache[plr]
-                if Settings.ESPGender and headOnScreen then
-                    genderText.Text = "[Male]"
-                    genderText.Position = Vector2.new(headPos.X, headPos.Y - 48)
-                    genderText.Visible = true
-                else
-                    genderText.Visible = false
-                end
-
-                local boxLines = GetBox3DLines(plr)
-                if Settings.ESPBox3D and rootOnScreen then
-                    local size = Vector3.new(2, 4, 2)
-                    local cf = hrp.CFrame
-                    local corners = {
-                        cf * CFrame.new(-size.X/2, size.Y/2, -size.Z/2),
-                        cf * CFrame.new(size.X/2, size.Y/2, -size.Z/2),
-                        cf * CFrame.new(size.X/2, size.Y/2, size.Z/2),
-                        cf * CFrame.new(-size.X/2, size.Y/2, size.Z/2),
-                        cf * CFrame.new(-size.X/2, -size.Y/2, -size.Z/2),
-                        cf * CFrame.new(size.X/2, -size.Y/2, -size.Z/2),
-                        cf * CFrame.new(size.X/2, -size.Y/2, size.Z/2),
-                        cf * CFrame.new(-size.X/2, -size.Y/2, size.Z/2)
-                    }
-                    local screenCorners = {}
-                    local allOnScreen = true
-                    for i, corner in ipairs(corners) do
-                        local sp, sos = Camera:WorldToViewportPoint(corner.Position)
-                        if not sos then allOnScreen = false end
-                        screenCorners[i] = Vector2.new(sp.X, sp.Y)
-                    end
-                    
-                    if allOnScreen then
-                        local connections = {
-                            {1,2},{2,3},{3,4},{4,1},
-                            {5,6},{6,7},{7,8},{8,5},
-                            {1,5},{2,6},{3,7},{4,8}
-                        }
-                        for i, conn in ipairs(connections) do
-                            local l = boxLines[i]
-                            l.From = screenCorners[conn[1]]
-                            l.To = screenCorners[conn[2]]
-                            l.Visible = true
-                        end
-                    else
-                        for _, l in ipairs(boxLines) do l.Visible = false end
-                    end
-                else
-                    for _, l in ipairs(boxLines) do l.Visible = false end
-                end
-
-                local bgBar, healthBar = GetHealthBar(plr)
-                if Settings.ESPHealth and rootOnScreen then
-                    local topPos, topOnScreen = Camera:WorldToViewportPoint((hrp.CFrame * CFrame.new(0, 2.5, 0)).Position)
-                    local botPos, botOnScreen = Camera:WorldToViewportPoint((hrp.CFrame * CFrame.new(0, -2.5, 0)).Position)
-                    if topOnScreen and botOnScreen then
-                        local barHeight = math.abs(topPos.Y - botPos.Y)
-                        local healthPercent = math.clamp(hum.Health / hum.MaxHealth, 0, 1)
-                        local filledHeight = barHeight * healthPercent
-                        local barX = topPos.X - 18
-
-                        bgBar.From = Vector2.new(barX, botPos.Y)
-                        bgBar.To = Vector2.new(barX, topPos.Y)
-                        bgBar.Visible = true
-
-                        healthBar.From = Vector2.new(barX, botPos.Y)
-                        healthBar.To = Vector2.new(barX, botPos.Y - filledHeight)
-                        healthBar.Visible = true
-                    else
-                        bgBar.Visible = false
-                        healthBar.Visible = false
-                    end
-                else
-                    bgBar.Visible = false
-                    healthBar.Visible = false
+                    ui.Line.Visible = false
                 end
             else
-                if ESPLineCache[plr] then ESPLineCache[plr].Visible = false end
-                if ESPNameCache[plr] then ESPNameCache[plr].Visible = false end
-                if ESPDistanceCache[plr] then ESPDistanceCache[plr].Visible = false end
-                if ESPGenderCache[plr] then ESPGenderCache[plr].Visible = false end
-                if ESPBox3DLinesCache[plr] then for _, l in ipairs(ESPBox3DLinesCache[plr]) do l.Visible = false end end
-                if ESPHealthBarCache[plr] then ESPHealthBarCache[plr].Visible = false end
-                if ESPHealthBgCache[plr] then ESPHealthBgCache[plr].Visible = false end
+                ui.Holder.Visible = false
+                ui.Line.Visible = false
             end
         else
-            if ESPLineCache[plr] then ESPLineCache[plr].Visible = false end
-            if ESPNameCache[plr] then ESPNameCache[plr].Visible = false end
-            if ESPDistanceCache[plr] then ESPDistanceCache[plr].Visible = false end
-            if ESPGenderCache[plr] then ESPGenderCache[plr].Visible = false end
-            if ESPBox3DLinesCache[plr] then for _, l in ipairs(ESPBox3DLinesCache[plr]) do l.Visible = false end end
-            if ESPHealthBarCache[plr] then ESPHealthBarCache[plr].Visible = false end
-            if ESPHealthBgCache[plr] then ESPHealthBgCache[plr].Visible = false end
+            if ESPObjects[plr] then
+                ESPObjects[plr].Holder.Visible = false
+                ESPObjects[plr].Line.Visible = false
+            end
         end
     end
 end)
