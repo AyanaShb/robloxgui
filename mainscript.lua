@@ -1,5 +1,5 @@
 -- ========================================================
--- DEAR IMGUI PREMIUM GRADIENT UI (V7.1 - ULTIMATE RESTORE & FIX)
+-- DEAR IMGUI PREMIUM GRADIENT UI (V7.2 - TOUCH & MULTI JUMP FIXED)
 -- ========================================================
 
 local Players = game:GetService("Players")
@@ -40,7 +40,7 @@ end
 local safeParent = GetSafeParent()
 
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "ImGui_Gradient_Hub_V71"
+ScreenGui.Name = "ImGui_Gradient_Hub_V72"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.DisplayOrder = 9999
 ScreenGui.Parent = safeParent
@@ -204,7 +204,7 @@ SuperHeaderGradient.Parent = SuperHeader
 local SuperText = Instance.new("TextLabel")
 SuperText.Size = UDim2.new(1, 0, 1, 0)
 SuperText.BackgroundTransparency = 1
-SuperText.Text = "★ D3D MENU AMIN GANTENG V7.1 ★"
+SuperText.Text = "★ D3D MENU AMIN GANTENG V7.2 ★"
 SuperText.Font = Enum.Font.FredokaOne
 SuperText.TextSize = 15
 SuperText.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -221,7 +221,7 @@ local SubText = Instance.new("TextLabel")
 SubText.Size = UDim2.new(1, -10, 1, 0)
 SubText.Position = UDim2.new(0, 8, 0, 0)
 SubText.BackgroundTransparency = 1
-SubText.Text = "Dear ImGui v7.1 (All Fixes Applied)"
+SubText.Text = "Dear ImGui v7.2 (Touch & MultiJump Fixed)"
 SubText.Font = Enum.Font.Code
 SubText.TextSize = 11
 SubText.TextColor3 = Color3.fromRGB(150, 160, 180)
@@ -569,7 +569,7 @@ local function CreateColorTable(parent, text, callback)
 end
 
 -- ==========================================
--- LOGIC: SPEED HACK & TRUE ROBUST MULTI JUMP
+-- LOGIC: SPEED HACK & ROBUST MULTI JUMP
 -- ==========================================
 
 CreateToggle(PlayerPage, "Speed Hack", true, function(state) Settings.SpeedHack = state end)
@@ -577,7 +577,8 @@ CreateSlider(PlayerPage, "Speed Value", 16, 150, 30, true, function(val) Setting
 CreateToggle(PlayerPage, "Multi Jump (Fixed)", true, function(state) Settings.MultiJump = state end)
 CreateSlider(PlayerPage, "Multi Jump Power", 30, 150, 50, true, function(val) Settings.MultiJumpPower = val end)
 
--- MULTI JUMP ULTRA FIX (MENDUKUNG TOMBOL JUMP BAWAAN & KEYPRESS)
+-- MULTI JUMP FIX MENGGUNAKAN STATE CHANGED AGAR LEBIH STABIL DI MOBILE
+local canJumpAgain = false
 UserInputService.JumpRequest:Connect(function()
     if Settings.MultiJump then
         local char = LocalPlayer.Character
@@ -662,7 +663,7 @@ RunService.Stepped:Connect(function()
 end)
 
 -- ==========================================
--- LIGHTING MODS: INDOOR & OUTDOOR FULL FIX
+-- LIGHTING MODS
 -- ==========================================
 local originalLighting = {
     ClockTime = Lighting.ClockTime,
@@ -727,7 +728,7 @@ CreateToggle(VisualPage, "ESP 3D Box", true, function(state) Settings.ESPBox3D =
 CreateToggle(VisualPage, "ESP Health Bar", true, function(state) Settings.ESPHealth = state end)
 
 -- ==========================================
--- GUN MENU UI (AIMBOT + PREDICTION + NO RELOAD)
+-- GUN MENU UI (AIMBOT + PREDICTION + SAFE TOUCH FILTER)
 -- ==========================================
 
 CreateToggle(GunPage, "Aimbot (Predict + Trigger Only)", true, function(state) Settings.Aimbot = state end)
@@ -747,13 +748,20 @@ local function IsInLobby()
     return false
 end
 
--- DETEKSI TOMBAK TEMBAK KHUSUS (MOUSE BUTTON 1 ATAU TOUCHFIRE/FIRE BUTTON)
+-- PERBAIKAN UTAMA: FILTER SENTUHAN LAYAR SEBELAH KIRI (JOYSTICK/LARI) AGAR TIDAK MENGURANGI/MENGUNCI AIMBOT
 local isFiring = false
 UserInputService.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
         isFiring = true
+    elseif input.UserInputType == Enum.UserInputType.Touch then
+        local screenWidth = Camera.ViewportSize.X
+        -- Jika sentuhan berada di sebelah kiri layar (X < Setengah Layar), asumsikan itu Joystick/Gerak -> Jangan Trigger Aimbot
+        if input.Position.X > (screenWidth / 2) then
+            isFiring = true
+        end
     end
 end)
+
 UserInputService.InputEnded:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
         isFiring = false
@@ -790,7 +798,6 @@ local function GetClosestTargetWithPrediction()
             if targetPart and targetHrp and myRoot then
                 local worldDist = (targetPart.Position - myRoot.Position).Magnitude
                 if worldDist <= Settings.AimDistance then
-                    -- PREDICTION: Maju sedikit titik koordinat sesuai kecepatan gerak musuh
                     local predictedPosition = targetPart.Position + (targetHrp.AssemblyLinearVelocity * Settings.PredictionMultiplier)
                     local pos, onScreen = Camera:WorldToViewportPoint(predictedPosition)
                     
@@ -809,7 +816,7 @@ local function GetClosestTargetWithPrediction()
 end
 
 -- ==========================================
--- UNLIMITED AMMO & NO RELOAD / NO RECOIL
+-- UNLIMITED AMMO & NO RECOIL
 -- ==========================================
 RunService.Stepped:Connect(function()
     if Settings.Aimbot and not IsInLobby() then
@@ -937,7 +944,7 @@ Players.PlayerRemoving:Connect(function(plr)
 end)
 
 -- ==========================================
--- RENDER LOOP (FOV, AIM LINE KE TARGET PALING DEKAT + PREDICT + TRIGGER TEMBAK)
+-- RENDER LOOP
 -- ==========================================
 
 RunService.RenderStepped:Connect(function()
@@ -952,12 +959,10 @@ RunService.RenderStepped:Connect(function()
     if showFov then
         local targetData = GetClosestTargetWithPrediction()
         if targetData then
-            -- Garis Aim Line dari tengah layar ke target terdekat
             TargetLine.From = center
             TargetLine.To = targetData.ScreenPos
             TargetLine.Visible = true
 
-            -- HANYA NGARAH OTOMATIS SAAT TOMBOL TEMBAK DITEKAN (isFiring)
             if isFiring then
                 Camera.CFrame = CFrame.new(Camera.CFrame.Position, targetData.PredictedPos)
             end
