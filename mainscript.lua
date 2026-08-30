@@ -1,4 +1,4 @@
--- ===================================================================== -- ULTIMATE ANDROID D3D MENU: FIXED PLAYER ENGINE v3 -- ===================================================================== 
+-- ===================================================================== -- ULTIMATE ANDROID D3D MENU: FINAL PLAYER ENGINE v4 -- ===================================================================== 
 local Players = game:GetService("Players") 
 local UserInputService = game:GetService("UserInputService") 
 local Lighting = game:GetService("Lighting") 
@@ -42,7 +42,7 @@ local PlayerConfig = {
     SpeedHack = false,
     SpeedValue = 16,
     Fly = false,
-    LongJump = false,
+    MultiJump = false,
     WallHack = false,
     SizeHack = false,
     SizeValue = 1,
@@ -388,7 +388,7 @@ CreateColorPicker(TabContentFrames["Visual"], "Chams Circle Color Picker", funct
     UpdateChams() 
 end) 
 
--- PLAYER TAB CONTROLS (FULLY MAPPED)
+-- PLAYER TAB CONTROLS (UPDATED)
 CreateToggle(TabContentFrames["Player"], "Speed Run", function(v) 
     PlayerConfig.SpeedHack = v 
     if not v and LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
@@ -397,24 +397,30 @@ CreateToggle(TabContentFrames["Player"], "Speed Run", function(v)
 end) 
 CreateSlider(TabContentFrames["Player"], "Speed Value", 16, 200, 16, function(val) PlayerConfig.SpeedValue = val end) 
 CreateToggle(TabContentFrames["Player"], "Fly (Hold Jump)", function(v) PlayerConfig.Fly = v end) 
-CreateToggle(TabContentFrames["Player"], "Long Jump", function(v) PlayerConfig.LongJump = v end) 
+CreateToggle(TabContentFrames["Player"], "Multi Jump (Tap to Ascend)", function(v) PlayerConfig.MultiJump = v end) 
 CreateToggle(TabContentFrames["Player"], "Wall Hack", function(v) PlayerConfig.WallHack = v end) 
 CreateToggle(TabContentFrames["Player"], "Size Hack", function(v) 
     PlayerConfig.SizeHack = v 
     if not v and LocalPlayer.Character then
         pcall(function()
-            local hum = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+            local char = LocalPlayer.Character
+            local hum = char:FindFirstChildOfClass("Humanoid")
             if hum then
                 for _, scale in ipairs({"BodyHeightScale", "BodyWidthScale", "BodyDepthScale", "HeadScale"}) do
                     local s = hum:FindFirstChild(scale)
                     if s then s.Value = 1 end
                 end
             end
+            for _, part in ipairs(char:GetChildren()) do
+                if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
+                    part.Size = part.Size / (PlayerConfig.SizeValue > 0 and PlayerConfig.SizeValue or 1)
+                end
+            end
         end)
     end
 end) 
 CreateSlider(TabContentFrames["Player"], "Size Value", 1, 5, 1, function(val) PlayerConfig.SizeValue = val end) 
-CreateToggle(TabContentFrames["Player"], "God Mode (All Immunity)", function(v) PlayerConfig.GodMode = v end) 
+CreateToggle(TabContentFrames["Player"], "God Mode (Oxygen, Hazard, HP)", function(v) PlayerConfig.GodMode = v end) 
 
 CreateToggle(TabContentFrames["world"], "Night Mode") 
 CreateToggle(TabContentFrames["world"], "Daylight Mode") 
@@ -436,6 +442,18 @@ tpButton.TextSize = 11.5
 tpButton.Font = Enum.Font.GothamBold 
 Instance.new("UICorner", tpButton).CornerRadius = UDim.new(0, 8) 
 
+-- MULTI JUMP LISTENER (TAP-TO-JUMP HIGHER)
+UserInputService.JumpRequest:Connect(function()
+    if PlayerConfig.MultiJump then
+        local char = LocalPlayer.Character
+        local hrp = char and char:FindFirstChild("HumanoidRootPart")
+        if hrp then
+            hrp.Velocity = Vector3.new(hrp.Velocity.X, 60, hrp.Velocity.Z)
+            hrp.AssemblyLinearVelocity = Vector3.new(hrp.AssemblyLinearVelocity.X, 60, hrp.AssemblyLinearVelocity.Z)
+        end
+    end
+end)
+
 -- ADVANCED PLAYER ENGINE RUNSERVICE LOOP
 RunService.Stepped:Connect(function()
     local char = LocalPlayer.Character
@@ -444,37 +462,36 @@ RunService.Stepped:Connect(function()
     local hrp = char:FindFirstChild("HumanoidRootPart")
 
     if hum then
-        -- 1. Speed Hack Engine (With instant normal reset logic)
+        -- 1. Speed Hack Engine
         if PlayerConfig.SpeedHack then
             hum.WalkSpeed = PlayerConfig.SpeedValue
         end
 
-        -- 2. Long Jump Engine
-        if PlayerConfig.LongJump then
-            hum.UseJumpPower = true
-            hum.JumpPower = 120
-        end
-
-        -- 3. Ultimate God Mode / Immunity Engine (Health, Oxygen, Temperature, Poison, Hazard)
+        -- 2. Ultimate God Mode / Immunity Engine (HP, Oxygen, Drowning, Temperature, Poison)
         if PlayerConfig.GodMode then
             hum.Health = hum.MaxHealth
             pcall(function()
-                -- Hapus objek pembunuh/hazard/status buruk di dalam karakter jika ada
+                -- Proteksi Oxygen / Pernafasan di Air & Hazard Lingkungan
+                if hum:GetAttribute("Oxygen") then hum:SetAttribute("Oxygen", 100) end
+                if hum:GetAttribute("Air") then hum:SetAttribute("Air", 100) end
+                
                 for _, child in ipairs(char:GetChildren()) do
                     if child:IsA("Folder") or child:IsA("Model") or child:IsA("ValueBase") then
-                        if child.Name:lower():match("oxygen") or child.Name:lower():match("air") or child.Name:lower():match("poison") or child.Name:lower():match("status") or child.Name:lower():match("temp") then
+                        local n = child.Name:lower()
+                        if n:match("oxygen") or n:match("air") or n:match("drown") or n:match("poison") or n:match("status") or n:match("temp") or n:match("cold") or n:match("heat") then
                             if child:IsA("NumberValue") or child:IsA("IntValue") then
-                                child.Value = child.MaxValue or 100
+                                child.Value = 9999
                             end
                         end
                     end
                 end
-                -- Proteksi status efek bawaan game (leaderstats / status khusus)
+
                 local stats = LocalPlayer:FindFirstChild("leaderstats")
                 if stats then
                     for _, stat in ipairs(stats:GetChildren()) do
-                        if stat.Name:lower():match("oxygen") or stat.Name:lower():match("air") or stat.Name:lower():match("hp") then
-                            stat.Value = 999
+                        local n = stat.Name:lower()
+                        if n:match("oxygen") or n:match("air") or n:match("hp") or n:match("breath") then
+                            stat.Value = 9999
                         end
                     end
                 end
@@ -482,19 +499,35 @@ RunService.Stepped:Connect(function()
         end
     end
 
-    -- 4. Size Hack Engine (Direct Roblox Scale Manipulation)
-    if PlayerConfig.SizeHack and hum then
+    -- 3. Robust Size Hack Engine (Direct Parts Scaling + Roblox Scales)
+    if PlayerConfig.SizeHack and hum and hrp then
         local scale = PlayerConfig.SizeValue
         pcall(function()
+            -- Ubah Roblox Humanoid Scales
             for _, scaleObj in ipairs({hum:FindFirstChild("BodyHeightScale"), hum:FindFirstChild("BodyWidthScale"), hum:FindFirstChild("BodyDepthScale"), hum:FindFirstChild("HeadScale")}) do
                 if scaleObj and scaleObj:IsA("NumberValue") then
                     scaleObj.Value = scale
                 end
             end
+            -- Paksa ubah ukuran ukuran mesh/part fisik karakter secara instan
+            for _, part in ipairs(char:GetDescendants()) do
+                if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
+                    if not part:FindFirstChild("OriginalSize") then
+                        local orig = Instance.new("Vector3Value")
+                        orig.Name = "OriginalSize"
+                        orig.Value = part.Size
+                        orig.Parent = part
+                    end
+                    local origSize = part.FindFirstChild("OriginalSize")
+                    if origSize then
+                        part.Size = origSize.Value * scale
+                    end
+                end
+            end
         end)
     end
 
-    -- 5. Wall Hack (Noclip) Engine
+    -- 4. Wall Hack (Noclip) Engine
     if PlayerConfig.WallHack then
         for _, part in ipairs(char:GetDescendants()) do
             if part:IsA("BasePart") then
@@ -503,7 +536,7 @@ RunService.Stepped:Connect(function()
         end
     end
 
-    -- 6. Interactive Hold-Jump Fly Engine (Tahan tombol lompat untuk terbang naik, lepas untuk berhenti/jatuh)
+    -- 5. Fly Engine
     if PlayerConfig.Fly and hrp then
         local camCFrame = Camera.CFrame
         local moveDir = Vector3.new()
@@ -513,7 +546,6 @@ RunService.Stepped:Connect(function()
         if UserInputService:IsKeyDown(Enum.KeyCode.A) then moveDir = moveDir - camCFrame.RightVector end
         if UserInputService:IsKeyDown(Enum.KeyCode.D) then moveDir = moveDir + camCFrame.RightVector end
 
-        -- Deteksi tombol spasi/lompat ditekan atau tidak
         local isHoldingJump = UserInputService:IsKeyDown(Enum.KeyCode.Space) or (hum and hum.Jump)
 
         if moveDir.Magnitude > 0 or isHoldingJump then
@@ -526,7 +558,6 @@ RunService.Stepped:Connect(function()
                 hrp.AssemblyLinearVelocity = Vector3.new(0, ySpeed, 0)
             end
         else
-            -- Kalau tidak ditekan, biarkan gravitasi bekerja normal tanpa melayang statis
             hrp.Velocity = Vector3.new(hrp.Velocity.X, -2, hrp.Velocity.Z)
         end
     end
