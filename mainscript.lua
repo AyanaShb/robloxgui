@@ -1,4 +1,4 @@
---- v1.0.0
+#v1.0.0
 local Players = game:GetService("Players") 
 local UserInputService = game:GetService("UserInputService") 
 local Lighting = game:GetService("Lighting") 
@@ -11,20 +11,20 @@ local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "D3D_Ultimate_Android" 
 ScreenGui.ResetOnSpawn = false 
 
-pcall(function() 
-    if syn and syn.protect_gui then 
-        syn.protect_gui(ScreenGui) 
-        ScreenGui.Parent = game.CoreGui 
-    elseif gethui then 
-        ScreenGui.Parent = gethui() 
-    else 
-        ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui") 
-    end 
-end) 
+local success, err = pcall(function()
+    if gethui then
+        ScreenGui.Parent = gethui()
+    elseif syn and syn.protect_gui then
+        syn.protect_gui(ScreenGui)
+        ScreenGui.Parent = game.CoreGui
+    else
+        ScreenGui.Parent = game:GetService("CoreGui")
+    end
+end)
 
-if not ScreenGui.Parent then 
-    ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui") 
-end 
+if not success or not ScreenGui.Parent then
+    ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+end
 
 -- CONFIG & STORAGE
 local VisualsConfig = {
@@ -392,7 +392,7 @@ CreateColorPicker(TabContentFrames["Visual"], "Chams Circle Color Picker", funct
     UpdateChams() 
 end) 
 
--- PLAYER TAB CONTROLS
+-- PLAYER TAB CONTROLS (BERSIH DARI FITUR DIHAPUS)
 CreateToggle(TabContentFrames["Player"], "Speed Run", function(v) 
     PlayerConfig.SpeedHack = v 
     if not v and LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
@@ -413,7 +413,7 @@ CreateToggle(TabContentFrames["Player"], "Wall Hack", function(v)
     end
 end) 
 
--- WORLD TAB CONTROLS
+-- WORLD TAB CONTROLS (NIGHT & DAYLIGHT FULL INDOOR/OUTDOOR)
 CreateToggle(TabContentFrames["world"], "Night Mode (Indoor & Outdoor)", function(v) 
     WorldConfig.NightMode = v
     if v then
@@ -475,7 +475,7 @@ tpButton.TextSize = 11.5
 tpButton.Font = Enum.Font.GothamBold 
 Instance.new("UICorner", tpButton).CornerRadius = UDim.new(0, 8) 
 
--- MULTI JUMP LISTENER FIX
+-- MULTI JUMP LISTENER
 local canDoubleJump = false
 
 UserInputService.JumpRequest:Connect(function()
@@ -486,8 +486,8 @@ UserInputService.JumpRequest:Connect(function()
         if hrp and hum then
             if hum:GetState() == Enum.HumanoidStateType.Freefall then
                 if canDoubleJump then
-                    hrp.Velocity = Vector3.new(hrp.Velocity.X, 50, hrp.Velocity.Z)
-                    hrp.AssemblyLinearVelocity = Vector3.new(hrp.AssemblyLinearVelocity.X, 50, hrp.AssemblyLinearVelocity.Z)
+                    hrp.Velocity = Vector3.new(hrp.Velocity.X, 60, hrp.Velocity.Z)
+                    hrp.AssemblyLinearVelocity = Vector3.new(hrp.AssemblyLinearVelocity.X, 60, hrp.AssemblyLinearVelocity.Z)
                     canDoubleJump = false
                 end
             else
@@ -565,9 +565,9 @@ RunService.Stepped:Connect(function()
     end
 end)
 
--- RENDER LOOP FOR VISUAL UPDATES & LONG POV
+-- RENDER LOOP FOR VISUAL UPDATES
 RunService.RenderStepped:Connect(function()
-    -- Long View POV real-time enforcement fix
+    -- Long View POV real-time application
     if WorldConfig.LongView then
         LocalPlayer.CameraMaxZoomDistance = WorldConfig.ViewDistance
     end
