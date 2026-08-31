@@ -1,4 +1,4 @@
--- v1.0.12
+-- v1.0.13
 -- ===================================================================== -- ULTIMATE ANDROID D3D MENU: FISHING EDITION v8 -- ===================================================================== 
 local Players = game:GetService("Players") 
 local UserInputService = game:GetService("UserInputService") 
@@ -401,7 +401,7 @@ end)
 CreateSlider(TabContentFrames["Player"], "Speed Value", 16, 200, 16, function(val) PlayerConfig.SpeedValue = val end) 
 CreateToggle(TabContentFrames["Player"], "Fly (Hold Jump)", function(v) PlayerConfig.Fly = v end) 
 
--- Multi Jump Menggunakan Metode Basic Standard (Freefall JumpCount)
+-- Multi Jump Tap-Tap (Force Velocity Upward + State Jump)
 CreateToggle(TabContentFrames["Player"], "Multi Jump", function(v) 
     PlayerConfig.MultiJump = v 
 end)
@@ -475,13 +475,27 @@ CreateToggle(TabContentFrames["skill"], "Unlimited Ammo (999/999)")
 CreateToggle(TabContentFrames["skill"], "Fast Vehicle") 
 CreateSlider(TabContentFrames["skill"], "Vehicle Speed Value", 50, 300, 100, function() end) 
 
--- MULTI JUMP METODE BASIC (Metode Klasik Roblox)
+-- MULTI JUMP TAP-TAP (MENGGUNAKAN DETEKSI STATE + VELOCITY BOOST LANGSUNG)
+local lastMultiJumpTick = 0
 UserInputService.JumpRequest:Connect(function()
     if not PlayerConfig.MultiJump then return end
+    
+    local currentTick = tick()
+    if currentTick - lastMultiJumpTick < 0.1 then return end -- Mencegah spam klik berlebih
+    lastMultiJumpTick = currentTick
+
     local char = LocalPlayer.Character
-    local hum = char and char:FindFirstChildOfClass("Humanoid")
-    if hum then
-        hum:ChangeState(Enum.HumanoidStateType.Jumping)
+    if not char then return end
+    local hum = char:FindFirstChildOfClass("Humanoid")
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    
+    if hum and hrp then
+        -- Paksa dorong ke atas secara instan agar bisa ditap berulang kali di udara
+        hrp.Velocity = Vector3.new(hrp.Velocity.X, 50, hrp.Velocity.Z)
+        hrp.AssemblyLinearVelocity = Vector3.new(hrp.AssemblyLinearVelocity.X, 50, hrp.AssemblyLinearVelocity.Z)
+        pcall(function()
+            hum:ChangeState(Enum.HumanoidStateType.Jumping)
+        end)
     end
 end)
 
