@@ -1,4 +1,4 @@
--- v1.0.1
+-- v1.0.2
 -- ===================================================================== -- ULTIMATE ANDROID D3D MENU: FISHING EDITION v8 -- ===================================================================== 
 local Players = game:GetService("Players") 
 local UserInputService = game:GetService("UserInputService") 
@@ -44,7 +44,6 @@ local PlayerConfig = {
     SpeedValue = 16,
     Fly = false,
     MultiJump = false,
-    MultiJumpPower = 50, -- Variabel tambahan untuk Multi Jump bertingkat
     WallHack = false
 }
 
@@ -394,7 +393,7 @@ CreateColorPicker(TabContentFrames["Visual"], "Chams Circle Color Picker", funct
     UpdateChams() 
 end) 
 
--- PLAYER TAB CONTROLS (DENGAN UPDATE FITUR BARU: WALLHACK & MULTI JUMP)
+-- PLAYER TAB CONTROLS
 CreateToggle(TabContentFrames["Player"], "Speed Run", function(v) 
     PlayerConfig.SpeedHack = v 
     if not v and LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
@@ -404,15 +403,12 @@ end)
 CreateSlider(TabContentFrames["Player"], "Speed Value", 16, 200, 16, function(val) PlayerConfig.SpeedValue = val end) 
 CreateToggle(TabContentFrames["Player"], "Fly (Hold Jump)", function(v) PlayerConfig.Fly = v end) 
 
--- FITUR BARU: Multi Jump (Tap-tap untuk lompat semakin tinggi secara progresif + Slider Power)
+-- Multi Jump Biasa (Tanpa slider custom power)
 CreateToggle(TabContentFrames["Player"], "Multi Jump (Tap to Ascend)", function(v) 
     PlayerConfig.MultiJump = v 
 end)
-CreateSlider(TabContentFrames["Player"], "Multi Jump Power", 30, 200, 50, function(val) 
-    PlayerConfig.MultiJumpPower = val 
-end)
 
--- FITUR BARU: Wall Hack (Noclip sejati untuk tembus objek & dinding, kembali normal saat OFF)
+-- Wall Hack (Noclip)
 CreateToggle(TabContentFrames["Player"], "Wall Hack", function(v) 
     PlayerConfig.WallHack = v 
     if not v and LocalPlayer.Character then
@@ -424,15 +420,15 @@ CreateToggle(TabContentFrames["Player"], "Wall Hack", function(v)
     end
 end) 
 
--- WORLD TAB CONTROLS (NIGHT & DAYLIGHT FULL INDOOR/OUTDOOR + CUSTOM VIEW DISTANCE)
+-- WORLD TAB CONTROLS
 CreateToggle(TabContentFrames["world"], "Night Mode (Indoor & Outdoor)", function(v) 
     WorldConfig.NightMode = v
     if v then
         WorldConfig.DaylightMode = false
         Lighting.ClockTime = 0
-        Lighting.Brightness = 0.1
-        Lighting.Ambient = Color3.fromRGB(15, 15, 30)
-        Lighting.OutdoorAmbient = Color3.fromRGB(10, 10, 20)
+        Lighting.Brightness = 0
+        Lighting.Ambient = Color3.fromRGB(5, 5, 10)
+        Lighting.OutdoorAmbient = Color3.fromRGB(2, 2, 5)
     else
         Lighting.ClockTime = 14.5
         Lighting.Brightness = 2
@@ -456,20 +452,15 @@ CreateToggle(TabContentFrames["world"], "Daylight Mode (Indoor & Outdoor)", func
     end
 end) 
 
--- FITUR BARU: Custom View Distance & Slider Jarak Pandang (Kembali ke default 400 saat OFF)
+-- Custom View Distance (Work Indoor & Outdoor secara real-time)
 CreateToggle(TabContentFrames["world"], "Custom View Distance", function(v) 
     WorldConfig.CustomView = v 
-    if v then
-        LocalPlayer.CameraMaxZoomDistance = WorldConfig.ViewDistance
-    else
+    if not v then
         LocalPlayer.CameraMaxZoomDistance = 400
     end
 end) 
 CreateSlider(TabContentFrames["world"], "View Distance Value", 100, 5000, 400, function(val) 
     WorldConfig.ViewDistance = val
-    if WorldConfig.CustomView then
-        LocalPlayer.CameraMaxZoomDistance = val
-    end
 end) 
 
 CreateToggle(TabContentFrames["skill"], "Aimbot + FOV + Predict") 
@@ -487,7 +478,7 @@ tpButton.TextSize = 11.5
 tpButton.Font = Enum.Font.GothamBold 
 Instance.new("UICorner", tpButton).CornerRadius = UDim.new(0, 8) 
 
--- MULTI JUMP ENGINE BARU (Tap-tap makin tinggi secara progresif berdasarkan jeda/ketukan)
+-- MULTI JUMP ENGINE BIASA
 local jumpCount = 0
 local lastJumpTick = 0
 
@@ -505,9 +496,9 @@ UserInputService.JumpRequest:Connect(function()
             end
             lastJumpTick = currentTick
             
-            local currentPower = PlayerConfig.MultiJumpPower + ((jumpCount - 1) * 15)
-            hrp.Velocity = Vector3.new(hrp.Velocity.X, currentPower, hrp.Velocity.Z)
-            hrp.AssemblyLinearVelocity = Vector3.new(hrp.AssemblyLinearVelocity.X, currentPower, hrp.AssemblyLinearVelocity.Z)
+            local jumpPower = 50 + ((jumpCount - 1) * 20)
+            hrp.Velocity = Vector3.new(hrp.Velocity.X, jumpPower, hrp.Velocity.Z)
+            hrp.AssemblyLinearVelocity = Vector3.new(hrp.AssemblyLinearVelocity.X, jumpPower, hrp.AssemblyLinearVelocity.Z)
         end
     end
 end)
@@ -526,12 +517,12 @@ RunService.Stepped:Connect(function()
         end
     end
 
-    -- 2. Memastikan Night/Daylight terus mengunci area Indoor & Outdoor secara real-time
+    -- 2. Night/Daylight Mode Engine (Indoor & Outdoor)
     if WorldConfig.NightMode then
         Lighting.ClockTime = 0
-        Lighting.Brightness = 0.1
-        Lighting.Ambient = Color3.fromRGB(15, 15, 30)
-        Lighting.OutdoorAmbient = Color3.fromRGB(10, 10, 20)
+        Lighting.Brightness = 0
+        Lighting.Ambient = Color3.fromRGB(5, 5, 10)
+        Lighting.OutdoorAmbient = Color3.fromRGB(2, 2, 5)
     elseif WorldConfig.DaylightMode then
         Lighting.ClockTime = 14.5
         Lighting.Brightness = 4
@@ -539,7 +530,12 @@ RunService.Stepped:Connect(function()
         Lighting.OutdoorAmbient = Color3.fromRGB(240, 240, 240)
     end
 
-    -- 3. Wall Hack (Noclip Sejati) Engine - Tembus objek & dinding penuh saat aktif
+    -- 3. Custom View Distance Engine (Indoor & Outdoor real-time override)
+    if WorldConfig.CustomView then
+        LocalPlayer.CameraMaxZoomDistance = WorldConfig.ViewDistance
+    end
+
+    -- 4. Wall Hack (Noclip Sejati) Engine
     if PlayerConfig.WallHack then
         for _, part in ipairs(char:GetDescendants()) do
             if part:IsA("BasePart") then
@@ -548,7 +544,7 @@ RunService.Stepped:Connect(function()
         end
     end
 
-    -- 4. Fly Engine
+    -- 5. Fly Engine
     if PlayerConfig.Fly and hrp then
         local camCFrame = Camera.CFrame
         local moveDir = Vector3.new()
@@ -605,7 +601,8 @@ RunService.RenderStepped:Connect(function()
                 end
                 
                 if VisualsConfig.ESP_Distance then
-                    esp.Distance.Text = string.format("[%dft]", math.floor(distance))
+                    -- Diubah dari ft ke M (Meter)
+                    esp.Distance.Text = string.format("[%dM]", math.floor(distance))
                     esp.Distance.Position = Vector2.new(vector.X, vector.Y + 10)
                     esp.Distance.Visible = true
                 else
