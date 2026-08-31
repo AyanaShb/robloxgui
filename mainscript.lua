@@ -1,4 +1,4 @@
--- v1.0.4
+-- v1.0.5
 -- ===================================================================== -- ULTIMATE ANDROID D3D MENU: FISHING EDITION v8 -- ===================================================================== 
 local Players = game:GetService("Players") 
 local UserInputService = game:GetService("UserInputService") 
@@ -403,7 +403,7 @@ end)
 CreateSlider(TabContentFrames["Player"], "Speed Value", 16, 200, 16, function(val) PlayerConfig.SpeedValue = val end) 
 CreateToggle(TabContentFrames["Player"], "Fly (Hold Jump)", function(v) PlayerConfig.Fly = v end) 
 
--- Multi Jump (Bertambah Tinggi saat di-tap berturut-turut)
+-- Multi Jump (Tap berturut-turut untuk melompat lebih tinggi)
 CreateToggle(TabContentFrames["Player"], "Multi Jump (Tap to Ascend)", function(v) 
     PlayerConfig.MultiJump = v 
 end)
@@ -440,7 +440,7 @@ CreateToggle(TabContentFrames["world"], "Daylight Mode (Indoor & Outdoor)", func
     end
 end) 
 
--- Custom View Distance (Fix Real-time Camera MaxZoom & Camera Subject)
+-- Custom View Distance (Langsung Override Camera MaxZoomDistance)
 CreateToggle(TabContentFrames["world"], "Custom View Distance", function(v) 
     WorldConfig.CustomView = v 
     if not v then
@@ -449,6 +449,9 @@ CreateToggle(TabContentFrames["world"], "Custom View Distance", function(v)
 end) 
 CreateSlider(TabContentFrames["world"], "View Distance Value", 100, 5000, 400, function(val) 
     WorldConfig.ViewDistance = val
+    if WorldConfig.CustomView then
+        LocalPlayer.CameraMaxZoomDistance = val
+    end
 end) 
 
 CreateToggle(TabContentFrames["skill"], "Aimbot + FOV + Predict") 
@@ -466,27 +469,26 @@ tpButton.TextSize = 11.5
 tpButton.Font = Enum.Font.GothamBold 
 Instance.new("UICorner", tpButton).CornerRadius = UDim.new(0, 8) 
 
--- MULTI JUMP ENGINE (Bertambah Tinggi Setiap Tap)
-local jumpCount = 0
-local lastJumpTick = 0
+-- MULTI JUMP ENGINE (Tekan tombol lompat beruntun untuk melompat makin tinggi)
+local jumpCounter = 0
+local lastJumpTime = 0
 
 UserInputService.JumpRequest:Connect(function()
     if PlayerConfig.MultiJump then
         local char = LocalPlayer.Character
-        local hum = char and char:FindFirstChildOfClass("Humanoid")
         local hrp = char and char:FindFirstChild("HumanoidRootPart")
-        if hum and hrp then
-            local currentTick = tick()
-            if currentTick - lastJumpTick < 0.6 then
-                jumpCount = jumpCount + 1
+        if hrp then
+            local currentTime = tick()
+            if currentTime - lastJumpTime < 0.5 then
+                jumpCounter = jumpCounter + 1
             else
-                jumpCount = 1
+                jumpCounter = 1
             end
-            lastJumpTick = currentTick
+            lastJumpTime = currentTime
             
-            local increasedJumpPower = 50 + (jumpCount * 25)
-            hrp.Velocity = Vector3.new(hrp.Velocity.X, increasedJumpPower, hrp.Velocity.Z)
-            hrp.AssemblyLinearVelocity = Vector3.new(hrp.AssemblyLinearVelocity.X, increasedJumpPower, hrp.AssemblyLinearVelocity.Z)
+            local jumpPower = 50 + (jumpCounter * 35)
+            hrp.Velocity = Vector3.new(hrp.Velocity.X, jumpPower, hrp.Velocity.Z)
+            hrp.AssemblyLinearVelocity = Vector3.new(hrp.AssemblyLinearVelocity.X, jumpPower, hrp.AssemblyLinearVelocity.Z)
         end
     end
 end)
@@ -505,12 +507,12 @@ RunService.Stepped:Connect(function()
         end
     end
 
-    -- 2. Night/Daylight Mode Engine (Indoor dibuat lebih gelap gulita, Outdoor tetap seimbang)
+    -- 2. Night/Daylight Mode Engine (Indoor sangat gelap gulita, Outdoor tetap aman)
     if WorldConfig.NightMode then
         Lighting.ClockTime = 0
-        Lighting.Brightness = 0
-        Lighting.Ambient = Color3.fromRGB(5, 5, 10)         -- Indoor dibuat sangat gelap
-        Lighting.OutdoorAmbient = Color3.fromRGB(15, 15, 25) -- Outdoor tidak terlalu gelap
+        Lighting.Brightness = -1
+        Lighting.Ambient = Color3.fromRGB(0, 0, 0)          -- Indoor dibuat gelap gulita total
+        Lighting.OutdoorAmbient = Color3.fromRGB(20, 20, 35) -- Outdoor tetap kelihatan sedikit
     elseif WorldConfig.DaylightMode then
         Lighting.ClockTime = 14.5
         Lighting.Brightness = 4
@@ -518,13 +520,10 @@ RunService.Stepped:Connect(function()
         Lighting.OutdoorAmbient = Color3.fromRGB(240, 240, 240)
     end
 
-    -- 3. Custom View Distance Engine (Fix Terikat ke LocalPlayer & Camera)
+    -- 3. Custom View Distance Engine (Dipaksa terus menerus agar fix work)
     if WorldConfig.CustomView then
         LocalPlayer.CameraMaxZoomDistance = WorldConfig.ViewDistance
         LocalPlayer.CameraMinZoomDistance = 0.5
-        if Camera then
-            Camera.FieldOfView = 70 -- Menjaga kestabilan view
-        end
     end
 
     -- 4. Wall Hack (Noclip Sejati) Engine
