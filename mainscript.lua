@@ -1,4 +1,4 @@
--- v1.0.4
+-- v1.0.3
 -- ===================================================================== -- ULTIMATE ANDROID D3D MENU: FISHING EDITION v8 -- ===================================================================== 
 local Players = game:GetService("Players") 
 local UserInputService = game:GetService("UserInputService") 
@@ -403,7 +403,7 @@ end)
 CreateSlider(TabContentFrames["Player"], "Speed Value", 16, 200, 16, function(val) PlayerConfig.SpeedValue = val end) 
 CreateToggle(TabContentFrames["Player"], "Fly (Hold Jump)", function(v) PlayerConfig.Fly = v end) 
 
--- Multi Jump (Bertambah Tinggi saat di-tap berturut-turut)
+-- Multi Jump (Cara Normal & Stabil)
 CreateToggle(TabContentFrames["Player"], "Multi Jump (Tap to Ascend)", function(v) 
     PlayerConfig.MultiJump = v 
 end)
@@ -440,7 +440,7 @@ CreateToggle(TabContentFrames["world"], "Daylight Mode (Indoor & Outdoor)", func
     end
 end) 
 
--- Custom View Distance (Fix Real-time Camera MaxZoom & Camera Subject)
+-- Custom View Distance (Cara Biasa & Universal)
 CreateToggle(TabContentFrames["world"], "Custom View Distance", function(v) 
     WorldConfig.CustomView = v 
     if not v then
@@ -466,27 +466,49 @@ tpButton.TextSize = 11.5
 tpButton.Font = Enum.Font.GothamBold 
 Instance.new("UICorner", tpButton).CornerRadius = UDim.new(0, 8) 
 
--- MULTI JUMP ENGINE (Bertambah Tinggi Setiap Tap)
-local jumpCount = 0
-local lastJumpTick = 0
+-- MULTI JUMP ENGINE (Cara Normal & Stabil)
+local canDoubleJump = false
+local hasJumped = false
+
+LocalPlayer.CharacterAdded:Connect(function(char)
+    local hum = char:WaitForChild("Humanoid")
+    hum.StateChanged:Connect(function(_, newState)
+        if newState == Enum.HumanoidStateType.Jumping then
+            hasJumped = false
+        elseif newState == Enum.HumanoidStateType.Freefall then
+            canDoubleJump = true
+        elseif newState == Enum.HumanoidStateType.Land then
+            canDoubleJump = false
+            hasJumped = false
+        end
+    end)
+end)
+
+if LocalPlayer.Character then
+    local hum = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+    if hum then
+        hum.StateChanged:Connect(function(_, newState)
+            if newState == Enum.HumanoidStateType.Jumping then
+                hasJumped = false
+            elseif newState == Enum.HumanoidStateType.Freefall then
+                canDoubleJump = true
+            elseif newState == Enum.HumanoidStateType.Land then
+                canDoubleJump = false
+                hasJumped = false
+            end
+        end)
+    end
+end
 
 UserInputService.JumpRequest:Connect(function()
-    if PlayerConfig.MultiJump then
+    if PlayerConfig.MultiJump and canDoubleJump and not hasJumped then
         local char = LocalPlayer.Character
         local hum = char and char:FindFirstChildOfClass("Humanoid")
         local hrp = char and char:FindFirstChild("HumanoidRootPart")
         if hum and hrp then
-            local currentTick = tick()
-            if currentTick - lastJumpTick < 0.6 then
-                jumpCount = jumpCount + 1
-            else
-                jumpCount = 1
-            end
-            lastJumpTick = currentTick
-            
-            local increasedJumpPower = 50 + (jumpCount * 25)
-            hrp.Velocity = Vector3.new(hrp.Velocity.X, increasedJumpPower, hrp.Velocity.Z)
-            hrp.AssemblyLinearVelocity = Vector3.new(hrp.AssemblyLinearVelocity.X, increasedJumpPower, hrp.AssemblyLinearVelocity.Z)
+            hasJumped = true
+            hum:ChangeState(Enum.HumanoidStateType.Jumping)
+            hrp.Velocity = Vector3.new(hrp.Velocity.X, 50, hrp.Velocity.Z)
         end
     end
 end)
@@ -505,26 +527,25 @@ RunService.Stepped:Connect(function()
         end
     end
 
-    -- 2. Night/Daylight Mode Engine (Indoor dibuat lebih gelap gulita, Outdoor tetap seimbang)
+    -- 2. Night/Daylight Mode Engine (Outdoor tidak terlalu gelap, Indoor redup pas)
     if WorldConfig.NightMode then
         Lighting.ClockTime = 0
-        Lighting.Brightness = 0
-        Lighting.Ambient = Color3.fromRGB(5, 5, 10)         -- Indoor dibuat sangat gelap
-        Lighting.OutdoorAmbient = Color3.fromRGB(15, 15, 25) -- Outdoor tidak terlalu gelap
+        Lighting.Brightness = 0.5
+        Lighting.Ambient = Color3.fromRGB(40, 40, 55)       
+        Lighting.OutdoorAmbient = Color3.fromRGB(20, 20, 35) 
     elseif WorldConfig.DaylightMode then
         Lighting.ClockTime = 14.5
-        Lighting.Brightness = 4
-        Lighting.Ambient = Color3.fromRGB(240, 240, 240)
-        Lighting.OutdoorAmbient = Color3.fromRGB(240, 240, 240)
+        Lighting.Brightness = 2.5
+        Lighting.Ambient = Color3.fromRGB(200, 200, 200)
+        Lighting.OutdoorAmbient = Color3.fromRGB(200, 200, 200)
     end
 
-    -- 3. Custom View Distance Engine (Fix Terikat ke LocalPlayer & Camera)
+    -- 3. Custom View Distance Engine (Cara Biasa & Universal)
     if WorldConfig.CustomView then
         LocalPlayer.CameraMaxZoomDistance = WorldConfig.ViewDistance
         LocalPlayer.CameraMinZoomDistance = 0.5
-        if Camera then
-            Camera.FieldOfView = 70 -- Menjaga kestabilan view
-        end
+    else
+        LocalPlayer.CameraMaxZoomDistance = 400
     end
 
     -- 4. Wall Hack (Noclip Sejati) Engine
