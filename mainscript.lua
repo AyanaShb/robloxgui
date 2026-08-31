@@ -1,4 +1,4 @@
--- v1.0.3
+-- v1.0.4
 -- ===================================================================== -- ULTIMATE ANDROID D3D MENU: FISHING EDITION v8 -- ===================================================================== 
 local Players = game:GetService("Players") 
 local UserInputService = game:GetService("UserInputService") 
@@ -403,7 +403,7 @@ end)
 CreateSlider(TabContentFrames["Player"], "Speed Value", 16, 200, 16, function(val) PlayerConfig.SpeedValue = val end) 
 CreateToggle(TabContentFrames["Player"], "Fly (Hold Jump)", function(v) PlayerConfig.Fly = v end) 
 
--- Multi Jump (Cara Normal & Stabil)
+-- Multi Jump (Tap bertambah tinggi)
 CreateToggle(TabContentFrames["Player"], "Multi Jump (Tap to Ascend)", function(v) 
     PlayerConfig.MultiJump = v 
 end)
@@ -440,7 +440,7 @@ CreateToggle(TabContentFrames["world"], "Daylight Mode (Indoor & Outdoor)", func
     end
 end) 
 
--- Custom View Distance (Cara Biasa & Universal)
+-- Custom View Distance
 CreateToggle(TabContentFrames["world"], "Custom View Distance", function(v) 
     WorldConfig.CustomView = v 
     if not v then
@@ -466,49 +466,28 @@ tpButton.TextSize = 11.5
 tpButton.Font = Enum.Font.GothamBold 
 Instance.new("UICorner", tpButton).CornerRadius = UDim.new(0, 8) 
 
--- MULTI JUMP ENGINE (Cara Normal & Stabil)
-local canDoubleJump = false
-local hasJumped = false
-
-LocalPlayer.CharacterAdded:Connect(function(char)
-    local hum = char:WaitForChild("Humanoid")
-    hum.StateChanged:Connect(function(_, newState)
-        if newState == Enum.HumanoidStateType.Jumping then
-            hasJumped = false
-        elseif newState == Enum.HumanoidStateType.Freefall then
-            canDoubleJump = true
-        elseif newState == Enum.HumanoidStateType.Land then
-            canDoubleJump = false
-            hasJumped = false
-        end
-    end)
-end)
-
-if LocalPlayer.Character then
-    local hum = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
-    if hum then
-        hum.StateChanged:Connect(function(_, newState)
-            if newState == Enum.HumanoidStateType.Jumping then
-                hasJumped = false
-            elseif newState == Enum.HumanoidStateType.Freefall then
-                canDoubleJump = true
-            elseif newState == Enum.HumanoidStateType.Land then
-                canDoubleJump = false
-                hasJumped = false
-            end
-        end)
-    end
-end
+-- MULTI JUMP ENGINE (Tap bertambah tinggi secara progresif)
+local jumpCount = 0
+local lastJumpTime = 0
 
 UserInputService.JumpRequest:Connect(function()
-    if PlayerConfig.MultiJump and canDoubleJump and not hasJumped then
+    if PlayerConfig.MultiJump then
         local char = LocalPlayer.Character
-        local hum = char and char:FindFirstChildOfClass("Humanoid")
         local hrp = char and char:FindFirstChild("HumanoidRootPart")
-        if hum and hrp then
-            hasJumped = true
-            hum:ChangeState(Enum.HumanoidStateType.Jumping)
-            hrp.Velocity = Vector3.new(hrp.Velocity.X, 50, hrp.Velocity.Z)
+        local hum = char and char:FindFirstChildOfClass("Humanoid")
+        if hrp and hum then
+            local currentTime = tick()
+            if currentTime - lastJumpTime < 0.8 then
+                jumpCount = jumpCount + 1
+            else
+                jumpCount = 1
+            end
+            lastJumpTime = currentTime
+            
+            -- Lompatan makin tinggi tiap tap berturut-turut (50, 75, 100, dst)
+            local boostPower = 45 + (jumpCount * 25)
+            hrp.Velocity = Vector3.new(hrp.Velocity.X, boostPower, hrp.Velocity.Z)
+            hrp.AssemblyLinearVelocity = Vector3.new(hrp.AssemblyLinearVelocity.X, boostPower, hrp.AssemblyLinearVelocity.Z)
         end
     end
 end)
@@ -521,26 +500,25 @@ RunService.Stepped:Connect(function()
     local hrp = char:FindFirstChild("HumanoidRootPart")
 
     if hum then
-        -- 1. Speed Hack Engine
         if PlayerConfig.SpeedHack then
             hum.WalkSpeed = PlayerConfig.SpeedValue
         end
     end
 
-    -- 2. Night/Daylight Mode Engine (Outdoor tidak terlalu gelap, Indoor redup pas)
+    -- 1. Night Mode (Indoor dibuat agak gelap redup, Outdoor tidak terlalu gelap gulita)
     if WorldConfig.NightMode then
         Lighting.ClockTime = 0
-        Lighting.Brightness = 0.5
-        Lighting.Ambient = Color3.fromRGB(40, 40, 55)       
-        Lighting.OutdoorAmbient = Color3.fromRGB(20, 20, 35) 
+        Lighting.Brightness = 0.1
+        Lighting.Ambient = Color3.fromRGB(15, 15, 25)       -- Indoor lebih gelap sesuai request
+        Lighting.OutdoorAmbient = Color3.fromRGB(25, 25, 40) -- Outdoor tetap kelihatan (tidak pekat)
     elseif WorldConfig.DaylightMode then
         Lighting.ClockTime = 14.5
-        Lighting.Brightness = 2.5
-        Lighting.Ambient = Color3.fromRGB(200, 200, 200)
-        Lighting.OutdoorAmbient = Color3.fromRGB(200, 200, 200)
+        Lighting.Brightness = 3
+        Lighting.Ambient = Color3.fromRGB(220, 220, 220)
+        Lighting.OutdoorAmbient = Color3.fromRGB(220, 220, 220)
     end
 
-    -- 3. Custom View Distance Engine (Cara Biasa & Universal)
+    -- 2. Custom View Distance (Fix langsung ke Player Camera Zoom Distance)
     if WorldConfig.CustomView then
         LocalPlayer.CameraMaxZoomDistance = WorldConfig.ViewDistance
         LocalPlayer.CameraMinZoomDistance = 0.5
@@ -548,7 +526,7 @@ RunService.Stepped:Connect(function()
         LocalPlayer.CameraMaxZoomDistance = 400
     end
 
-    -- 4. Wall Hack (Noclip Sejati) Engine
+    -- 3. Wall Hack (Noclip)
     if PlayerConfig.WallHack then
         for _, part in ipairs(char:GetDescendants()) do
             if part:IsA("BasePart") then
@@ -557,7 +535,7 @@ RunService.Stepped:Connect(function()
         end
     end
 
-    -- 5. Fly Engine
+    -- 4. Fly Engine
     if PlayerConfig.Fly and hrp then
         local camCFrame = Camera.CFrame
         local moveDir = Vector3.new()
@@ -622,7 +600,7 @@ RunService.RenderStepped:Connect(function()
                 end
                 
                 if VisualsConfig.ESP_Gender then
-                    esp.Gender.Text = (player.UserId % 2 == 0) and "[Cewe]" or "[Cowo]"
+                    esp.Gender.Text = (player.UserId % 2 == 0) && "[Cewe]" || "[Cowo]"
                     esp.Gender.Position = Vector2.new(vector.X, vector.Y + 25)
                     esp.Gender.Visible = true
                 else
