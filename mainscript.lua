@@ -403,8 +403,8 @@ end)
 CreateSlider(TabContentFrames["Player"], "Speed Value", 16, 200, 16, function(val) PlayerConfig.SpeedValue = val end) 
 CreateToggle(TabContentFrames["Player"], "Fly (Hold Jump)", function(v) PlayerConfig.Fly = v end) 
 
--- Multi Jump (Ketuk tombol lompat beruntun saat di udara untuk melompat lagi di udara)
-CreateToggle(TabContentFrames["Player"], "Multi Jump (Double/Triple Jump)", function(v) 
+-- Multi Jump Bersih (Tap tombol lompat beruntun di udara, makin sering ditap makin naik ke atas)
+CreateToggle(TabContentFrames["Player"], "Multi Jump (Tap Jump to Ascend)", function(v) 
     PlayerConfig.MultiJump = v 
 end)
 
@@ -470,52 +470,44 @@ tpButton.TextSize = 11.5
 tpButton.Font = Enum.Font.GothamBold 
 Instance.new("UICorner", tpButton).CornerRadius = UDim.new(0, 8) 
 
--- TRUE MULTI JUMP ENGINE (Murni Multi-Jump / Air Jump: tap tombol lompat beruntun di udara tanpa terpicu saat di tanah/hold)
-local maxAirJumps = 4
-local airJumpsDone = 0
-local isAirborne = false
-local lastJumpPress = 0
+-- MULTI JUMP MURNI: Tap tombol lompat game di udara untuk dorongan bertahap makin ke atas
+local multiJumpCount = 0
+local lastJumpTrigger = 0
 
-local function SetupCharacterMultiJump(char)
+local function HookCharacterMultiJump(char)
     local hum = char:WaitForChild("Humanoid", 5)
     local hrp = char:WaitForChild("HumanoidRootPart", 5)
     if not hum or not hrp then return end
-    
-    airJumpsDone = 0
-    isAirborne = false
 
-    hum.StateChanged:Connect(function(oldState, newState)
-        if newState == Enum.HumanoidStateType.Freefall or newState == Enum.HumanoidStateType.Jumping then
-            isAirborne = true
-        elseif newState == Enum.HumanoidStateType.Running or newState == Enum.HumanoidStateType.Landed then
-            isAirborne = false
-            airJumpsDone = 0
+    -- Reset hitungan ketika mendarat di tanah
+    hum.StateChanged:Connect(function(_, newState)
+        if newState == Enum.HumanoidStateType.Running or newState == Enum.HumanoidStateType.Landed then
+            multiJumpCount = 0
         end
     end)
 
-    -- Deteksi tap tombol lompat game (menggunakan Humanoid.Jump bernilai true)
-    hum:GetPropertyChangedSignal("Jump"):Connect(function()
-        if not PlayerConfig.MultiJump then return end
-        if hum.Jump and isAirborne then
-            local currentTime = tick()
-            if currentTime - lastJumpPress > 0.15 then
-                if airJumpsDone < maxAirJumps then
-                    airJumpsDone = airJumpsDone + 1
-                    lastJumpPress = currentTime
-                    
-                    -- Memberikan dorongan melompat udara murni (Multi-Jump / Air Jump standar game)
-                    hrp.Velocity = Vector3.new(hrp.Velocity.X, 48, hrp.Velocity.Z)
-                    hrp.AssemblyLinearVelocity = Vector3.new(hrp.AssemblyLinearVelocity.X, 48, hrp.AssemblyLinearVelocity.Z)
+    -- Deteksi saat tombol lompat ditekan / status menjadi Jumping
+    hum.StateChanged:Connect(function(_, newState)
+        if PlayerConfig.MultiJump and newState == Enum.HumanoidStateType.Jumping then
+            local currentTick = tick()
+            if currentTick - lastJumpTrigger > 0.15 then
+                if hum:GetState() ~= Enum.HumanoidStateType.Running and hum:GetState() ~= Enum.HumanoidStateType.Landed then
+                    multiJumpCount = multiJumpCount + 1
+                    -- Setiap tap beruntun memberikan dorongan vertikal yang makin tinggi
+                    local boostForce = 45 + (multiJumpCount * 18)
+                    hrp.Velocity = Vector3.new(hrp.Velocity.X, boostForce, hrp.Velocity.Z)
+                    hrp.AssemblyLinearVelocity = Vector3.new(hrp.AssemblyLinearVelocity.X, boostForce, hrp.AssemblyLinearVelocity.Z)
                 end
+                lastJumpTrigger = currentTick
             end
         end
     end)
 end
 
 if LocalPlayer.Character then
-    SetupCharacterMultiJump(LocalPlayer.Character)
+    HookCharacterMultiJump(LocalPlayer.Character)
 end
-LocalPlayer.CharacterAdded:Connect(SetupCharacterMultiJump)
+LocalPlayer.CharacterAdded:Connect(HookCharacterMultiJump)
 
 -- RUNSERVICE LOOP UNTUK PENGATURAN DUNIA & PLAYER ENGINE
 RunService.Stepped:Connect(function()
@@ -531,12 +523,12 @@ RunService.Stepped:Connect(function()
         end
     end
 
-    -- 2. Night Mode (Outdoor sedikit remang-remang agar tidak terlalu gelap, Indoor dibuat sangat gelap pekat)
+    -- 2. Night Mode (Outdoor tidak terlalu gelap, Indoor dibuat sangat gelap pekat)
     if WorldConfig.NightMode then
         Lighting.ClockTime = 0
         Lighting.Brightness = 0.2
-        Lighting.Ambient = Color3.fromRGB(0, 0, 0)          -- Indoor murni gelap gulita
-        Lighting.OutdoorAmbient = Color3.fromRGB(55, 55, 75) -- Outdoor remang-remang pas tidak terlalu gelap
+        Lighting.Ambient = Color3.fromRGB(0, 0, 0)          -- Dalam ruangan benar-benar gelap gulita
+        Lighting.OutdoorAmbient = Color3.fromRGB(75, 75, 95) -- Luar ruangan remang-remang pas, tidak terlalu gelap
         Lighting.GlobalShadows = true
     elseif WorldConfig.DaylightMode then
         Lighting.ClockTime = 14.5
@@ -615,9 +607,6 @@ RunService.RenderStepped:Connect(function()
                     esp.Name.Visible = false
                 end
                 
-                if VisualsCount and VisualsConfig.ESP_Distance then
-                    -- handled below
-                end
                 if VisualsConfig.ESP_Distance then
                     esp.Distance.Text = string.format("[%dM]", math.floor(distance))
                     esp.Distance.Position = Vector2.new(vector.X, vector.Y + 10)
