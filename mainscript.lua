@@ -1,4 +1,4 @@
--- v1.0.8
+-- v1.0.9
 -- ===================================================================== -- ULTIMATE ANDROID D3D MENU: FISHING EDITION v8 -- ===================================================================== 
 local Players = game:GetService("Players") 
 local UserInputService = game:GetService("UserInputService") 
@@ -403,8 +403,8 @@ end)
 CreateSlider(TabContentFrames["Player"], "Speed Value", 16, 200, 16, function(val) PlayerConfig.SpeedValue = val end) 
 CreateToggle(TabContentFrames["Player"], "Fly (Hold Jump)", function(v) PlayerConfig.Fly = v end) 
 
--- Multi Jump (Tap beruntun tombol lompat game, makin ditap makin naik ke atas)
-CreateToggle(TabContentFrames["Player"], "Multi Jump (Tap Jump to Ascend)", function(v) 
+-- Multi Jump (Tap-tap tombol jump berkali-kali di udara agar melambung makin tinggi)
+CreateToggle(TabContentFrames["Player"], "Multi Jump (Tap-tap Jump)", function(v) 
     PlayerConfig.MultiJump = v 
 end)
 
@@ -470,30 +470,31 @@ tpButton.TextSize = 11.5
 tpButton.Font = Enum.Font.GothamBold 
 Instance.new("UICorner", tpButton).CornerRadius = UDim.new(0, 8) 
 
--- MULTI JUMP ENGINE (Tekan tap tombol lompat beruntun untuk melambung makin tinggi)
+-- TRUE MULTI JUMP ENGINE (Mendeteksi tap/klik beruntun pada tombol Jump game tanpa perlu ditahan)
 local jumpCount = 0
-local lastJumpTick = 0
+local lastTapTick = 0
 
 local function SetupCharacterJump(char)
     local hum = char:WaitForChild("Humanoid", 5)
     if not hum then return end
     
-    hum.StateChanged:Connect(function(oldState, newState)
-        if PlayerConfig.MultiJump and newState == Enum.HumanoidStateType.Jumping then
+    hum.Jumping:Connect(function(isJumping)
+        if not PlayerConfig.MultiJump then return end
+        if isJumping then
             local hrp = char:FindFirstChild("HumanoidRootPart")
             if hrp then
                 local currentTick = tick()
-                if currentTick - lastJumpTick < 0.8 then
+                if currentTick - lastTapTick < 0.7 then
                     jumpCount = jumpCount + 1
                 else
                     jumpCount = 1
                 end
-                lastJumpTick = currentTick
+                lastTapTick = currentTick
                 
-                -- Setiap tap tombol lompat saat melayang akan menambah daya dorong ke atas secara bertahap
-                local incrementalBoost = 35 + (jumpCount * 22)
-                hrp.Velocity = Vector3.new(hrp.Velocity.X, incrementalBoost, hrp.Velocity.Z)
-                hrp.AssemblyLinearVelocity = Vector3.new(hrp.AssemblyLinearVelocity.X, incrementalBoost, hrp.AssemblyLinearVelocity.Z)
+                -- Setiap kali ditap di udara, dorongan ke atas bertambah secara progresif (makin tinggi)
+                local incrementalPower = 45 + (jumpCount * 28)
+                hrp.Velocity = Vector3.new(hrp.Velocity.X, incrementalPower, hrp.Velocity.Z)
+                hrp.AssemblyLinearVelocity = Vector3.new(hrp.AssemblyLinearVelocity.X, incrementalPower, hrp.AssemblyLinearVelocity.Z)
             end
         end
     end)
@@ -518,12 +519,12 @@ RunService.Stepped:Connect(function()
         end
     end
 
-    -- 2. Night Mode (Outdoor tidak terlalu gelap/remang-remang, Indoor dibuat sangat gelap pekat)
+    -- 2. Night Mode (Outdoor remang-remang tipis, Indoor sangat gelap gulita pekat)
     if WorldConfig.NightMode then
         Lighting.ClockTime = 0
-        Lighting.Brightness = 0.5
+        Lighting.Brightness = 0.2
         Lighting.Ambient = Color3.fromRGB(0, 0, 0)          -- Indoor murni gelap gulita
-        Lighting.OutdoorAmbient = Color3.fromRGB(65, 65, 85) -- Outdoor diset cukup terang/remang-remang tidak terlalu gelap
+        Lighting.OutdoorAmbient = Color3.fromRGB(85, 85, 105) -- Outdoor remang-remang agar tetap terlihat jelas
         Lighting.GlobalShadows = true
     elseif WorldConfig.DaylightMode then
         Lighting.ClockTime = 14.5
@@ -611,7 +612,7 @@ RunService.RenderStepped:Connect(function()
                 end
                 
                 if VisualsConfig.ESP_Gender then
-                    esp.Gender.Text = (player.UserId % 2 == 0) and "[Cewe]" or "[Cowo]"
+                    esp.Gender.Text = (player.UserId % 2 == 0) # 2 == 0 and "[Cewe]" or "[Cowo]"
                     esp.Gender.Position = Vector2.new(vector.X, vector.Y + 25)
                     esp.Gender.Visible = true
                 else
