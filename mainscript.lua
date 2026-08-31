@@ -1,4 +1,4 @@
--- v1.0.13
+-- v1.0.14
 -- ===================================================================== -- ULTIMATE ANDROID D3D MENU: FISHING EDITION v8 -- ===================================================================== 
 local Players = game:GetService("Players") 
 local UserInputService = game:GetService("UserInputService") 
@@ -401,7 +401,7 @@ end)
 CreateSlider(TabContentFrames["Player"], "Speed Value", 16, 200, 16, function(val) PlayerConfig.SpeedValue = val end) 
 CreateToggle(TabContentFrames["Player"], "Fly (Hold Jump)", function(v) PlayerConfig.Fly = v end) 
 
--- Multi Jump Tap-Tap (Force Velocity Upward + State Jump)
+-- Multi Jump Tap-Tap
 CreateToggle(TabContentFrames["Player"], "Multi Jump", function(v) 
     PlayerConfig.MultiJump = v 
 end)
@@ -475,27 +475,22 @@ CreateToggle(TabContentFrames["skill"], "Unlimited Ammo (999/999)")
 CreateToggle(TabContentFrames["skill"], "Fast Vehicle") 
 CreateSlider(TabContentFrames["skill"], "Vehicle Speed Value", 50, 300, 100, function() end) 
 
--- MULTI JUMP TAP-TAP (MENGGUNAKAN DETEKSI STATE + VELOCITY BOOST LANGSUNG)
-local lastMultiJumpTick = 0
+-- MULTI JUMP TAP-TAP (FIXED LOGIC)
 UserInputService.JumpRequest:Connect(function()
     if not PlayerConfig.MultiJump then return end
-    
-    local currentTick = tick()
-    if currentTick - lastMultiJumpTick < 0.1 then return end -- Mencegah spam klik berlebih
-    lastMultiJumpTick = currentTick
 
     local char = LocalPlayer.Character
     if not char then return end
     local hum = char:FindFirstChildOfClass("Humanoid")
     local hrp = char:FindFirstChild("HumanoidRootPart")
-    
+
     if hum and hrp then
-        -- Paksa dorong ke atas secara instan agar bisa ditap berulang kali di udara
-        hrp.Velocity = Vector3.new(hrp.Velocity.X, 50, hrp.Velocity.Z)
-        hrp.AssemblyLinearVelocity = Vector3.new(hrp.AssemblyLinearVelocity.X, 50, hrp.AssemblyLinearVelocity.Z)
-        pcall(function()
-            hum:ChangeState(Enum.HumanoidStateType.Jumping)
-        end)
+        hum:ChangeState(Enum.HumanoidStateType.RunningNoPhysics)
+        hum:ChangeState(Enum.HumanoidStateType.Jumping)
+        
+        local jumpPower = (hum.UseJumpPower and hum.JumpPower) or (hum.JumpHeight and math.sqrt(hum.JumpHeight * 2 * Workspace.Gravity)) or 50
+        hrp.Velocity = Vector3.new(hrp.Velocity.X, jumpPower, hrp.Velocity.Z)
+        hrp.AssemblyLinearVelocity = Vector3.new(hrp.AssemblyLinearVelocity.X, jumpPower, hrp.AssemblyLinearVelocity.Z)
     end
 end)
 
@@ -596,6 +591,9 @@ RunService.RenderStepped:Connect(function()
                     esp.Distance.Visible = false
                 end
                 
+                if VisualsCount and VisualsConfig.ESP_Gender then
+                    -- aman
+                end
                 if VisualsConfig.ESP_Gender then
                     esp.Gender.Text = (player.UserId % 2 == 0) and "[Cewe]" or "[Cowo]"
                     esp.Gender.Position = Vector2.new(vector.X, vector.Y + 25)
