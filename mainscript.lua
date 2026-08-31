@@ -1,4 +1,4 @@
-local Players = game:GetService("Players") 
+Local Players = game:GetService("Players") 
 local UserInputService = game:GetService("UserInputService") 
 local Lighting = game:GetService("Lighting") 
 local Workspace = game:GetService("Workspace") 
@@ -391,7 +391,7 @@ CreateColorPicker(TabContentFrames["Visual"], "Chams Circle Color Picker", funct
     UpdateChams() 
 end) 
 
--- PLAYER TAB CONTROLS (FIXED WALLHACK CANCOLLIDE CLEANUP)
+-- PLAYER TAB CONTROLS (BERSIH DARI FITUR DIHAPUS)
 CreateToggle(TabContentFrames["Player"], "Speed Run", function(v) 
     PlayerConfig.SpeedHack = v 
     if not v and LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
@@ -401,17 +401,7 @@ end)
 CreateSlider(TabContentFrames["Player"], "Speed Value", 16, 200, 16, function(val) PlayerConfig.SpeedValue = val end) 
 CreateToggle(TabContentFrames["Player"], "Fly (Hold Jump)", function(v) PlayerConfig.Fly = v end) 
 CreateToggle(TabContentFrames["Player"], "Multi Jump (Tap to Ascend)", function(v) PlayerConfig.MultiJump = v end) 
-CreateToggle(TabContentFrames["Player"], "Wall Hack", function(v) 
-    PlayerConfig.WallHack = v 
-    local char = LocalPlayer.Character
-    if not v and char then
-        for _, part in ipairs(char:GetDescendants()) do
-            if part:IsA("BasePart") then
-                part.CanCollide = true
-            end
-        end
-    end
-end) 
+CreateToggle(TabContentFrames["Player"], "Wall Hack", function(v) PlayerConfig.WallHack = v end) 
 
 -- WORLD TAB CONTROLS (NIGHT & DAYLIGHT FULL INDOOR/OUTDOOR)
 CreateToggle(TabContentFrames["world"], "Night Mode (Indoor & Outdoor)", function(v) 
