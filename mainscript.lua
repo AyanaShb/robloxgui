@@ -1,4 +1,4 @@
--- v1.0.6
+-- v1.0.7
 -- ===================================================================== -- ULTIMATE ANDROID D3D MENU: FISHING EDITION v8 -- ===================================================================== 
 local Players = game:GetService("Players") 
 local UserInputService = game:GetService("UserInputService") 
@@ -51,7 +51,7 @@ local WorldConfig = {
     NightMode = false,
     DaylightMode = false,
     CustomView = false,
-    ViewDistance = 400
+    ViewDistance = 70
 }
 
 local ESPCache = {}
@@ -403,8 +403,8 @@ end)
 CreateSlider(TabContentFrames["Player"], "Speed Value", 16, 200, 16, function(val) PlayerConfig.SpeedValue = val end) 
 CreateToggle(TabContentFrames["Player"], "Fly (Hold Jump)", function(v) PlayerConfig.Fly = v end) 
 
--- Multi Jump (Tap beruntun untuk melompat semakin tinggi)
-CreateToggle(TabContentFrames["Player"], "Multi Jump (Tap to Ascend)", function(v) 
+-- Multi Jump (Tap tombol lompat game secara beruntun)
+CreateToggle(TabContentFrames["Player"], "Multi Jump (Tap Jump Button)", function(v) 
     PlayerConfig.MultiJump = v 
 end)
 
@@ -428,6 +428,7 @@ CreateToggle(TabContentFrames["world"], "Night Mode (Indoor & Outdoor)", functio
         Lighting.Brightness = 2
         Lighting.Ambient = Color3.fromRGB(120, 120, 120)
         Lighting.OutdoorAmbient = Color3.fromRGB(120, 120, 120)
+        Lighting.GlobalShadows = true
     end
 end) 
 
@@ -440,21 +441,17 @@ CreateToggle(TabContentFrames["world"], "Daylight Mode (Indoor & Outdoor)", func
     end
 end) 
 
--- Custom View Distance (Pemberian batas jarak kamera terjauh/terdekat)
-CreateToggle(TabContentFrames["world"], "Custom View Distance", function(v) 
+-- Custom FOV / View Distance (Mengatur Lebar & Jarak Pandang Kamera Lewat Slider)
+CreateToggle(TabContentFrames["world"], "Custom View Distance (FOV)", function(v) 
     WorldConfig.CustomView = v 
-    if not v then
-        LocalPlayer.CameraMaxZoomDistance = 400
-        LocalPlayer.CameraMinZoomDistance = 0.5
-    else
-        LocalPlayer.CameraMaxZoomDistance = WorldConfig.ViewDistance
-        LocalPlayer.CameraMinZoomDistance = 0.5
+    if not v and Camera then
+        Camera.FieldOfView = 70
     end
 end) 
-CreateSlider(TabContentFrames["world"], "View Distance Value", 100, 5000, 400, function(val) 
+CreateSlider(TabContentFrames["world"], "View Distance / FOV Value", 50, 120, 70, function(val) 
     WorldConfig.ViewDistance = val
-    if WorldConfig.CustomView then
-        LocalPlayer.CameraMaxZoomDistance = val
+    if WorldConfig.CustomView and Camera then
+        Camera.FieldOfView = val
     end
 end) 
 
@@ -473,33 +470,39 @@ tpButton.TextSize = 11.5
 tpButton.Font = Enum.Font.GothamBold 
 Instance.new("UICorner", tpButton).CornerRadius = UDim.new(0, 8) 
 
--- MULTI JUMP ENGINE (Menggunakan deteksi tap tombol Spasi/Lompat secara langsung)
+-- MULTI JUMP ENGINE (Hanya mentrigger tombol lompat asli karakter / Humanoid State)
 local jumpCount = 0
-local lastJumpTime = 0
+local lastJumpTick = 0
 
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
-    if not PlayerConfig.MultiJump then return end
-    if input.KeyCode == Enum.KeyCode.Space or input.UserInputType == Enum.UserInputType.Touch then
-        local char = LocalPlayer.Character
-        local hrp = char and char:FindFirstChild("HumanoidRootPart")
-        local hum = char and char:FindFirstChildOfClass("Humanoid")
-        
-        if hrp and hum and hum:GetState() ~= Enum.HumanoidStateType.Dead then
-            local currentTime = tick()
-            if currentTime - lastJumpTime < 0.65 then
-                jumpCount = jumpCount + 1
-            else
-                jumpCount = 1
+local function SetupCharacterJump(char)
+    local hum = char:WaitForChild("Humanoid", 5)
+    if not hum then return end
+    
+    hum.StateChanged:Connect(function(oldState, newState)
+        if PlayerConfig.MultiJump and newState == Enum.HumanoidStateType.Jumping then
+            local hrp = char:FindFirstChild("HumanoidRootPart")
+            if hrp then
+                local currentTick = tick()
+                if currentTick - lastJumpTick < 0.65 then
+                    jumpCount = jumpCount + 1
+                else
+                    jumpCount = 1
+                end
+                lastJumpTick = currentTick
+                
+                -- Dorongan bertingkat setiap tap tombol lompat game
+                local extraPower = 50 + (jumpCount * 35)
+                hrp.Velocity = Vector3.new(hrp.Velocity.X, extraPower, hrp.Velocity.Z)
+                hrp.AssemblyLinearVelocity = Vector3.new(hrp.AssemblyLinearVelocity.X, extraPower, hrp.AssemblyLinearVelocity.Z)
             end
-            lastJumpTime = currentTime
-            
-            -- Makin sering ditap berturut-turut, dorongan ke atas semakin berlipat ganda
-            local extraForce = 55 + (jumpCount * 38)
-            hrp.Velocity = Vector3.new(hrp.Velocity.X, extraForce, hrp.Velocity.Z)
-            hrp.AssemblyLinearVelocity = Vector3.new(hrp.AssemblyLinearVelocity.X, extraForce, hrp.AssemblyLinearVelocity.Z)
         end
-    end
-end)
+    end)
+end
+
+if LocalPlayer.Character then
+    SetupCharacterJump(LocalPlayer.Character)
+end
+LocalPlayer.CharacterAdded:Connect(SetupCharacterJump)
 
 -- RUNSERVICE LOOP UNTUK PENGATURAN DUNIA & PLAYER ENGINE
 RunService.Stepped:Connect(function()
@@ -515,12 +518,13 @@ RunService.Stepped:Connect(function()
         end
     end
 
-    -- 2. Night Mode (Indoor sangat pekat/gelap gulita, Outdoor tetap seimbang)
+    -- 2. Night Mode (Indoor dibuat benar-benar gelap gulita dengan mematikan bayangan/pantulan)
     if WorldConfig.NightMode then
         Lighting.ClockTime = 0
-        Lighting.Brightness = -2.5
-        Lighting.Ambient = Color3.fromRGB(0, 0, 0)          -- Indoor murni gelap gulita tanpa cahaya sisa
-        Lighting.OutdoorAmbient = Color3.fromRGB(15, 15, 25) -- Outdoor sedikit remang-remang agar tetap terlihat
+        Lighting.Brightness = 0
+        Lighting.Ambient = Color3.fromRGB(0, 0, 0)          -- Gelap gulita mutlak untuk dalam ruangan
+        Lighting.OutdoorAmbient = Color3.fromRGB(5, 5, 10)   -- Luar ruangan sedikit redup
+        Lighting.GlobalShadows = true
     elseif WorldConfig.DaylightMode then
         Lighting.ClockTime = 14.5
         Lighting.Brightness = 4
@@ -528,10 +532,9 @@ RunService.Stepped:Connect(function()
         Lighting.OutdoorAmbient = Color3.fromRGB(240, 240, 240)
     end
 
-    -- 3. Custom View Distance Engine (Dipaksa terus-menerus mengikuti slider)
-    if WorldConfig.CustomView then
-        LocalPlayer.CameraMaxZoomDistance = WorldConfig.ViewDistance
-        LocalPlayer.CameraMinZoomDistance = 0.5
+    -- 3. Custom View Distance / FOV Engine (Membuat pandangan jadi sangat luas dan jauh sesuai slider)
+    if WorldConfig.CustomView and Camera then
+        Camera.FieldOfView = WorldConfig.ViewDistance
     end
 
     -- 4. Wall Hack (Noclip Sejati) Engine
