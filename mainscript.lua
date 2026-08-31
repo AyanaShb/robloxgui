@@ -1,6 +1,3 @@
-Berikut adalah pembaruan kode sesuai permintaanmu:
- * Menghapus fitur Auto Fishing, Sell All Fish, dan God Mode.
- * Memperbarui tab world agar fitur Night Mode dan Daylight Mode berfungsi secara menyeluruh untuk area Indoor & Outdoor (dengan memodifikasi Lighting global, Atmosphere, serta Exposure kamera agar ruangan gelap/terang ikut berubah secara merata).
 -- ===================================================================== -- ULTIMATE ANDROID D3D MENU: FISHING EDITION v8 -- ===================================================================== 
 local Players = game:GetService("Players") 
 local UserInputService = game:GetService("UserInputService") 
@@ -596,4 +593,3 @@ RunService.RenderStepped:Connect(function()
         end
     end
 end)
-
