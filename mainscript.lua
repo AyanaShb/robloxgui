@@ -1,4 +1,4 @@
--- v1.0.11
+-- v1.0.12
 -- ===================================================================== -- ULTIMATE ANDROID D3D MENU: FISHING EDITION v8 -- ===================================================================== 
 local Players = game:GetService("Players") 
 local UserInputService = game:GetService("UserInputService") 
@@ -401,8 +401,8 @@ end)
 CreateSlider(TabContentFrames["Player"], "Speed Value", 16, 200, 16, function(val) PlayerConfig.SpeedValue = val end) 
 CreateToggle(TabContentFrames["Player"], "Fly (Hold Jump)", function(v) PlayerConfig.Fly = v end) 
 
--- Multi Jump Diperbaiki Menggunakan Metode Lonjakan Ketinggian Langsung via Humanoid/HRP
-CreateToggle(TabContentFrames["Player"], "Multi Jump (Tap Jump to Ascend)", function(v) 
+-- Multi Jump Menggunakan Metode Basic Standard (Freefall JumpCount)
+CreateToggle(TabContentFrames["Player"], "Multi Jump", function(v) 
     PlayerConfig.MultiJump = v 
 end)
 
@@ -468,67 +468,22 @@ tpButton.MouseButton1Click:Connect(function()
     end
 end)
 
+-- SKILL TAB CONTROLS (Tanpa View Distance)
 CreateToggle(TabContentFrames["skill"], "Aimbot + FOV + Predict") 
 CreateSlider(TabContentFrames["skill"], "Aimbot FOV Size", 30, 300, 90, function() end) 
 CreateToggle(TabContentFrames["skill"], "Unlimited Ammo (999/999)") 
 CreateToggle(TabContentFrames["skill"], "Fast Vehicle") 
 CreateSlider(TabContentFrames["skill"], "Vehicle Speed Value", 50, 300, 100, function() end) 
 
--- MULTI JUMP EFEKTIF: Menggunakan UserInputService.JumpRequest digabung pemantauan state lompat & tap beruntun
-local multiJumpCount = 0
-local canMultiJump = false
-local lastJumpTick = 0
-
-local function HookCharacterMultiJump(char)
-    local hum = char:WaitForChild("Humanoid", 5)
-    local hrp = char:WaitForChild("HumanoidRootPart", 5)
-    if not hum or not hrp then return end
-
-    multiJumpCount = 0
-    canMultiJump = false
-
-    hum.StateChanged:Connect(function(_, newState)
-        if newState == Enum.HumanoidStateType.Running or newState == Enum.HumanoidStateType.Landed then
-            multiJumpCount = 0
-            canMultiJump = false
-        elseif newState == Enum.HumanoidStateType.Freefall then
-            canMultiJump = true
-        end
-    end)
-
-    local jumpConn = UserInputService.JumpRequest:Connect(function()
-        if not PlayerConfig.MultiJump then return end
-        
-        local currentTick = tick()
-        if currentTick - lastJumpTick < 0.15 then return end
-        
-        local state = hum:GetState()
-        if state == Enum.HumanoidStateType.Freefall or state == Enum.HumanoidStateType.Jumping or canMultiJump then
-            multiJumpCount = multiJumpCount + 1
-            lastJumpTick = currentTick
-            
-            -- Dorongan vertikal bertahap makin tinggi setiap kali ditap di udara
-            local boostPower = 50 + (multiJumpCount * 20)
-            hrp.Velocity = Vector3.new(hrp.Velocity.X, boostPower, hrp.Velocity.Z)
-            hrp.AssemblyLinearVelocity = Vector3.new(hrp.AssemblyLinearVelocity.X, boostPower, hrp.AssemblyLinearVelocity.Z)
-            
-            pcall(function()
-                hum:ChangeState(Enum.HumanoidStateType.Jumping)
-            end)
-        end
-    end)
-
-    char.AncestryChanged:Connect(function(_, parent)
-        if not parent and jumpConn then
-            jumpConn:Disconnect()
-        end
-    end)
-end
-
-if LocalPlayer.Character then
-    HookCharacterMultiJump(LocalPlayer.Character)
-end
-LocalPlayer.CharacterAdded:Connect(HookCharacterMultiJump)
+-- MULTI JUMP METODE BASIC (Metode Klasik Roblox)
+UserInputService.JumpRequest:Connect(function()
+    if not PlayerConfig.MultiJump then return end
+    local char = LocalPlayer.Character
+    local hum = char and char:FindFirstChildOfClass("Humanoid")
+    if hum then
+        hum:ChangeState(Enum.HumanoidStateType.Jumping)
+    end
+end)
 
 -- RUNSERVICE LOOP UNTUK PENGATURAN DUNIA & PLAYER ENGINE
 RunService.Stepped:Connect(function()
