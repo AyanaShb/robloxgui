@@ -403,8 +403,8 @@ end)
 CreateSlider(TabContentFrames["Player"], "Speed Value", 16, 200, 16, function(val) PlayerConfig.SpeedValue = val end) 
 CreateToggle(TabContentFrames["Player"], "Fly (Hold Jump)", function(v) PlayerConfig.Fly = v end) 
 
--- Multi Jump (Tap-tap tombol jump berkali-kali di udara agar melambung makin tinggi)
-CreateToggle(TabContentFrames["Player"], "Multi Jump (Tap-tap Jump)", function(v) 
+-- Multi Jump (Ketuk tombol lompat beruntun saat di udara untuk melompat lagi di udara)
+CreateToggle(TabContentFrames["Player"], "Multi Jump (Double/Triple Jump)", function(v) 
     PlayerConfig.MultiJump = v 
 end)
 
@@ -470,40 +470,52 @@ tpButton.TextSize = 11.5
 tpButton.Font = Enum.Font.GothamBold 
 Instance.new("UICorner", tpButton).CornerRadius = UDim.new(0, 8) 
 
--- TRUE MULTI JUMP ENGINE (Mendeteksi tap/klik beruntun pada tombol Jump game tanpa perlu ditahan)
-local jumpCount = 0
-local lastTapTick = 0
+-- TRUE MULTI JUMP ENGINE (Murni Multi-Jump / Air Jump: tap tombol lompat beruntun di udara tanpa terpicu saat di tanah/hold)
+local maxAirJumps = 4
+local airJumpsDone = 0
+local isAirborne = false
+local lastJumpPress = 0
 
-local function SetupCharacterJump(char)
+local function SetupCharacterMultiJump(char)
     local hum = char:WaitForChild("Humanoid", 5)
-    if not hum then return end
+    local hrp = char:WaitForChild("HumanoidRootPart", 5)
+    if not hum or not hrp then return end
     
-    hum.Jumping:Connect(function(isJumping)
+    airJumpsDone = 0
+    isAirborne = false
+
+    hum.StateChanged:Connect(function(oldState, newState)
+        if newState == Enum.HumanoidStateType.Freefall or newState == Enum.HumanoidStateType.Jumping then
+            isAirborne = true
+        elseif newState == Enum.HumanoidStateType.Running or newState == Enum.HumanoidStateType.Landed then
+            isAirborne = false
+            airJumpsDone = 0
+        end
+    end)
+
+    -- Deteksi tap tombol lompat game (menggunakan Humanoid.Jump bernilai true)
+    hum:GetPropertyChangedSignal("Jump"):Connect(function()
         if not PlayerConfig.MultiJump then return end
-        if isJumping then
-            local hrp = char:FindFirstChild("HumanoidRootPart")
-            if hrp then
-                local currentTick = tick()
-                if currentTick - lastTapTick < 0.7 then
-                    jumpCount = jumpCount + 1
-                else
-                    jumpCount = 1
+        if hum.Jump and isAirborne then
+            local currentTime = tick()
+            if currentTime - lastJumpPress > 0.15 then
+                if airJumpsDone < maxAirJumps then
+                    airJumpsDone = airJumpsDone + 1
+                    lastJumpPress = currentTime
+                    
+                    -- Memberikan dorongan melompat udara murni (Multi-Jump / Air Jump standar game)
+                    hrp.Velocity = Vector3.new(hrp.Velocity.X, 48, hrp.Velocity.Z)
+                    hrp.AssemblyLinearVelocity = Vector3.new(hrp.AssemblyLinearVelocity.X, 48, hrp.AssemblyLinearVelocity.Z)
                 end
-                lastTapTick = currentTick
-                
-                -- Setiap kali ditap di udara, dorongan ke atas bertambah secara progresif (makin tinggi)
-                local incrementalPower = 45 + (jumpCount * 28)
-                hrp.Velocity = Vector3.new(hrp.Velocity.X, incrementalPower, hrp.Velocity.Z)
-                hrp.AssemblyLinearVelocity = Vector3.new(hrp.AssemblyLinearVelocity.X, incrementalPower, hrp.AssemblyLinearVelocity.Z)
             end
         end
     end)
 end
 
 if LocalPlayer.Character then
-    SetupCharacterJump(LocalPlayer.Character)
+    SetupCharacterMultiJump(LocalPlayer.Character)
 end
-LocalPlayer.CharacterAdded:Connect(SetupCharacterJump)
+LocalPlayer.CharacterAdded:Connect(SetupCharacterMultiJump)
 
 -- RUNSERVICE LOOP UNTUK PENGATURAN DUNIA & PLAYER ENGINE
 RunService.Stepped:Connect(function()
@@ -519,12 +531,12 @@ RunService.Stepped:Connect(function()
         end
     end
 
-    -- 2. Night Mode (Outdoor remang-remang tipis, Indoor sangat gelap gulita pekat)
+    -- 2. Night Mode (Outdoor sedikit remang-remang agar tidak terlalu gelap, Indoor dibuat sangat gelap pekat)
     if WorldConfig.NightMode then
         Lighting.ClockTime = 0
         Lighting.Brightness = 0.2
         Lighting.Ambient = Color3.fromRGB(0, 0, 0)          -- Indoor murni gelap gulita
-        Lighting.OutdoorAmbient = Color3.fromRGB(85, 85, 105) -- Outdoor remang-remang agar tetap terlihat jelas
+        Lighting.OutdoorAmbient = Color3.fromRGB(55, 55, 75) -- Outdoor remang-remang pas tidak terlalu gelap
         Lighting.GlobalShadows = true
     elseif WorldConfig.DaylightMode then
         Lighting.ClockTime = 14.5
@@ -603,6 +615,9 @@ RunService.RenderStepped:Connect(function()
                     esp.Name.Visible = false
                 end
                 
+                if VisualsCount and VisualsConfig.ESP_Distance then
+                    -- handled below
+                end
                 if VisualsConfig.ESP_Distance then
                     esp.Distance.Text = string.format("[%dM]", math.floor(distance))
                     esp.Distance.Position = Vector2.new(vector.X, vector.Y + 10)
@@ -612,7 +627,7 @@ RunService.RenderStepped:Connect(function()
                 end
                 
                 if VisualsConfig.ESP_Gender then
-                    esp.Gender.Text = (player.UserId % 2 == 0) # 2 == 0 and "[Cewe]" or "[Cowo]"
+                    esp.Gender.Text = (player.UserId % 2 == 0) and "[Cewe]" or "[Cowo]"
                     esp.Gender.Position = Vector2.new(vector.X, vector.Y + 25)
                     esp.Gender.Visible = true
                 else
