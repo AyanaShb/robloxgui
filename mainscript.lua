@@ -1,4 +1,4 @@
--- v1.0.9
+-- v1.0.10
 -- ===================================================================== -- ULTIMATE ANDROID D3D MENU: FISHING EDITION v8 -- ===================================================================== 
 local Players = game:GetService("Players") 
 local UserInputService = game:GetService("UserInputService") 
@@ -403,7 +403,7 @@ end)
 CreateSlider(TabContentFrames["Player"], "Speed Value", 16, 200, 16, function(val) PlayerConfig.SpeedValue = val end) 
 CreateToggle(TabContentFrames["Player"], "Fly (Hold Jump)", function(v) PlayerConfig.Fly = v end) 
 
--- Multi Jump Bersih (Tap tombol lompat beruntun di udara, makin sering ditap makin naik ke atas)
+-- Multi Jump Diperbarui dengan UserInputService.JumpRequest & Humanoid.StateChanged
 CreateToggle(TabContentFrames["Player"], "Multi Jump (Tap Jump to Ascend)", function(v) 
     PlayerConfig.MultiJump = v 
 end)
@@ -441,7 +441,6 @@ CreateToggle(TabContentFrames["world"], "Daylight Mode (Indoor & Outdoor)", func
     end
 end) 
 
--- Custom FOV / View Distance (Mengatur Lebar & Jarak Pandang Kamera Lewat Slider)
 CreateToggle(TabContentFrames["world"], "Custom View Distance (FOV)", function(v) 
     WorldConfig.CustomView = v 
     if not v and Camera then
@@ -470,36 +469,61 @@ tpButton.TextSize = 11.5
 tpButton.Font = Enum.Font.GothamBold 
 Instance.new("UICorner", tpButton).CornerRadius = UDim.new(0, 8) 
 
--- MULTI JUMP MURNI: Tap tombol lompat game di udara untuk dorongan bertahap makin ke atas
+-- MULTI JUMP MENGGUNAKAN UserInputService.JumpRequest & Humanoid.StateChanged
 local multiJumpCount = 0
-local lastJumpTrigger = 0
+local isAirborne = false
+local lastJumpTick = 0
 
 local function HookCharacterMultiJump(char)
     local hum = char:WaitForChild("Humanoid", 5)
     local hrp = char:WaitForChild("HumanoidRootPart", 5)
     if not hum or not hrp then return end
 
-    -- Reset hitungan ketika mendarat di tanah
+    multiJumpCount = 0
+    isAirborne = false
+
+    -- Pantau status Humanoid untuk mendeteksi pendaratan di tanah (Reset)
     hum.StateChanged:Connect(function(_, newState)
         if newState == Enum.HumanoidStateType.Running or newState == Enum.HumanoidStateType.Landed then
             multiJumpCount = 0
+            isAirborne = false
+        elseif newState == Enum.HumanoidStateType.Freefall or newState == Enum.HumanoidStateType.Jumping then
+            isAirborne = true
         end
     end)
 
-    -- Deteksi saat tombol lompat ditekan / status menjadi Jumping
-    hum.StateChanged:Connect(function(_, newState)
-        if PlayerConfig.MultiJump and newState == Enum.HumanoidStateType.Jumping then
-            local currentTick = tick()
-            if currentTick - lastJumpTrigger > 0.15 then
-                if hum:GetState() ~= Enum.HumanoidStateType.Running and hum:GetState() ~= Enum.HumanoidStateType.Landed then
-                    multiJumpCount = multiJumpCount + 1
-                    -- Setiap tap beruntun memberikan dorongan vertikal yang makin tinggi
-                    local boostForce = 45 + (multiJumpCount * 18)
-                    hrp.Velocity = Vector3.new(hrp.Velocity.X, boostForce, hrp.Velocity.Z)
-                    hrp.AssemblyLinearVelocity = Vector3.new(hrp.AssemblyLinearVelocity.X, boostForce, hrp.AssemblyLinearVelocity.Z)
-                end
-                lastJumpTrigger = currentTick
-            end
+    -- Tangkap permintaan lompat via UserInputService.JumpRequest (Mendukung tombol lompat bawaan game / UI Android)
+    local jumpConnection
+    jumpConnection = UserInputService.JumpRequest:Connect(function()
+        if not PlayerConfig.MultiJump then return end
+        
+        local currentTick = tick()
+        -- Debounce agar tidak trigger terlalu cepat dalam 1 ketukan
+        if currentTick - lastJumpTick < 0.12 then return end
+        
+        local currentState = hum:GetState()
+        -- Eksekusi tambahan lompat saat pemain berada di udara (Freefall atau sudah melompat)
+        if isAirborne or currentState == Enum.HumanoidStateType.Freefall or currentState == Enum.HumanoidStateType.Jumping then
+            multiJumpCount = multiJumpCount + 1
+            lastJumpTick = currentTick
+            
+            -- Makin sering ditap, dorongan vertikal semakin tinggi secara progresif
+            local boostForce = 50 + (multiJumpCount * 22)
+            
+            hrp.Velocity = Vector3.new(hrp.Velocity.X, boostForce, hrp.Velocity.Z)
+            hrp.AssemblyLinearVelocity = Vector3.new(hrp.AssemblyLinearVelocity.X, boostForce, hrp.AssemblyLinearVelocity.Z)
+            
+            -- Paksa state kembali ke Jumping agar animasi lompat Roblox tetap mulus
+            pcall(function()
+                hum:ChangeState(Enum.HumanoidStateType.Jumping)
+            end)
+        end
+    end)
+
+    -- Bersihkan koneksi saat karakter mati/respawn
+    char.AncestryChanged:Connect(function(_, parent)
+        if not parent and jumpConnection then
+            jumpConnection:Disconnect()
         end
     end)
 end
@@ -517,18 +541,16 @@ RunService.Stepped:Connect(function()
     local hrp = char:FindFirstChild("HumanoidRootPart")
 
     if hum then
-        -- 1. Speed Hack Engine
         if PlayerConfig.SpeedHack then
             hum.WalkSpeed = PlayerConfig.SpeedValue
         end
     end
 
-    -- 2. Night Mode (Outdoor tidak terlalu gelap, Indoor dibuat sangat gelap pekat)
     if WorldConfig.NightMode then
         Lighting.ClockTime = 0
         Lighting.Brightness = 0.2
-        Lighting.Ambient = Color3.fromRGB(0, 0, 0)          -- Dalam ruangan benar-benar gelap gulita
-        Lighting.OutdoorAmbient = Color3.fromRGB(75, 75, 95) -- Luar ruangan remang-remang pas, tidak terlalu gelap
+        Lighting.Ambient = Color3.fromRGB(0, 0, 0)
+        Lighting.OutdoorAmbient = Color3.fromRGB(75, 75, 95)
         Lighting.GlobalShadows = true
     elseif WorldConfig.DaylightMode then
         Lighting.ClockTime = 14.5
@@ -537,12 +559,10 @@ RunService.Stepped:Connect(function()
         Lighting.OutdoorAmbient = Color3.fromRGB(240, 240, 240)
     end
 
-    -- 3. Custom View Distance / FOV Engine (Membuat pandangan jadi sangat luas dan jauh sesuai slider)
     if WorldConfig.CustomView and Camera then
         Camera.FieldOfView = WorldConfig.ViewDistance
     end
 
-    -- 4. Wall Hack (Noclip Sejati) Engine
     if PlayerConfig.WallHack then
         for _, part in ipairs(char:GetDescendants()) do
             if part:IsA("BasePart") then
@@ -551,7 +571,6 @@ RunService.Stepped:Connect(function()
         end
     end
 
-    -- 5. Fly Engine
     if PlayerConfig.Fly and hrp then
         local camCFrame = Camera.CFrame
         local moveDir = Vector3.new()
