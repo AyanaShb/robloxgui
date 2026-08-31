@@ -1,4 +1,5 @@
-Local Players = game:GetService("Players") 
+-- ===================================================================== -- ULTIMATE ANDROID D3D MENU: STABLE v10 (NO DRAWING API) -- ===================================================================== 
+local Players = game:GetService("Players") 
 local UserInputService = game:GetService("UserInputService") 
 local Lighting = game:GetService("Lighting") 
 local Workspace = game:GetService("Workspace") 
@@ -9,12 +10,11 @@ local LocalPlayer = Players.LocalPlayer
 local ScreenGui = Instance.new("ScreenGui") 
 ScreenGui.Name = "D3D_Ultimate_Android" 
 ScreenGui.ResetOnSpawn = false 
+ScreenGui.IgnoreGuiInset = true
+ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
 pcall(function() 
-    if syn and syn.protect_gui then 
-        syn.protect_gui(ScreenGui) 
-        ScreenGui.Parent = game.CoreGui 
-    elseif gethui then 
+    if gethui then 
         ScreenGui.Parent = gethui() 
     else 
         ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui") 
@@ -31,8 +31,6 @@ local VisualsConfig = {
     ESP_Name = false,
     ESP_Distance = false,
     ESP_Gender = false,
-    ESP_Item = false,
-    ItemRadius = 50,
     ChamsGlow = false,
     ChamsColor = Color3.fromRGB(255, 0, 128)
 }
@@ -53,6 +51,7 @@ local WorldConfig = {
 }
 
 local ESPCache = {}
+local OriginalCanCollide = {}
 
 -- FLOATING BUTTON UI 
 local FloatButton = Instance.new("TextButton") 
@@ -169,36 +168,45 @@ for i, tabName in ipairs(tabs) do
     end) 
 end 
 
--- ESP DRAWING SETUP
+-- ESP AMAN MENGGUNAKAN BILLBOARD GUI (TIDAK PAKAI DRAWING API)
 local function CreatePlayerESP(player)
     if player == LocalPlayer then return end
-    local espData = {
-        Line = Drawing.new("Line"),
-        Name = Drawing.new("Text"),
-        Distance = Drawing.new("Text"),
-        Gender = Drawing.new("Text")
-    }
     
-    espData.Line.Thickness = 1.5
-    espData.Line.Color = Color3.fromRGB(0, 240, 255)
-    espData.Line.Transparency = 0.7
-    
-    for _, textObj in ipairs({espData.Name, espData.Distance, espData.Gender}) do
-        textObj.Size = 13
-        textObj.Center = true
-        textObj.Outline = true
-        textObj.OutlineColor = Color3.fromRGB(0, 0, 0)
-        textObj.Color = Color3.fromRGB(255, 255, 255)
-        textObj.Font = Drawing.Fonts.UI
+    local function setupChar(char)
+        local head = char:WaitForChild("Head", 5)
+        if not head then return end
+        
+        local bill = Instance.new("BillboardGui")
+        bill.Name = "D3D_ESP_Bill"
+        bill.Adornee = head
+        bill.Size = UDim2.new(0, 200, 0, 50)
+        bill.StudsOffset = Vector3.new(0, 2.5, 0)
+        bill.AlwaysOnTop = true
+        bill.Parent = head
+        
+        local textLabel = Instance.new("TextLabel", bill)
+        textLabel.Size = UDim2.new(1, 0, 1, 0)
+        textLabel.BackgroundTransparency = 1
+        textLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+        textLabel.TextStrokeTransparency = 0
+        textLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+        textLabel.TextSize = 12
+        textLabel.Font = Enum.Font.GothamBold
+        textLabel.Text = player.Name
+        
+        ESPCache[player] = {Billboard = bill, Label = textLabel}
     end
-    
-    ESPCache[player] = espData
+
+    player.CharacterAdded:Connect(setupChar)
+    if player.Character then
+        task.spawn(function() setupChar(player.Character) end)
+    end
 end
 
 local function RemovePlayerESP(player)
     if ESPCache[player] then
-        for _, obj in pairs(ESPCache[player]) do
-            pcall(function() obj:Remove() end)
+        if ESPCache[player].Billboard then
+            ESPCache[player].Billboard:Destroy()
         end
         ESPCache[player] = nil
     end
@@ -376,12 +384,9 @@ local function CreateColorPicker(parent, text, callback)
 end 
 
 -- POPULATE TABS
-CreateToggle(TabContentFrames["Visual"], "ESP Line (Top Center)", function(v) VisualsConfig.ESP_Line = v end) 
 CreateToggle(TabContentFrames["Visual"], "ESP Name", function(v) VisualsConfig.ESP_Name = v end) 
-CreateToggle(TabContentFrames["Visual"], "ESP Distance", function(v) VisualsConfig.ESP_Distance = v end) 
+CreateToggle(TabContentFrames["Visual"], "ESP Distance [m]", function(v) VisualsConfig.ESP_Distance = v end) 
 CreateToggle(TabContentFrames["Visual"], "ESP Gender [Cowo/Cewe]", function(v) VisualsConfig.ESP_Gender = v end) 
-CreateToggle(TabContentFrames["Visual"], "ESP Item Nearby", function(v) VisualsConfig.ESP_Item = v end) 
-CreateSlider(TabContentFrames["Visual"], "ESP Item Radius", 10, 500, 50, function(val) VisualsConfig.ItemRadius = val end) 
 CreateToggle(TabContentFrames["Visual"], "Chams Body Color (Glow)", function(v) 
     VisualsConfig.ChamsGlow = v 
     UpdateChams() 
@@ -391,7 +396,7 @@ CreateColorPicker(TabContentFrames["Visual"], "Chams Circle Color Picker", funct
     UpdateChams() 
 end) 
 
--- PLAYER TAB CONTROLS (BERSIH DARI FITUR DIHAPUS)
+-- PLAYER TAB CONTROLS
 CreateToggle(TabContentFrames["Player"], "Speed Run", function(v) 
     PlayerConfig.SpeedHack = v 
     if not v and LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
@@ -401,9 +406,30 @@ end)
 CreateSlider(TabContentFrames["Player"], "Speed Value", 16, 200, 16, function(val) PlayerConfig.SpeedValue = val end) 
 CreateToggle(TabContentFrames["Player"], "Fly (Hold Jump)", function(v) PlayerConfig.Fly = v end) 
 CreateToggle(TabContentFrames["Player"], "Multi Jump (Tap to Ascend)", function(v) PlayerConfig.MultiJump = v end) 
-CreateToggle(TabContentFrames["Player"], "Wall Hack", function(v) PlayerConfig.WallHack = v end) 
+CreateToggle(TabContentFrames["Player"], "Wall Hack", function(v) 
+    PlayerConfig.WallHack = v 
+    local char = LocalPlayer.Character
+    if char then
+        for _, part in ipairs(char:GetDescendants()) do
+            if part:IsA("BasePart") then
+                if v then
+                    if OriginalCanCollide[part] == nil then
+                        OriginalCanCollide[part] = part.CanCollide
+                    end
+                    part.CanCollide = false
+                else
+                    if OriginalCanCollide[part] ~= nil then
+                        part.CanCollide = OriginalCanCollide[part]
+                    else
+                        part.CanCollide = true
+                    end
+                end
+            end
+        end
+    end
+end) 
 
--- WORLD TAB CONTROLS (NIGHT & DAYLIGHT FULL INDOOR/OUTDOOR)
+-- WORLD TAB CONTROLS
 CreateToggle(TabContentFrames["world"], "Night Mode (Indoor & Outdoor)", function(v) 
     WorldConfig.NightMode = v
     if v then
@@ -465,33 +491,29 @@ tpButton.TextSize = 11.5
 tpButton.Font = Enum.Font.GothamBold 
 Instance.new("UICorner", tpButton).CornerRadius = UDim.new(0, 8) 
 
--- MULTI JUMP LISTENER
+-- MULTI JUMP HANDLER
 UserInputService.JumpRequest:Connect(function()
     if PlayerConfig.MultiJump then
         local char = LocalPlayer.Character
         local hrp = char and char:FindFirstChild("HumanoidRootPart")
         if hrp then
-            hrp.Velocity = Vector3.new(hrp.Velocity.X, 60, hrp.Velocity.Z)
-            hrp.AssemblyLinearVelocity = Vector3.new(hrp.AssemblyLinearVelocity.X, 60, hrp.AssemblyLinearVelocity.Z)
+            hrp.Velocity = Vector3.new(hrp.Velocity.X, 55, hrp.Velocity.Z)
+            hrp.AssemblyLinearVelocity = Vector3.new(hrp.AssemblyLinearVelocity.X, 55, hrp.AssemblyLinearVelocity.Z)
         end
     end
 end)
 
--- RUNSERVICE LOOP UNTUK PENGATURAN DUNIA & PLAYER ENGINE
+-- RUNSERVICE LOOP
 RunService.Stepped:Connect(function()
     local char = LocalPlayer.Character
     if not char then return end
     local hum = char:FindFirstChildOfClass("Humanoid")
     local hrp = char:FindFirstChild("HumanoidRootPart")
 
-    if hum then
-        -- 1. Speed Hack Engine
-        if PlayerConfig.SpeedHack then
-            hum.WalkSpeed = PlayerConfig.SpeedValue
-        end
+    if hum and PlayerConfig.SpeedHack then
+        hum.WalkSpeed = PlayerConfig.SpeedValue
     end
 
-    -- 2. Memastikan Night/Daylight terus mengunci area Indoor & Outdoor secara real-time
     if WorldConfig.NightMode then
         Lighting.ClockTime = 0
         Lighting.Brightness = 0.1
@@ -504,16 +526,17 @@ RunService.Stepped:Connect(function()
         Lighting.OutdoorAmbient = Color3.fromRGB(240, 240, 240)
     end
 
-    -- 3. Wall Hack (Noclip) Engine
     if PlayerConfig.WallHack then
         for _, part in ipairs(char:GetDescendants()) do
             if part:IsA("BasePart") then
+                if OriginalCanCollide[part] == nil then
+                    OriginalCanCollide[part] = part.CanCollide
+                end
                 part.CanCollide = false
             end
         end
     end
 
-    -- 4. Fly Engine
     if PlayerConfig.Fly and hrp then
         local camCFrame = Camera.CFrame
         local moveDir = Vector3.new()
@@ -540,55 +563,29 @@ RunService.Stepped:Connect(function()
     end
 end)
 
--- RENDER LOOP FOR VISUAL UPDATES
+-- RENDER LOOP FOR ESP TEXT UPDATES
 RunService.RenderStepped:Connect(function()
-    for player, esp in pairs(ESPCache) do
+    if WorldConfig.LongView then
+        if LocalPlayer.CameraMaxZoomDistance ~= WorldConfig.ViewDistance then
+            LocalPlayer.CameraMaxZoomDistance = WorldConfig.ViewDistance
+        end
+    end
+
+    for player, espData in pairs(ESPCache) do
         local char = player.Character
         local hrp = char and char:FindFirstChild("HumanoidRootPart")
-        local hum = char and char:FindFirstChildOfClass("Humanoid")
+        local label = espData.Label
         
-        local active = char and hrp and hum and hum.Health > 0
-        if active then
-            local vector, onScreen = Camera:WorldToViewportPoint(hrp.Position)
-            if onScreen then
-                local distance = (Camera.CFrame.Position - hrp.Position).Magnitude
-                
-                if VisualsConfig.ESP_Line then
-                    esp.Line.From = Vector2.new(Camera.ViewportSize.X / 2, 0)
-                    esp.Line.To = Vector2.new(vector.X, vector.Y)
-                    esp.Line.Visible = true
-                else
-                    esp.Line.Visible = false
-                end
-                
-                if VisualsConfig.ESP_Name then
-                    esp.Name.Text = player.Name
-                    esp.Name.Position = Vector2.new(vector.X, vector.Y - 25)
-                    esp.Name.Visible = true
-                else
-                    esp.Name.Visible = false
-                end
-                
-                if VisualsConfig.ESP_Distance then
-                    esp.Distance.Text = string.format("[%dft]", math.floor(distance))
-                    esp.Distance.Position = Vector2.new(vector.X, vector.Y + 10)
-                    esp.Distance.Visible = true
-                else
-                    esp.Distance.Visible = false
-                end
-                
-                if VisualsConfig.ESP_Gender then
-                    esp.Gender.Text = (player.UserId % 2 == 0) and "[Cewe]" or "[Cowo]"
-                    esp.Gender.Position = Vector2.new(vector.X, vector.Y + 25)
-                    esp.Gender.Visible = true
-                else
-                    esp.Gender.Visible = false
-                end
-            else
-                for _, obj in pairs(esp) do obj.Visible = false end
-            end
-        else
-            for _, obj in pairs(esp) do obj.Visible = false end
+        if char and hrp and label then
+            local distance = (Camera.CFrame.Position - hrp.Position).Magnitude
+            local namePart = VisualsConfig.ESP_Name and player.Name or ""
+            local distPart = VisualsConfig.ESP_Distance and string.format("\n[%dm]", math.floor(distance)) or ""
+            local genderPart = VisualsConfig.ESP_Gender and ((player.UserId % 2 == 0) and "\n[Cewe]" or "\n[Cowo]") or ""
+            
+            label.Text = namePart .. distPart .. genderPart
+            label.Visible = (VisualsConfig.ESP_Name or VisualsConfig.ESP_Distance or VisualsConfig.ESP_Gender)
+        elseif label then
+            label.Text = ""
         end
     end
 end)
