@@ -1,4 +1,4 @@
--- v1.0.7
+-- v1.0.8
 -- ===================================================================== -- ULTIMATE ANDROID D3D MENU: FISHING EDITION v8 -- ===================================================================== 
 local Players = game:GetService("Players") 
 local UserInputService = game:GetService("UserInputService") 
@@ -403,8 +403,8 @@ end)
 CreateSlider(TabContentFrames["Player"], "Speed Value", 16, 200, 16, function(val) PlayerConfig.SpeedValue = val end) 
 CreateToggle(TabContentFrames["Player"], "Fly (Hold Jump)", function(v) PlayerConfig.Fly = v end) 
 
--- Multi Jump (Tap tombol lompat game secara beruntun)
-CreateToggle(TabContentFrames["Player"], "Multi Jump (Tap Jump Button)", function(v) 
+-- Multi Jump (Tap beruntun tombol lompat game, makin ditap makin naik ke atas)
+CreateToggle(TabContentFrames["Player"], "Multi Jump (Tap Jump to Ascend)", function(v) 
     PlayerConfig.MultiJump = v 
 end)
 
@@ -421,7 +421,7 @@ CreateToggle(TabContentFrames["Player"], "Wall Hack", function(v)
 end) 
 
 -- WORLD TAB CONTROLS
-CreateToggle(TabContentFrames["world"], "Night Mode (Indoor & Outdoor)", function(v) 
+CreateToggle(TabContentFrames["world"], "Night Mode (Outdoor Dim / Indoor Dark)", function(v) 
     WorldConfig.NightMode = v
     if not v then
         Lighting.ClockTime = 14.5
@@ -470,7 +470,7 @@ tpButton.TextSize = 11.5
 tpButton.Font = Enum.Font.GothamBold 
 Instance.new("UICorner", tpButton).CornerRadius = UDim.new(0, 8) 
 
--- MULTI JUMP ENGINE (Hanya mentrigger tombol lompat asli karakter / Humanoid State)
+-- MULTI JUMP ENGINE (Tekan tap tombol lompat beruntun untuk melambung makin tinggi)
 local jumpCount = 0
 local lastJumpTick = 0
 
@@ -483,17 +483,17 @@ local function SetupCharacterJump(char)
             local hrp = char:FindFirstChild("HumanoidRootPart")
             if hrp then
                 local currentTick = tick()
-                if currentTick - lastJumpTick < 0.65 then
+                if currentTick - lastJumpTick < 0.8 then
                     jumpCount = jumpCount + 1
                 else
                     jumpCount = 1
                 end
                 lastJumpTick = currentTick
                 
-                -- Dorongan bertingkat setiap tap tombol lompat game
-                local extraPower = 50 + (jumpCount * 35)
-                hrp.Velocity = Vector3.new(hrp.Velocity.X, extraPower, hrp.Velocity.Z)
-                hrp.AssemblyLinearVelocity = Vector3.new(hrp.AssemblyLinearVelocity.X, extraPower, hrp.AssemblyLinearVelocity.Z)
+                -- Setiap tap tombol lompat saat melayang akan menambah daya dorong ke atas secara bertahap
+                local incrementalBoost = 35 + (jumpCount * 22)
+                hrp.Velocity = Vector3.new(hrp.Velocity.X, incrementalBoost, hrp.Velocity.Z)
+                hrp.AssemblyLinearVelocity = Vector3.new(hrp.AssemblyLinearVelocity.X, incrementalBoost, hrp.AssemblyLinearVelocity.Z)
             end
         end
     end)
@@ -518,12 +518,12 @@ RunService.Stepped:Connect(function()
         end
     end
 
-    -- 2. Night Mode (Indoor dibuat benar-benar gelap gulita dengan mematikan bayangan/pantulan)
+    -- 2. Night Mode (Outdoor tidak terlalu gelap/remang-remang, Indoor dibuat sangat gelap pekat)
     if WorldConfig.NightMode then
         Lighting.ClockTime = 0
-        Lighting.Brightness = 0
-        Lighting.Ambient = Color3.fromRGB(0, 0, 0)          -- Gelap gulita mutlak untuk dalam ruangan
-        Lighting.OutdoorAmbient = Color3.fromRGB(5, 5, 10)   -- Luar ruangan sedikit redup
+        Lighting.Brightness = 0.5
+        Lighting.Ambient = Color3.fromRGB(0, 0, 0)          -- Indoor murni gelap gulita
+        Lighting.OutdoorAmbient = Color3.fromRGB(65, 65, 85) -- Outdoor diset cukup terang/remang-remang tidak terlalu gelap
         Lighting.GlobalShadows = true
     elseif WorldConfig.DaylightMode then
         Lighting.ClockTime = 14.5
