@@ -1,4 +1,4 @@
--- v1.0.0
+-- v1.0.1
 -- ===================================================================== -- ULTIMATE ANDROID D3D MENU: FISHING EDITION v8 -- ===================================================================== 
 local Players = game:GetService("Players") 
 local UserInputService = game:GetService("UserInputService") 
@@ -43,15 +43,16 @@ local PlayerConfig = {
     SpeedHack = false,
     SpeedValue = 16,
     Fly = false,
-    MultiJump = false,
-    WallHack = false
+    -- Fitur yang dibuat ulang:
+    CustomWallHack = false,
+    AdvancedMultiJump = false,
+    CustomPOV = false,
+    POVValue = 400
 }
 
 local WorldConfig = {
     NightMode = false,
-    DaylightMode = false,
-    LongView = false,
-    ViewDistance = 500
+    DaylightMode = false
 }
 
 local ESPCache = {}
@@ -393,7 +394,7 @@ CreateColorPicker(TabContentFrames["Visual"], "Chams Circle Color Picker", funct
     UpdateChams() 
 end) 
 
--- PLAYER TAB CONTROLS (BERSIH DARI FITUR DIHAPUS)
+-- PLAYER TAB CONTROLS (DENGAN FITUR WALLHACK, MULTI JUMP, & POV YANG DIBUAT ULANG)
 CreateToggle(TabContentFrames["Player"], "Speed Run", function(v) 
     PlayerConfig.SpeedHack = v 
     if not v and LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
@@ -402,8 +403,40 @@ CreateToggle(TabContentFrames["Player"], "Speed Run", function(v)
 end) 
 CreateSlider(TabContentFrames["Player"], "Speed Value", 16, 200, 16, function(val) PlayerConfig.SpeedValue = val end) 
 CreateToggle(TabContentFrames["Player"], "Fly (Hold Jump)", function(v) PlayerConfig.Fly = v end) 
-CreateToggle(TabContentFrames["Player"], "Multi Jump (Tap to Ascend)", function(v) PlayerConfig.MultiJump = v end) 
-CreateToggle(TabContentFrames["Player"], "Wall Hack", function(v) PlayerConfig.WallHack = v end) 
+
+-- 1. WallHack Dibuat Ulang (Menggunakan sistem transparan material/part kustom yang lebih aman)
+CreateToggle(TabContentFrames["Player"], "Custom WallHack", function(v) 
+    PlayerConfig.CustomWallHack = v
+    local char = LocalPlayer.Character
+    if char then
+        for _, part in ipairs(char:GetDescendants()) do
+            if part:IsA("BasePart") then
+                part.LocalTransparencyModifier = v and 0.5 or 0
+            end
+        end
+    end
+end) 
+
+-- 2. Multi Jump Dibuat Ulang (Sistem dorongan impuls vertikal yang disempurnakan)
+CreateToggle(TabContentFrames["Player"], "Advanced Multi Jump", function(v) 
+    PlayerConfig.AdvancedMultiJump = v 
+end) 
+
+-- 3. Long View POV Dibuat Ulang & Dipindah ke Tab Player beserta Slider-nya
+CreateToggle(TabContentFrames["Player"], "Custom Long POV", function(v) 
+    PlayerConfig.CustomPOV = v 
+    if v then
+        LocalPlayer.CameraMaxZoomDistance = PlayerConfig.POVValue
+    else
+        LocalPlayer.CameraMaxZoomDistance = 400
+    end
+end) 
+CreateSlider(TabContentFrames["Player"], "POV Max Distance", 100, 5000, 400, function(val) 
+    PlayerConfig.POVValue = val
+    if PlayerConfig.CustomPOV then
+        LocalPlayer.CameraMaxZoomDistance = val
+    end
+end) 
 
 -- WORLD TAB CONTROLS (NIGHT & DAYLIGHT FULL INDOOR/OUTDOOR)
 CreateToggle(TabContentFrames["world"], "Night Mode (Indoor & Outdoor)", function(v) 
@@ -437,21 +470,6 @@ CreateToggle(TabContentFrames["world"], "Daylight Mode (Indoor & Outdoor)", func
     end
 end) 
 
-CreateToggle(TabContentFrames["world"], "Long View POV", function(v) 
-    WorldConfig.LongView = v 
-    if v then
-        LocalPlayer.CameraMaxZoomDistance = WorldConfig.ViewDistance
-    else
-        LocalPlayer.CameraMaxZoomDistance = 400
-    end
-end) 
-CreateSlider(TabContentFrames["world"], "Long View Distance", 100, 5000, 500, function(val) 
-    WorldConfig.ViewDistance = val
-    if WorldConfig.LongView then
-        LocalPlayer.CameraMaxZoomDistance = val
-    end
-end) 
-
 CreateToggle(TabContentFrames["skill"], "Aimbot + FOV + Predict") 
 CreateSlider(TabContentFrames["skill"], "Aimbot FOV Size", 30, 300, 90, function() end) 
 CreateToggle(TabContentFrames["skill"], "Unlimited Ammo (999/999)") 
@@ -467,14 +485,16 @@ tpButton.TextSize = 11.5
 tpButton.Font = Enum.Font.GothamBold 
 Instance.new("UICorner", tpButton).CornerRadius = UDim.new(0, 8) 
 
--- MULTI JUMP LISTENER
+-- ADVANCED MULTI JUMP LISTENER (Dibuat Ulang)
 UserInputService.JumpRequest:Connect(function()
-    if PlayerConfig.MultiJump then
+    if PlayerConfig.AdvancedMultiJump then
         local char = LocalPlayer.Character
+        local hum = char and char:FindFirstChildOfClass("Humanoid")
         local hrp = char and char:FindFirstChild("HumanoidRootPart")
-        if hrp then
-            hrp.Velocity = Vector3.new(hrp.Velocity.X, 60, hrp.Velocity.Z)
-            hrp.AssemblyLinearVelocity = Vector3.new(hrp.AssemblyLinearVelocity.X, 60, hrp.AssemblyLinearVelocity.Z)
+        if hum and hrp then
+            -- Menerapkan loncatan udara yang mulus menggunakan ChangeState / LinearVelocity
+            hum:ChangeState(Enum.HumanoidStateType.Jumping)
+            hrp.AssemblyLinearVelocity = Vector3.new(hrp.AssemblyLinearVelocity.X, 50, hrp.AssemblyLinearVelocity.Z)
         end
     end
 end)
@@ -506,11 +526,11 @@ RunService.Stepped:Connect(function()
         Lighting.OutdoorAmbient = Color3.fromRGB(240, 240, 240)
     end
 
-    -- 3. Wall Hack (Noclip) Engine
-    if PlayerConfig.WallHack then
+    -- 3. Custom WallHack Engine (Dibuat Ulang)
+    if PlayerConfig.CustomWallHack then
         for _, part in ipairs(char:GetDescendants()) do
-            if part:IsA("BasePart") then
-                part.CanCollide = false
+            if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
+                part.LocalTransparencyModifier = 0.5
             end
         end
     end
