@@ -1,4 +1,4 @@
--- v1.0.2
+-- v1.0.3
 -- ===================================================================== -- ULTIMATE ANDROID D3D MENU: FISHING EDITION v8 -- ===================================================================== 
 local Players = game:GetService("Players") 
 local UserInputService = game:GetService("UserInputService") 
@@ -403,7 +403,7 @@ end)
 CreateSlider(TabContentFrames["Player"], "Speed Value", 16, 200, 16, function(val) PlayerConfig.SpeedValue = val end) 
 CreateToggle(TabContentFrames["Player"], "Fly (Hold Jump)", function(v) PlayerConfig.Fly = v end) 
 
--- Multi Jump Biasa (Tanpa slider custom power)
+-- Multi Jump (Cara Normal & Stabil)
 CreateToggle(TabContentFrames["Player"], "Multi Jump (Tap to Ascend)", function(v) 
     PlayerConfig.MultiJump = v 
 end)
@@ -423,13 +423,7 @@ end)
 -- WORLD TAB CONTROLS
 CreateToggle(TabContentFrames["world"], "Night Mode (Indoor & Outdoor)", function(v) 
     WorldConfig.NightMode = v
-    if v then
-        WorldConfig.DaylightMode = false
-        Lighting.ClockTime = 0
-        Lighting.Brightness = 0
-        Lighting.Ambient = Color3.fromRGB(5, 5, 10)
-        Lighting.OutdoorAmbient = Color3.fromRGB(2, 2, 5)
-    else
+    if not v then
         Lighting.ClockTime = 14.5
         Lighting.Brightness = 2
         Lighting.Ambient = Color3.fromRGB(120, 120, 120)
@@ -439,20 +433,14 @@ end)
 
 CreateToggle(TabContentFrames["world"], "Daylight Mode (Indoor & Outdoor)", function(v) 
     WorldConfig.DaylightMode = v
-    if v then
-        WorldConfig.NightMode = false
-        Lighting.ClockTime = 14.5
-        Lighting.Brightness = 4
-        Lighting.Ambient = Color3.fromRGB(240, 240, 240)
-        Lighting.OutdoorAmbient = Color3.fromRGB(240, 240, 240)
-    else
+    if not v then
         Lighting.Brightness = 2
         Lighting.Ambient = Color3.fromRGB(120, 120, 120)
         Lighting.OutdoorAmbient = Color3.fromRGB(120, 120, 120)
     end
 end) 
 
--- Custom View Distance (Work Indoor & Outdoor secara real-time)
+-- Custom View Distance (Cara Biasa & Universal)
 CreateToggle(TabContentFrames["world"], "Custom View Distance", function(v) 
     WorldConfig.CustomView = v 
     if not v then
@@ -478,27 +466,49 @@ tpButton.TextSize = 11.5
 tpButton.Font = Enum.Font.GothamBold 
 Instance.new("UICorner", tpButton).CornerRadius = UDim.new(0, 8) 
 
--- MULTI JUMP ENGINE BIASA
-local jumpCount = 0
-local lastJumpTick = 0
+-- MULTI JUMP ENGINE (Cara Normal & Stabil)
+local canDoubleJump = false
+local hasJumped = false
+
+LocalPlayer.CharacterAdded:Connect(function(char)
+    local hum = char:WaitForChild("Humanoid")
+    hum.StateChanged:Connect(function(_, newState)
+        if newState == Enum.HumanoidStateType.Jumping then
+            hasJumped = false
+        elseif newState == Enum.HumanoidStateType.Freefall then
+            canDoubleJump = true
+        elseif newState == Enum.HumanoidStateType.Land then
+            canDoubleJump = false
+            hasJumped = false
+        end
+    end)
+end)
+
+if LocalPlayer.Character then
+    local hum = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+    if hum then
+        hum.StateChanged:Connect(function(_, newState)
+            if newState == Enum.HumanoidStateType.Jumping then
+                hasJumped = false
+            elseif newState == Enum.HumanoidStateType.Freefall then
+                canDoubleJump = true
+            elseif newState == Enum.HumanoidStateType.Land then
+                canDoubleJump = false
+                hasJumped = false
+            end
+        end)
+    end
+end
 
 UserInputService.JumpRequest:Connect(function()
-    if PlayerConfig.MultiJump then
+    if PlayerConfig.MultiJump and canDoubleJump and not hasJumped then
         local char = LocalPlayer.Character
-        local hrp = char and char:FindFirstChild("HumanoidRootPart")
         local hum = char and char:FindFirstChildOfClass("Humanoid")
-        if hrp and hum then
-            local currentTick = tick()
-            if currentTick - lastJumpTick < 0.6 then
-                jumpCount = jumpCount + 1
-            else
-                jumpCount = 1
-            end
-            lastJumpTick = currentTick
-            
-            local jumpPower = 50 + ((jumpCount - 1) * 20)
-            hrp.Velocity = Vector3.new(hrp.Velocity.X, jumpPower, hrp.Velocity.Z)
-            hrp.AssemblyLinearVelocity = Vector3.new(hrp.AssemblyLinearVelocity.X, jumpPower, hrp.AssemblyLinearVelocity.Z)
+        local hrp = char and char:FindFirstChild("HumanoidRootPart")
+        if hum and hrp then
+            hasJumped = true
+            hum:ChangeState(Enum.HumanoidStateType.Jumping)
+            hrp.Velocity = Vector3.new(hrp.Velocity.X, 50, hrp.Velocity.Z)
         end
     end
 end)
@@ -517,22 +527,25 @@ RunService.Stepped:Connect(function()
         end
     end
 
-    -- 2. Night/Daylight Mode Engine (Indoor & Outdoor)
+    -- 2. Night/Daylight Mode Engine (Outdoor tidak terlalu gelap, Indoor redup pas)
     if WorldConfig.NightMode then
         Lighting.ClockTime = 0
-        Lighting.Brightness = 0
-        Lighting.Ambient = Color3.fromRGB(5, 5, 10)
-        Lighting.OutdoorAmbient = Color3.fromRGB(2, 2, 5)
+        Lighting.Brightness = 0.5
+        Lighting.Ambient = Color3.fromRGB(40, 40, 55)       
+        Lighting.OutdoorAmbient = Color3.fromRGB(20, 20, 35) 
     elseif WorldConfig.DaylightMode then
         Lighting.ClockTime = 14.5
-        Lighting.Brightness = 4
-        Lighting.Ambient = Color3.fromRGB(240, 240, 240)
-        Lighting.OutdoorAmbient = Color3.fromRGB(240, 240, 240)
+        Lighting.Brightness = 2.5
+        Lighting.Ambient = Color3.fromRGB(200, 200, 200)
+        Lighting.OutdoorAmbient = Color3.fromRGB(200, 200, 200)
     end
 
-    -- 3. Custom View Distance Engine (Indoor & Outdoor real-time override)
+    -- 3. Custom View Distance Engine (Cara Biasa & Universal)
     if WorldConfig.CustomView then
         LocalPlayer.CameraMaxZoomDistance = WorldConfig.ViewDistance
+        LocalPlayer.CameraMinZoomDistance = 0.5
+    else
+        LocalPlayer.CameraMaxZoomDistance = 400
     end
 
     -- 4. Wall Hack (Noclip Sejati) Engine
@@ -601,7 +614,6 @@ RunService.RenderStepped:Connect(function()
                 end
                 
                 if VisualsConfig.ESP_Distance then
-                    -- Diubah dari ft ke M (Meter)
                     esp.Distance.Text = string.format("[%dM]", math.floor(distance))
                     esp.Distance.Position = Vector2.new(vector.X, vector.Y + 10)
                     esp.Distance.Visible = true
