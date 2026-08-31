@@ -1,4 +1,4 @@
--- v1.0.10
+-- v1.0.11
 -- ===================================================================== -- ULTIMATE ANDROID D3D MENU: FISHING EDITION v8 -- ===================================================================== 
 local Players = game:GetService("Players") 
 local UserInputService = game:GetService("UserInputService") 
@@ -49,9 +49,7 @@ local PlayerConfig = {
 
 local WorldConfig = {
     NightMode = false,
-    DaylightMode = false,
-    CustomView = false,
-    ViewDistance = 70
+    DaylightMode = false
 }
 
 local ESPCache = {}
@@ -403,7 +401,7 @@ end)
 CreateSlider(TabContentFrames["Player"], "Speed Value", 16, 200, 16, function(val) PlayerConfig.SpeedValue = val end) 
 CreateToggle(TabContentFrames["Player"], "Fly (Hold Jump)", function(v) PlayerConfig.Fly = v end) 
 
--- Multi Jump Diperbarui dengan UserInputService.JumpRequest & Humanoid.StateChanged
+-- Multi Jump Diperbaiki Menggunakan Metode Lonjakan Ketinggian Langsung via Humanoid/HRP
 CreateToggle(TabContentFrames["Player"], "Multi Jump (Tap Jump to Ascend)", function(v) 
     PlayerConfig.MultiJump = v 
 end)
@@ -441,26 +439,8 @@ CreateToggle(TabContentFrames["world"], "Daylight Mode (Indoor & Outdoor)", func
     end
 end) 
 
-CreateToggle(TabContentFrames["world"], "Custom View Distance (FOV)", function(v) 
-    WorldConfig.CustomView = v 
-    if not v and Camera then
-        Camera.FieldOfView = 70
-    end
-end) 
-CreateSlider(TabContentFrames["world"], "View Distance / FOV Value", 50, 120, 70, function(val) 
-    WorldConfig.ViewDistance = val
-    if WorldConfig.CustomView and Camera then
-        Camera.FieldOfView = val
-    end
-end) 
-
-CreateToggle(TabContentFrames["skill"], "Aimbot + FOV + Predict") 
-CreateSlider(TabContentFrames["skill"], "Aimbot FOV Size", 30, 300, 90, function() end) 
-CreateToggle(TabContentFrames["skill"], "Unlimited Ammo (999/999)") 
-CreateToggle(TabContentFrames["skill"], "Fast Vehicle") 
-CreateSlider(TabContentFrames["skill"], "Vehicle Speed Value", 50, 300, 100, function() end) 
-
-local tpButton = Instance.new("TextButton", TabContentFrames["skill"]) 
+-- Tombol Teleport dipindah ke tab World
+local tpButton = Instance.new("TextButton", TabContentFrames["world"]) 
 tpButton.Size = UDim2.new(1, 0, 0, 36) 
 tpButton.BackgroundColor3 = Color3.fromRGB(140, 0, 255) 
 tpButton.Text = "Teleport to Random Player" 
@@ -469,9 +449,34 @@ tpButton.TextSize = 11.5
 tpButton.Font = Enum.Font.GothamBold 
 Instance.new("UICorner", tpButton).CornerRadius = UDim.new(0, 8) 
 
--- MULTI JUMP MENGGUNAKAN UserInputService.JumpRequest & Humanoid.StateChanged
+tpButton.MouseButton1Click:Connect(function()
+    local char = LocalPlayer.Character
+    local hrp = char and char:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
+    
+    local otherPlayers = Players:GetPlayers()
+    local validTargets = {}
+    for _, p in ipairs(otherPlayers) do
+        if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+            table.insert(validTargets, p.Character.HumanoidRootPart)
+        end
+    end
+    
+    if #validTargets > 0 then
+        local targetHRP = validTargets[math.random(1, #validTargets)]
+        hrp.CFrame = targetHRP.CFrame + Vector3.new(0, 3, 0)
+    end
+end)
+
+CreateToggle(TabContentFrames["skill"], "Aimbot + FOV + Predict") 
+CreateSlider(TabContentFrames["skill"], "Aimbot FOV Size", 30, 300, 90, function() end) 
+CreateToggle(TabContentFrames["skill"], "Unlimited Ammo (999/999)") 
+CreateToggle(TabContentFrames["skill"], "Fast Vehicle") 
+CreateSlider(TabContentFrames["skill"], "Vehicle Speed Value", 50, 300, 100, function() end) 
+
+-- MULTI JUMP EFEKTIF: Menggunakan UserInputService.JumpRequest digabung pemantauan state lompat & tap beruntun
 local multiJumpCount = 0
-local isAirborne = false
+local canMultiJump = false
 local lastJumpTick = 0
 
 local function HookCharacterMultiJump(char)
@@ -480,50 +485,42 @@ local function HookCharacterMultiJump(char)
     if not hum or not hrp then return end
 
     multiJumpCount = 0
-    isAirborne = false
+    canMultiJump = false
 
-    -- Pantau status Humanoid untuk mendeteksi pendaratan di tanah (Reset)
     hum.StateChanged:Connect(function(_, newState)
         if newState == Enum.HumanoidStateType.Running or newState == Enum.HumanoidStateType.Landed then
             multiJumpCount = 0
-            isAirborne = false
-        elseif newState == Enum.HumanoidStateType.Freefall or newState == Enum.HumanoidStateType.Jumping then
-            isAirborne = true
+            canMultiJump = false
+        elseif newState == Enum.HumanoidStateType.Freefall then
+            canMultiJump = true
         end
     end)
 
-    -- Tangkap permintaan lompat via UserInputService.JumpRequest (Mendukung tombol lompat bawaan game / UI Android)
-    local jumpConnection
-    jumpConnection = UserInputService.JumpRequest:Connect(function()
+    local jumpConn = UserInputService.JumpRequest:Connect(function()
         if not PlayerConfig.MultiJump then return end
         
         local currentTick = tick()
-        -- Debounce agar tidak trigger terlalu cepat dalam 1 ketukan
-        if currentTick - lastJumpTick < 0.12 then return end
+        if currentTick - lastJumpTick < 0.15 then return end
         
-        local currentState = hum:GetState()
-        -- Eksekusi tambahan lompat saat pemain berada di udara (Freefall atau sudah melompat)
-        if isAirborne or currentState == Enum.HumanoidStateType.Freefall or currentState == Enum.HumanoidStateType.Jumping then
+        local state = hum:GetState()
+        if state == Enum.HumanoidStateType.Freefall or state == Enum.HumanoidStateType.Jumping or canMultiJump then
             multiJumpCount = multiJumpCount + 1
             lastJumpTick = currentTick
             
-            -- Makin sering ditap, dorongan vertikal semakin tinggi secara progresif
-            local boostForce = 50 + (multiJumpCount * 22)
+            -- Dorongan vertikal bertahap makin tinggi setiap kali ditap di udara
+            local boostPower = 50 + (multiJumpCount * 20)
+            hrp.Velocity = Vector3.new(hrp.Velocity.X, boostPower, hrp.Velocity.Z)
+            hrp.AssemblyLinearVelocity = Vector3.new(hrp.AssemblyLinearVelocity.X, boostPower, hrp.AssemblyLinearVelocity.Z)
             
-            hrp.Velocity = Vector3.new(hrp.Velocity.X, boostForce, hrp.Velocity.Z)
-            hrp.AssemblyLinearVelocity = Vector3.new(hrp.AssemblyLinearVelocity.X, boostForce, hrp.AssemblyLinearVelocity.Z)
-            
-            -- Paksa state kembali ke Jumping agar animasi lompat Roblox tetap mulus
             pcall(function()
                 hum:ChangeState(Enum.HumanoidStateType.Jumping)
             end)
         end
     end)
 
-    -- Bersihkan koneksi saat karakter mati/respawn
     char.AncestryChanged:Connect(function(_, parent)
-        if not parent and jumpConnection then
-            jumpConnection:Disconnect()
+        if not parent and jumpConn then
+            jumpConn:Disconnect()
         end
     end)
 end
@@ -557,10 +554,6 @@ RunService.Stepped:Connect(function()
         Lighting.Brightness = 4
         Lighting.Ambient = Color3.fromRGB(240, 240, 240)
         Lighting.OutdoorAmbient = Color3.fromRGB(240, 240, 240)
-    end
-
-    if WorldConfig.CustomView and Camera then
-        Camera.FieldOfView = WorldConfig.ViewDistance
     end
 
     if PlayerConfig.WallHack then
