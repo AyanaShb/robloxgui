@@ -1,4 +1,4 @@
--- v1.0.15
+-- v1.0.16
 -- ===================================================================== -- ULTIMATE ANDROID D3D MENU: FISHING EDITION v8 -- ===================================================================== 
 local Players = game:GetService("Players") 
 local UserInputService = game:GetService("UserInputService") 
@@ -53,7 +53,25 @@ local WorldConfig = {
     TeleportButton = false
 }
 
+local SilentAimConfig = {
+    Enabled = false,
+    FOVSize = 120
+}
+
 local ESPCache = {}
+
+-- SILENT AIM DRAWINGS (FOV CIRCLE & TARGET LINE)
+local FOVCircle = Drawing.new("Circle")
+FOVCircle.Visible = false
+FOVCircle.Filled = false
+FOVCircle.Thickness = 1.5
+FOVCircle.Color = Color3.fromRGB(255, 0, 0)
+FOVCircle.NumSides = 64
+
+local TargetLine = Drawing.new("Line")
+TargetLine.Visible = false
+TargetLine.Thickness = 1.5
+TargetLine.Color = Color3.fromRGB(255, 0, 0)
 
 -- FLOATING BUTTON UI (MAIN MENU)
 local FloatButton = Instance.new("TextButton") 
@@ -481,18 +499,21 @@ CreateToggle(TabContentFrames["world"], "Daylight Mode (Indoor & Outdoor)", func
     end
 end) 
 
--- Toggle untuk memunculkan/menyembunyikan Floating Icon Teleport
 CreateToggle(TabContentFrames["world"], "Floating Teleport Button", function(v)
     WorldConfig.TeleportButton = v
     TeleportFloatBtn.Visible = v
 end)
 
--- SKILL TAB CONTROLS (Tanpa View Distance)
-CreateToggle(TabContentFrames["skill"], "Aimbot + FOV + Predict") 
-CreateSlider(TabContentFrames["skill"], "Aimbot FOV Size", 30, 300, 90, function() end) 
-CreateToggle(TabContentFrames["skill"], "Unlimited Ammo (999/999)") 
-CreateToggle(TabContentFrames["skill"], "Fast Vehicle") 
-CreateSlider(TabContentFrames["skill"], "Vehicle Speed Value", 50, 300, 100, function() end) 
+-- SKILL TAB: SILENT AIM CONTROLS
+CreateToggle(TabContentFrames["skill"], "Silent Aim", function(v)
+    SilentAimConfig.Enabled = v
+    FOVCircle.Visible = v
+    TargetLine.Visible = v
+end)
+
+CreateSlider(TabContentFrames["skill"], "Silent Aim FOV Size", 50, 300, 120, function(val)
+    SilentAimConfig.FOVSize = val
+end)
 
 -- MULTI JUMP TAP-TAP (FIXED LOGIC)
 UserInputService.JumpRequest:Connect(function()
@@ -510,6 +531,90 @@ UserInputService.JumpRequest:Connect(function()
         local jumpPower = (hum.UseJumpPower and hum.JumpPower) or (hum.JumpHeight and math.sqrt(hum.JumpHeight * 2 * Workspace.Gravity)) or 50
         hrp.Velocity = Vector3.new(hrp.Velocity.X, jumpPower, hrp.Velocity.Z)
         hrp.AssemblyLinearVelocity = Vector3.new(hrp.AssemblyLinearVelocity.X, jumpPower, hrp.AssemblyLinearVelocity.Z)
+    end
+end)
+
+-- HELPER: WALL CHECK (VISIBLE)
+local function IsVisible(targetPart)
+    local char = LocalPlayer.Character
+    local hrp = char and char:FindFirstChild("HumanoidRootPart")
+    if not hrp then return false end
+
+    local origin = hrp.Position
+    local direction = targetPart.Position - origin
+    local raycastParams = RaycastParams.new()
+    raycastParams.FilterType = Enum.RaycastFilterType.Exclude
+    raycastParams.FilterDescendantsInstances = {char}
+    raycastParams.IgnoreWater = true
+
+    local result = Workspace:Raycast(origin, direction, raycastParams)
+    if not result then
+        return true
+    end
+    -- Cek apakah tembus ke target atau bagian tubuh target
+    if result.Instance:IsDescendantOf(targetPart.Parent) then
+        return true
+    end
+    return false
+end
+
+-- HELPER: MENDAPATKAN TARGET SILENT AIM TERDEKAT DENGAN CROSSHAIR
+local function GetClosestSilentAimTarget()
+    local screenCenter = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
+    local closestTarget = nil
+    local shortestDistance = SilentAimConfig.FOVSize
+
+    for _, player in ipairs(Players:GetPlayers()) do
+        -- Team Check
+        if player ~= LocalPlayer and (not player.Team or player.Team ~= LocalPlayer.Team) then
+            local char = player.Character
+            local head = char and char:FindFirstChild("Head")
+            local hum = char and char:FindFirstChildOfClass("Humanoid")
+
+            if head and hum and hum.Health > 0 then
+                -- Wall Check (Visible)
+                if IsVisible(head) then
+                    local screenPos, onScreen = Camera:WorldToViewportPoint(head.Position)
+                    if onScreen then
+                        local screenPos2D = Vector2.new(screenPos.X, screenPos.Y)
+                        local distToCenter = (screenPos2D - screenCenter).Magnitude
+                        if distToCenter <= shortestDistance then
+                            shortestDistance = distToCenter
+                            closestTarget = head
+                        end
+                    end
+                end
+            end
+        end
+    end
+
+    return closestTarget
+end
+
+-- TRIGGER TAP LAYAR RANDOM (DETEKSI SENTUHAN TANPA GESER/MOVE)
+local lastTouchPos = nil
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if not SilentAimConfig.Enabled then return end
+    if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
+        lastTouchPos = input.Position
+    end
+end)
+
+UserInputService.InputEnded:Connect(function(input, gameProcessed)
+    if not SilentAimConfig.Enabled then return end
+    if (input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1) and lastTouchPos then
+        local delta = (input.Position - lastTouchPos).Magnitude
+        if delta < 15 then -- Ambang batas dianggap Tap Murni (bukan swipe/geser)
+            local targetHead = GetClosestSilentAimTarget()
+            if targetHead then
+                -- Trigger Tembak/Aksi Otomatis ke Target saat Tap Layar
+                pcall(function()
+                    firetouchinterest(LocalPlayer.Character.HumanoidRootPart, targetHead, 0)
+                    firetouchinterest(LocalPlayer.Character.HumanoidRootPart, targetHead, 1)
+                end)
+            end
+        end
+        lastTouchPos = nil
     end
 end)
 
@@ -573,8 +678,44 @@ RunService.Stepped:Connect(function()
     end
 end)
 
--- RENDER LOOP FOR VISUAL UPDATES
+-- RENDER LOOP FOR VISUAL UPDATES & SILENT AIM RENDERING
 RunService.RenderStepped:Connect(function()
+    -- Update FOV Circle & Silent Aim Logic
+    if SilentAimConfig.Enabled then
+        local screenCenter = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
+        FOVCircle.Position = screenCenter
+        FOVCircle.Radius = SilentAimConfig.FOVSize
+        FOVCircle.Visible = true
+
+        local targetHead = GetClosestSilentAimTarget()
+        if targetHead then
+            local screenPos, onScreen = Camera:WorldToViewportPoint(targetHead.Position)
+            if onScreen then
+                -- Draw Line dari tengah (crosshair) ke target terdekat
+                TargetLine.From = screenCenter
+                TargetLine.To = Vector2.new(screenPos.X, screenPos.Y)
+                TargetLine.Visible = true
+
+                -- Auto Fire ketika crosshair mengenai musuh dalam jangkauan FOV
+                local distToCenter = (Vector2.new(screenPos.X, screenPos.Y) - screenCenter).Magnitude
+                if distToCenter <= (SilentAimConfig.FOVSize * 0.75) then
+                    pcall(function()
+                        firetouchinterest(LocalPlayer.Character.HumanoidRootPart, targetHead, 0)
+                        firetouchinterest(LocalPlayer.Character.HumanoidRootPart, targetHead, 1)
+                    end)
+                end
+            else
+                TargetLine.Visible = false
+            end
+        else
+            TargetLine.Visible = false
+        end
+    else
+        FOVCircle.Visible = false
+        TargetLine.Visible = false
+    end
+
+    -- ESP Render Loop
     for player, esp in pairs(ESPCache) do
         local char = player.Character
         local hrp = char and char:FindFirstChild("HumanoidRootPart")
