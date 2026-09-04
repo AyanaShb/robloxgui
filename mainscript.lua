@@ -1,4 +1,4 @@
--- v1.0.25 - FIXED GUI VISIBILITY & ENHANCED SILENT AIM
+-- v1.0.26 - FULL FEATURE MENU + PREDICTION, NO RECOIL & FAST FIRE
 local Players = game:GetService("Players") 
 local UserInputService = game:GetService("UserInputService") 
 local Lighting = game:GetService("Lighting") 
@@ -9,11 +9,10 @@ local Camera = Workspace.CurrentCamera
 local LocalPlayer = Players.LocalPlayer 
 
 local ScreenGui = Instance.new("ScreenGui") 
-ScreenGui.Name = "D3D_Ultimate_Android_Fix" 
+ScreenGui.Name = "D3D_Ultimate_Android_Full" 
 ScreenGui.ResetOnSpawn = false 
 ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
--- PERBAIKAN UTAMA: Safe Parent Routing untuk Android Executor
 pcall(function()
     if syn and syn.protect_gui then 
         syn.protect_gui(ScreenGui) 
@@ -35,8 +34,6 @@ local VisualsConfig = {
     ESP_Name = false,
     ESP_Distance = false,
     ESP_Gender = false,
-    ESP_Item = false,
-    ItemRadius = 50,
     ChamsGlow = false,
     ChamsColor = Color3.fromRGB(255, 0, 128)
 }
@@ -61,28 +58,21 @@ local SilentAimConfig = {
     NoReload = false,
     InfiniteAmmo = false,
     Prediction = true,
-    PredictionFactor = 0.16, -- Ditingkatkan sedikit agar lebih pas saat musuh lari
-    NoRecoil = true,        -- Default aktif sesuai permintaan
-    FastFire = true         -- Default aktif agar fire speed bertambah
+    PredictionFactor = 0.16,
+    NoRecoil = true,
+    FastFire = true
 }
 
 local ESPCache = {}
 local isFiring = false
 
--- SAFE DRAWING WRAPPER (Mencegah Crash jika Executor tidak support Drawing)
 local function SafeDraw(drawType)
     local success, obj = pcall(function()
         return Drawing.new(drawType)
     end)
-    if success and obj then
-        return obj
-    else
-        -- Dummy object pengaman jika Drawing API tidak ada
-        return { Visible = false, Remove = function() end }
-    end
+    if success and obj then return obj else return { Visible = false, Remove = function() end } end
 end
 
--- SILENT AIM DRAWINGS
 local FOVCircle = SafeDraw("Circle")
 FOVCircle.Visible = false
 FOVCircle.Filled = false
@@ -118,7 +108,7 @@ FloatGradient.Color = ColorSequence.new({
     ColorSequenceKeypoint.new(1, Color3.fromRGB(0, 240, 255)) 
 }) 
 
--- FLOATING BUTTON TELEPORT KHUSUS
+-- FLOATING BUTTON TELEPORT
 local TeleportFloatBtn = Instance.new("TextButton")
 TeleportFloatBtn.Size = UDim2.new(0, 52, 0, 52)
 TeleportFloatBtn.Position = UDim2.new(0, 20, 0, 170)
@@ -142,20 +132,17 @@ local function DoTeleport()
     local hrp = char and char:FindFirstChild("HumanoidRootPart")
     if not hrp then return end
     
-    local otherPlayers = Players:GetPlayers()
     local validTargets = {}
-    for _, p in ipairs(otherPlayers) do
+    for _, p in ipairs(Players:GetPlayers()) do
         if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
             table.insert(validTargets, p.Character.HumanoidRootPart)
         end
     end
-    
     if #validTargets > 0 then
         local targetHRP = validTargets[math.random(1, #validTargets)]
         hrp.CFrame = targetHRP.CFrame + Vector3.new(0, 3, 0)
     end
 end
-
 TeleportFloatBtn.MouseButton1Click:Connect(DoTeleport)
 
 -- MAIN MENU FRAME 
@@ -242,13 +229,49 @@ for i, tabName in ipairs(tabs) do
         end 
         content.Visible = true 
         for _, b in ipairs(TabContainer:GetChildren()) do 
-            if b:IsA("TextButton") then 
-                b.TextColor3 = Color3.fromRGB(110, 110, 140) 
-            end 
+            if b:IsA("TextButton") then b.TextColor3 = Color3.fromRGB(110, 110, 140) end 
         end 
         btn.TextColor3 = Color3.fromRGB(255, 255, 255) 
     end) 
 end 
+
+-- ESP CACHE CREATION
+local function CreatePlayerESP(player)
+    if player == LocalPlayer then return end
+    ESPCache[player] = {
+        Line = SafeDraw("Line"),
+        Name = SafeDraw("Text"),
+        Distance = SafeDraw("Text"),
+        Gender = SafeDraw("Text")
+    }
+end
+
+for _, p in ipairs(Players:GetPlayers()) do CreatePlayerESP(p) end
+Players.PlayerAdded:Connect(CreatePlayerESP)
+Players.PlayerRemoving:Connect(function(player)
+    if ESPCache[player] then
+        for _, obj in pairs(ESPCache[player]) do pcall(function() obj:Remove() end) end
+        ESPCache[player] = nil
+    end
+end)
+
+local function UpdateChams()
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer and player.Character then
+            local highlight = player.Character:FindFirstChild("D3D_ChamsHighlight")
+            if VisualsConfig.ChamsGlow then
+                if not highlight then
+                    highlight = Instance.new("Highlight", player.Character)
+                    highlight.Name = "D3D_ChamsHighlight"
+                end
+                highlight.FillColor = VisualsConfig.ChamsColor
+                highlight.FillTransparency = 0.4
+            elseif highlight then
+                highlight:Destroy()
+            end
+        end
+    end
+end
 
 -- UI BUILDERS
 local function CreateToggle(parent, text, defaultState, callback) 
@@ -335,38 +358,26 @@ local function CreateSlider(parent, text, minVal, maxVal, defaultVal, callback)
 
     sliderBg.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-            dragging = true
-            updateInput(input)
+            dragging = true; updateInput(input)
         end
     end)
-
     UserInputService.InputEnded:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-            dragging = false
-        end
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then dragging = false end
     end)
-
     UserInputService.InputChanged:Connect(function(input)
-        if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
-            updateInput(input)
-        end
+        if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then updateInput(input) end
     end)
-
     frame.Parent = parent 
 end 
 
 -- POPULATE TABS
-CreateToggle(TabContentFrames["Visual"], "ESP Line (Top Center)", false, function(v) VisualsConfig.ESP_Line = v end) 
+CreateToggle(TabContentFrames["Visual"], "ESP Line", false, function(v) VisualsConfig.ESP_Line = v end) 
 CreateToggle(TabContentFrames["Visual"], "ESP Name", false, function(v) VisualsConfig.ESP_Name = v end) 
 CreateToggle(TabContentFrames["Visual"], "ESP Distance", false, function(v) VisualsConfig.ESP_Distance = v end) 
-CreateToggle(TabContentFrames["Visual"], "ESP Gender [Cowo/Cewe]", false, function(v) VisualsConfig.ESP_Gender = v end) 
+CreateToggle(TabContentFrames["Visual"], "ESP Gender", false, function(v) VisualsConfig.ESP_Gender = v end) 
+CreateToggle(TabContentFrames["Visual"], "Chams Glow", false, function(v) VisualsConfig.ChamsGlow = v; UpdateChams() end)
 
-CreateToggle(TabContentFrames["Player"], "Speed Run", false, function(v) 
-    PlayerConfig.SpeedHack = v 
-    if not v and LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
-        LocalPlayer.Character:FindFirstChildOfClass("Humanoid").WalkSpeed = 16
-    end
-end) 
+CreateToggle(TabContentFrames["Player"], "Speed Run", false, function(v) PlayerConfig.SpeedHack = v end) 
 CreateSlider(TabContentFrames["Player"], "Speed Value", 16, 200, 16, function(val) PlayerConfig.SpeedValue = val end) 
 CreateToggle(TabContentFrames["Player"], "Fly (Hold Jump)", false, function(v) PlayerConfig.Fly = v end) 
 CreateToggle(TabContentFrames["Player"], "Multi Jump", false, function(v) PlayerConfig.MultiJump = v end) 
@@ -374,113 +385,52 @@ CreateToggle(TabContentFrames["Player"], "Wall Hack", false, function(v) PlayerC
 
 CreateToggle(TabContentFrames["world"], "Night Mode", false, function(v) WorldConfig.NightMode = v end) 
 CreateToggle(TabContentFrames["world"], "Daylight Mode", false, function(v) WorldConfig.DaylightMode = v end) 
-CreateToggle(TabContentFrames["world"], "Floating Teleport Button", false, function(v)
-    WorldConfig.TeleportButton = v
-    TeleportFloatBtn.Visible = v
-end)
+CreateToggle(TabContentFrames["world"], "Floating Teleport Button", false, function(v) TeleportFloatBtn.Visible = v end)
 
-CreateToggle(TabContentFrames["skill"], "Silent Aim", false, function(v)
-    SilentAimConfig.Enabled = v
-    FOVCircle.Visible = v
-    TargetLine.Visible = v
-end)
+CreateToggle(TabContentFrames["skill"], "Silent Aim", false, function(v) SilentAimConfig.Enabled = v; FOVCircle.Visible = v; TargetLine.Visible = v end)
+CreateSlider(TabContentFrames["skill"], "FOV Size", 50, 300, 120, function(val) SilentAimConfig.FOVSize = val end)
+CreateToggle(TabContentFrames["skill"], "Prediction Movement", true, function(v) SilentAimConfig.Prediction = v end)
+CreateToggle(TabContentFrames["skill"], "No Recoil", true, function(v) SilentAimConfig.NoRecoil = v end)
+CreateToggle(TabContentFrames["skill"], "Fast Fire Speed", true, function(v) SilentAimConfig.FastFire = v end)
+CreateToggle(TabContentFrames["skill"], "No Reload", false, function(v) SilentAimConfig.NoReload = v end)
+CreateToggle(TabContentFrames["skill"], "Unlimited Ammo", false, function(v) SilentAimConfig.InfiniteAmmo = v end)
 
-CreateSlider(TabContentFrames["skill"], "Silent Aim FOV Size", 50, 300, 120, function(val)
-    SilentAimConfig.FOVSize = val
-end)
-
-CreateToggle(TabContentFrames["skill"], "Prediction Movement", true, function(v)
-    SilentAimConfig.Prediction = v
-end)
-
-CreateToggle(TabContentFrames["skill"], "No Recoil", true, function(v)
-    SilentAimConfig.NoRecoil = v
-end)
-
-CreateToggle(TabContentFrames["skill"], "Fast Fire / Rapid Speed", true, function(v)
-    SilentAimConfig.FastFire = v
-end)
-
-CreateToggle(TabContentFrames["skill"], "No Reload", false, function(v)
-    SilentAimConfig.NoReload = v
-end)
-
-CreateToggle(TabContentFrames["skill"], "Unlimited Ammo", false, function(v)
-    SilentAimConfig.InfiniteAmmo = v
-end)
-
--- MULTI JUMP
+-- LOGIC & SERVICES
 UserInputService.JumpRequest:Connect(function()
     if not PlayerConfig.MultiJump then return end
-    local char = LocalPlayer.Character
-    if not char then return end
-    local hum = char:FindFirstChildOfClass("Humanoid")
-    if hum then
-        hum:ChangeState(Enum.HumanoidStateType.Jumping)
-    end
+    local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+    if hum then hum:ChangeState(Enum.HumanoidStateType.Jumping) end
 end)
 
 local function IsVisible(targetPart)
     local char = LocalPlayer.Character
     local hrp = char and char:FindFirstChild("HumanoidRootPart")
     if not hrp then return false end
-    local origin = hrp.Position
-    local direction = targetPart.Position - origin
-    local raycastParams = RaycastParams.new()
-    raycastParams.FilterType = Enum.RaycastFilterType.Exclude
-    raycastParams.FilterDescendantsInstances = {char}
-    raycastParams.IgnoreWater = true
-    local result = Workspace:Raycast(origin, direction, raycastParams)
-    if not result then return true end
-    if result.Instance:IsDescendantOf(targetPart.Parent) then return true end
+    local result = Workspace:Raycast(hrp.Position, targetPart.Position - hrp.Position, RaycastParams.new({FilterType = Enum.RaycastFilterType.Exclude, FilterDescendantsInstances = {char}, IgnoreWater = true}))
+    if not result or result.Instance:IsDescendantOf(targetPart.Parent) then return true end
     return false
-end
-
--- LOGIKA PREDIKSI & AUTO NO RECOIL / FIRE SPEED
-local function GetPredictedTargetPosition(head, hrp)
-    if not head then return nil end
-    local targetPos = head.Position
-    if SilentAimConfig.Prediction and hrp then
-        local velocity = hrp.AssemblyLinearVelocity or hrp.Velocity
-        if velocity then
-            targetPos = targetPos + (velocity * SilentAimConfig.PredictionFactor)
-        end
-    end
-    return targetPos
 end
 
 local function GetBestSilentAimTarget()
     local screenCenter = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
-    local bestTarget = nil
-    local bestScore = math.huge
-    local char = LocalPlayer.Character
-    local hrp = char and char:FindFirstChild("HumanoidRootPart")
-    if not hrp then return nil end
+    local bestTarget, bestScore = nil, math.huge
+    local hrpLocal = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+    if not hrpLocal then return nil end
 
     for _, player in ipairs(Players:GetPlayers()) do
-        if player ~= LocalPlayer and (not player.Team or player.Team ~= LocalPlayer.Team) then
+        if player ~= LocalPlayer then
             local pChar = player.Character
             local head = pChar and pChar:FindFirstChild("Head")
             local pHrp = pChar and pChar:FindFirstChild("HumanoidRootPart")
             local hum = pChar and pChar:FindFirstChildOfClass("Humanoid")
-
-            if head and pHrp and hum and hum.Health > 0 then
-                if IsVisible(head) then
-                    local predictedPos = GetPredictedTargetPosition(head, pHrp)
-                    local screenPos, onScreen = Camera:WorldToViewportPoint(predictedPos)
-                    if onScreen then
-                        local screenPos2D = Vector2.new(screenPos.X, screenPos.Y)
-                        local distToCrosshair = (screenPos2D - screenCenter).Magnitude
-                        
-                        if distToCrosshair <= SilentAimConfig.FOVSize then
-                            local distToPlayer = (hrp.Position - head.Position).Magnitude
-                            local score = distToCrosshair + (distToPlayer * 0.2)
-                            
-                            if score < bestScore then
-                                bestScore = score
-                                bestTarget = {Head = head, PredictedPos = predictedPos}
-                            end
-                        end
+            if head and pHrp and hum and hum.Health > 0 and IsVisible(head) then
+                local predictedPos = head.Position + ((pHrp.AssemblyLinearVelocity or pHrp.Velocity) * SilentAimConfig.PredictionFactor)
+                local screenPos, onScreen = Camera:WorldToViewportPoint(predictedPos)
+                if onScreen then
+                    local distToCrosshair = (Vector2.new(screenPos.X, screenPos.Y) - screenCenter).Magnitude
+                    if distToCrosshair <= SilentAimConfig.FOVSize and distToCrosshair < bestScore then
+                        bestScore = distToCrosshair
+                        bestTarget = {Head = head, PredictedPos = predictedPos}
                     end
                 end
             end
@@ -490,40 +440,28 @@ local function GetBestSilentAimTarget()
 end
 
 UserInputService.InputBegan:Connect(function(input)
-    if not SilentAimConfig.Enabled then return end
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        isFiring = true
-    end
+    if SilentAimConfig.Enabled and (input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch) then isFiring = true end
 end)
-
 UserInputService.InputEnded:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        isFiring = false
-    end
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then isFiring = false end
 end)
 
 RunService.Stepped:Connect(function()
     pcall(function()
         local char = LocalPlayer.Character
         if not char then return end
-        
+        local hum = char:FindFirstChildOfClass("Humanoid")
+        if hum and PlayerConfig.SpeedHack then hum.WalkSpeed = PlayerConfig.SpeedValue end
+
         for _, tool in ipairs(char:GetChildren()) do
             if tool:IsA("Tool") then
                 for _, obj in ipairs(tool:GetDescendants()) do
                     if obj:IsA("NumberValue") or obj:IsA("IntValue") then
                         local n = obj.Name:lower()
-                        if SilentAimConfig.InfiniteAmmo and (n:find("ammo") or n:find("clip") or n:find("mag")) then
-                            obj.Value = 9999
-                        end
-                        if SilentAimConfig.NoReload and (n:find("reload") or n:find("cooldown")) then
-                            obj.Value = 0
-                        end
-                        if SilentAimConfig.NoRecoil and (n:find("recoil") or n:find("spread") or n:find("kick")) then
-                            obj.Value = 0
-                        end
-                        if SilentAimConfig.FastFire and (n:find("firerate") or n:find("delay") or n:find("rate")) then
-                            obj.Value = 0.01
-                        end
+                        if SilentAimConfig.InfiniteAmmo and n:find("ammo") then obj.Value = 9999 end
+                        if SilentAimConfig.NoReload and n:find("reload") then obj.Value = 0 end
+                        if SilentAimConfig.NoRecoil and (n:find("recoil") or n:find("spread")) then obj.Value = 0 end
+                        if SilentAimConfig.FastFire and (n:find("firerate") or n:find("rate")) then obj.Value = 0.01 end
                     end
                 end
             end
@@ -533,28 +471,20 @@ end)
 
 RunService.RenderStepped:Connect(function()
     if SilentAimConfig.Enabled then
-        local screenCenter = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
-        FOVCircle.Position = screenCenter
+        FOVCircle.Position = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
         FOVCircle.Radius = SilentAimConfig.FOVSize
         FOVCircle.Visible = true
 
-        local targetData = GetBestSilentAimTarget()
-        if targetData and targetData.Head then
-            local screenPos, onScreen = Camera:WorldToViewportPoint(targetData.PredictedPos)
+        local target = GetBestSilentAimTarget()
+        if target and target.Head then
+            local screenPos, onScreen = Camera:WorldToViewportPoint(target.PredictedPos)
             if onScreen then
-                TargetLine.From = screenCenter
+                TargetLine.From = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
                 TargetLine.To = Vector2.new(screenPos.X, screenPos.Y)
                 TargetLine.Visible = true
-                
-                if isFiring then
-                    Camera.CFrame = CFrame.new(Camera.CFrame.Position, targetData.PredictedPos)
-                end
-            else
-                TargetLine.Visible = false
-            end
-        else
-            TargetLine.Visible = false
-        end
+                if isFiring then Camera.CFrame = CFrame.new(Camera.CFrame.Position, target.PredictedPos) end
+            else TargetLine.Visible = false end
+        else TargetLine.Visible = false end
     else
         FOVCircle.Visible = false
         TargetLine.Visible = false
