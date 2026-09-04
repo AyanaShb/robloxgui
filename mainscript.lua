@@ -1,5 +1,5 @@
--- v1.0.17
--- ===================================================================== -- ULTIMATE ANDROID D3D MENU: FISHING EDITION v8 -- ===================================================================== 
+-- v1.0.18
+-- ===================================================================== -- ULTIMATE ANDROID D3D MENU: FISHING EDITION v9 -- ===================================================================== 
 local Players = game:GetService("Players") 
 local UserInputService = game:GetService("UserInputService") 
 local Lighting = game:GetService("Lighting") 
@@ -8,24 +8,28 @@ local RunService = game:GetService("RunService")
 local Camera = Workspace.CurrentCamera 
 local LocalPlayer = Players.LocalPlayer 
 
+-- FIX UTAMA: PENGAMANAN PARENTING GUI UNTUK ANDROID EXECUTOR
 local ScreenGui = Instance.new("ScreenGui") 
 ScreenGui.Name = "D3D_Ultimate_Android" 
 ScreenGui.ResetOnSpawn = false 
+ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
-pcall(function() 
+local success, err = pcall(function()
     if syn and syn.protect_gui then 
         syn.protect_gui(ScreenGui) 
         ScreenGui.Parent = game.CoreGui 
     elseif gethui then 
         ScreenGui.Parent = gethui() 
-    else 
-        ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui") 
-    end 
-end) 
+    else
+        ScreenGui.Parent = game:GetService("CoreGui")
+    end
+end)
 
-if not ScreenGui.Parent then 
-    ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui") 
-end 
+if not success or not ScreenGui.Parent then
+    pcall(function()
+        ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+    end)
+end
 
 -- CONFIG & STORAGE
 local VisualsConfig = {
@@ -115,7 +119,6 @@ local TpStroke = Instance.new("UIStroke", TeleportFloatBtn)
 TpStroke.Thickness = 2
 TpStroke.Color = Color3.fromRGB(255, 255, 255)
 
--- Fungsi Eksekusi Teleport Acak
 local function DoTeleport()
     local char = LocalPlayer.Character
     local hrp = char and char:FindFirstChild("HumanoidRootPart")
@@ -229,7 +232,7 @@ for i, tabName in ipairs(tabs) do
     end) 
 end 
 
--- ESP DRAWING SETUP
+-- ESP SETUP
 local function CreatePlayerESP(player)
     if player == LocalPlayer then return end
     local espData = {
@@ -451,7 +454,6 @@ CreateColorPicker(TabContentFrames["Visual"], "Chams Circle Color Picker", funct
     UpdateChams() 
 end) 
 
--- PLAYER TAB CONTROLS
 CreateToggle(TabContentFrames["Player"], "Speed Run", function(v) 
     PlayerConfig.SpeedHack = v 
     if not v and LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
@@ -460,25 +462,16 @@ CreateToggle(TabContentFrames["Player"], "Speed Run", function(v)
 end) 
 CreateSlider(TabContentFrames["Player"], "Speed Value", 16, 200, 16, function(val) PlayerConfig.SpeedValue = val end) 
 CreateToggle(TabContentFrames["Player"], "Fly (Hold Jump)", function(v) PlayerConfig.Fly = v end) 
-
--- Multi Jump Tap-Tap
-CreateToggle(TabContentFrames["Player"], "Multi Jump", function(v) 
-    PlayerConfig.MultiJump = v 
-end)
-
--- Wall Hack (Noclip)
+CreateToggle(TabContentFrames["Player"], "Multi Jump", function(v) PlayerConfig.MultiJump = v end) 
 CreateToggle(TabContentFrames["Player"], "Wall Hack", function(v) 
     PlayerConfig.WallHack = v 
     if not v and LocalPlayer.Character then
         for _, part in ipairs(LocalPlayer.Character:GetDescendants()) do
-            if part:IsA("BasePart") then
-                part.CanCollide = true
-            end
+            if part:IsA("BasePart") then part.CanCollide = true end
         end
     end
 end) 
 
--- WORLD TAB CONTROLS
 CreateToggle(TabContentFrames["world"], "Night Mode (Outdoor Dim / Indoor Dark)", function(v) 
     WorldConfig.NightMode = v
     if not v then
@@ -504,7 +497,6 @@ CreateToggle(TabContentFrames["world"], "Floating Teleport Button", function(v)
     TeleportFloatBtn.Visible = v
 end)
 
--- SKILL TAB: SILENT AIM CONTROLS
 CreateToggle(TabContentFrames["skill"], "Silent Aim", function(v)
     SilentAimConfig.Enabled = v
     FOVCircle.Visible = v
@@ -515,40 +507,33 @@ CreateSlider(TabContentFrames["skill"], "Silent Aim FOV Size", 50, 300, 120, fun
     SilentAimConfig.FOVSize = val
 end)
 
--- MULTI JUMP TAP-TAP (FIXED LOGIC STABLE)
+-- MULTI JUMP
 UserInputService.JumpRequest:Connect(function()
     if not PlayerConfig.MultiJump then return end
-
     local char = LocalPlayer.Character
     if not char then return end
     local hum = char:FindFirstChildOfClass("Humanoid")
-    local hrp = char:FindFirstChild("HumanoidRootPart")
-
-    if hum and hrp then
+    if hum then
         hum:ChangeState(Enum.HumanoidStateType.Jumping)
     end
 end)
 
--- HELPER: WALL CHECK (VISIBLE)
 local function IsVisible(targetPart)
     local char = LocalPlayer.Character
     local hrp = char and char:FindFirstChild("HumanoidRootPart")
     if not hrp then return false end
-
     local origin = hrp.Position
     local direction = targetPart.Position - origin
     local raycastParams = RaycastParams.new()
     raycastParams.FilterType = Enum.RaycastFilterType.Exclude
     raycastParams.FilterDescendantsInstances = {char}
     raycastParams.IgnoreWater = true
-
     local result = Workspace:Raycast(origin, direction, raycastParams)
     if not result then return true end
     if result.Instance:IsDescendantOf(targetPart.Parent) then return true end
     return false
 end
 
--- HELPER: MENDAPATKAN TARGET SILENT AIM TERDEKAT DENGAN CROSSHAIR
 local function GetClosestSilentAimTarget()
     local screenCenter = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
     local closestTarget = nil
@@ -558,7 +543,7 @@ local function GetClosestSilentAimTarget()
         if player ~= LocalPlayer and (not player.Team or player.Team ~= LocalPlayer.Team) then
             local char = player.Character
             local head = char and char:FindFirstChild("Head")
-            local hum = char and char:FindFirstChild_OfClass and char:FindFirstChildOfClass("Humanoid") or char and char:FindFirstChildOfClass("Humanoid")
+            local hum = char and char:FindFirstChildOfClass("Humanoid")
 
             if head and hum and hum.Health > 0 then
                 if IsVisible(head) then
@@ -575,31 +560,27 @@ local function GetClosestSilentAimTarget()
             end
         end
     end
-
     return closestTarget
 end
 
--- HOOK NAMEALLCALL / SETTING CAMERA & TARGET DIRECTION UTK SILENT AIM
 local function FireSilentAimAtTarget()
     local targetHead = GetClosestSilentAimTarget()
     if targetHead then
         pcall(function()
-            -- Ubah orientasi kamera secara instan / snap kearah target agar peluru berbelok
             Camera.CFrame = CFrame.new(Camera.CFrame.Position, targetHead.Position)
         end)
     end
 end
 
--- TRIGGER TAP LAYAR RANDOM (DETEKSI SENTUHAN TANPA GESER/MOVE)
 local lastTouchPos = nil
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
+UserInputService.InputBegan:Connect(function(input)
     if not SilentAimConfig.Enabled then return end
     if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
         lastTouchPos = input.Position
     end
 end)
 
-UserInputService.InputEnded:Connect(function(input, gameProcessed)
+UserInputService.InputEnded:Connect(function(input)
     if not SilentAimConfig.Enabled then return end
     if (input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1) and lastTouchPos then
         local delta = (input.Position - lastTouchPos).Magnitude
@@ -610,17 +591,14 @@ UserInputService.InputEnded:Connect(function(input, gameProcessed)
     end
 end)
 
--- RUNSERVICE LOOP UNTUK PENGATURAN DUNIA & PLAYER ENGINE
 RunService.Stepped:Connect(function()
     local char = LocalPlayer.Character
     if not char then return end
     local hum = char:FindFirstChildOfClass("Humanoid")
     local hrp = char:FindFirstChild("HumanoidRootPart")
 
-    if hum then
-        if PlayerConfig.SpeedHack then
-            hum.WalkSpeed = PlayerConfig.SpeedValue
-        end
+    if hum and PlayerConfig.SpeedHack then
+        hum.WalkSpeed = PlayerConfig.SpeedValue
     end
 
     if WorldConfig.NightMode then
@@ -638,9 +616,7 @@ RunService.Stepped:Connect(function()
 
     if PlayerConfig.WallHack then
         for _, part in ipairs(char:GetDescendants()) do
-            if part:IsA("BasePart") then
-                part.CanCollide = false
-            end
+            if part:IsA("BasePart") then part.CanCollide = false end
         end
     end
 
@@ -659,10 +635,8 @@ RunService.Stepped:Connect(function()
             local ySpeed = isHoldingJump and 45 or 0
             if moveDir.Magnitude > 0 then
                 hrp.Velocity = Vector3.new(moveDir.Unit.X * 55, ySpeed, moveDir.Unit.Z * 55)
-                hrp.AssemblyLinearVelocity = Vector3.new(hrp.AssemblyLinearVelocity.X, ySpeed, hrp.AssemblyLinearVelocity.Z)
             else
                 hrp.Velocity = Vector3.new(0, ySpeed, 0)
-                hrp.AssemblyLinearVelocity = Vector3.new(0, ySpeed, 0)
             end
         else
             hrp.Velocity = Vector3.new(hrp.Velocity.X, -2, hrp.Velocity.Z)
@@ -670,7 +644,6 @@ RunService.Stepped:Connect(function()
     end
 end)
 
--- RENDER LOOP FOR VISUAL UPDATES & SILENT AIM RENDERING
 RunService.RenderStepped:Connect(function()
     if SilentAimConfig.Enabled then
         local screenCenter = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
@@ -701,7 +674,6 @@ RunService.RenderStepped:Connect(function()
         TargetLine.Visible = false
     end
 
-    -- ESP Render Loop
     for player, esp in pairs(ESPCache) do
         local char = player.Character
         local hrp = char and char:FindFirstChild("HumanoidRootPart")
