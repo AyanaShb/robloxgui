@@ -1,4 +1,4 @@
--- v1.0.22
+-- v1.0.23
 -- ===================================================================== -- ULTIMATE ANDROID D3D MENU: FISHING EDITION v10 -- ===================================================================== 
 local Players = game:GetService("Players") 
 local UserInputService = game:GetService("UserInputService") 
@@ -64,6 +64,7 @@ local SilentAimConfig = {
 }
 
 local ESPCache = {}
+local isFiring = false
 
 -- SILENT AIM DRAWINGS (FOV CIRCLE & TARGET LINE)
 local FOVCircle = Drawing.new("Circle")
@@ -582,45 +583,68 @@ local function GetBestSilentAimTarget()
     return bestTarget
 end
 
--- AMMO & NO RELOAD ENHANCED BYPASS (Mencari lewat PlayerGui, ReplicatedStorage, & Character Tool)
+-- DETEKSI HOLD / TEKAN TOMBOL TEMBAK
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if not SilentAimConfig.Enabled then return end
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        isFiring = true
+    end
+end)
+
+UserInputService.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        isFiring = false
+    end
+end)
+
+-- UNLIMITED AMMO & NO RELOAD BERBASIS TOOL YANG AKTIF (EQUIPPED) & ATTRIBUTE
 RunService.Stepped:Connect(function()
     if not SilentAimConfig.InfiniteAmmo and not SilentAimConfig.NoReload then return end
     
     pcall(function()
-        local backpack = LocalPlayer:FindFirstChildOfClass("Backpack")
         local char = LocalPlayer.Character
+        if not char then return end
         
-        -- Periksa semua container senjata yang mungkin menyimpan data peluru game
-        local containers = {char, backpack, LocalPlayer:FindFirstChild("PlayerGui")}
-        for _, container in ipairs(containers) do
-            if container then
-                for _, obj in ipairs(container:GetDescendants()) do
-                    if obj:IsA("IntValue") or obj:IsA("NumberValue") or obj:IsA("StringValue") then
+        for _, tool in ipairs(char:GetChildren()) do
+            if tool:IsA("Tool") then
+                for _, attrName in ipairs(tool:GetAttributes()) do
+                    local lowerName = attrName:lower()
+                    if SilentAimConfig.InfiniteAmmo and (lowerName:find("ammo") or lowerName:find("clip") or lowerName:find("bullet")) then
+                        tool:SetAttribute(attrName, 9999)
+                    end
+                    if SilentAimConfig.NoReload and (lowerName:find("reload") or lowerName:find("cooldown")) then
+                        tool:SetAttribute(attrName, 0)
+                    end
+                end
+                
+                for _, obj in ipairs(tool:GetDescendants()) do
+                    if obj:IsA("NumberValue") or obj:IsA("IntValue") then
                         local n = obj.Name:lower()
-                        if SilentAimConfig.InfiniteAmmo and (n:find("ammo") or n:find("clip") or n:find("bullet") or n:find("mag") or n:find("round")) then
+                        if SilentAimConfig.InfiniteAmmo and (n:find("ammo") or n:find("clip") or n:find("stored") or n:find("mag")) then
                             obj.Value = 9999
                         end
                         if SilentAimConfig.NoReload and (n:find("reload") or n:find("cooldown") or n:find("firerate") or n:find("delay")) then
                             obj.Value = 0
                         end
+                    elseif obj:IsA("ModuleScript") then
+                        pcall(function()
+                            local moduleData = require(obj)
+                            if type(moduleData) == "table" then
+                                if SilentAimConfig.InfiniteAmmo then
+                                    if moduleData.Ammo then moduleData.Ammo = 9999 end
+                                    if moduleData.MagSize then moduleData.MagSize = 9999 end
+                                end
+                                if SilentAimConfig.NoReload then
+                                    if moduleData.ReloadTime then moduleData.ReloadTime = 0 end
+                                    if moduleData.Cooldown then moduleData.Cooldown = 0 end
+                                end
+                            end
+                        end)
                     end
                 end
             end
         end
     end)
-end)
-
--- SAFE SILENT AIM (TANPA HOOK GLOBAL YANG MERUSAK TOMBOL MAP)
--- Menggunakan pelacakan tap layar langsung yang aman untuk GUI map/game
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
-    if not SilentAimConfig.Enabled then return end
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        local targetHead = GetBestSilentAimTarget()
-        if targetHead then
-            -- Snap kamera secara instan ke kepala target saat layar disentuh untuk menembak
-            Camera.CFrame = CFrame.new(Camera.CFrame.Position, targetHead.Position)
-        end
-    end
 end)
 
 RunService.Stepped:Connect(function()
@@ -690,6 +714,10 @@ RunService.RenderStepped:Connect(function()
                 TargetLine.From = screenCenter
                 TargetLine.To = Vector2.new(screenPos.X, screenPos.Y)
                 TargetLine.Visible = true
+                
+                if isFiring then
+                    Camera.CFrame = CFrame.new(Camera.CFrame.Position, targetHead.Position)
+                end
             else
                 TargetLine.Visible = false
             end
@@ -751,4 +779,3 @@ RunService.RenderStepped:Connect(function()
         end
     end
 end)
-
