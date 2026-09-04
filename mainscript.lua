@@ -1,4 +1,4 @@
--- v1.0.19
+-- v1.0.20
 -- ===================================================================== -- ULTIMATE ANDROID D3D MENU: FISHING EDITION v10 -- ===================================================================== 
 local Players = game:GetService("Players") 
 local UserInputService = game:GetService("UserInputService") 
@@ -58,7 +58,9 @@ local WorldConfig = {
 
 local SilentAimConfig = {
     Enabled = false,
-    FOVSize = 120
+    FOVSize = 120,
+    NoReload = false,
+    InfiniteAmmo = false
 }
 
 local ESPCache = {}
@@ -506,6 +508,14 @@ CreateSlider(TabContentFrames["skill"], "Silent Aim FOV Size", 50, 300, 120, fun
     SilentAimConfig.FOVSize = val
 end)
 
+CreateToggle(TabContentFrames["skill"], "No Reload", function(v)
+    SilentAimConfig.NoReload = v
+end)
+
+CreateToggle(TabContentFrames["skill"], "Unlimited Ammo", function(v)
+    SilentAimConfig.InfiniteAmmo = v
+end)
+
 -- MULTI JUMP
 UserInputService.JumpRequest:Connect(function()
     if not PlayerConfig.MultiJump then return end
@@ -533,7 +543,7 @@ local function IsVisible(targetPart)
     return false
 end
 
--- LOGIKA PRIORITAS TARGET: TERDEKAT DARI JARAK KARAKTER + PALING DEKAT DENGAN CROSSHAIR DALAM FOV
+-- LOGIKA PRIORITAS TARGET
 local function GetBestSilentAimTarget()
     local screenCenter = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
     local bestTarget = nil
@@ -557,7 +567,6 @@ local function GetBestSilentAimTarget()
                         
                         if distToCrosshair <= SilentAimConfig.FOVSize then
                             local distToPlayer = (hrp.Position - head.Position).Magnitude
-                            -- Skor kombinasi: Jarak Crosshair (prioritas utama akurasi) + Jarak Dunia Nyata (prioritas musuh terdekat)
                             local score = distToCrosshair + (distToPlayer * 0.2)
                             
                             if score < bestScore then
@@ -573,21 +582,59 @@ local function GetBestSilentAimTarget()
     return bestTarget
 end
 
--- SILENT AIM HOOK: MEMBELOKKAN ARAH TEMBAKAN/RAYCAST KETIKA TAP LAYAR
+-- AMMO & RELOAD BYPASS LOOP
+RunService.Stepped:Connect(function()
+    local char = LocalPlayer.Character
+    if not char then return end
+    
+    -- No Reload & Unlimited Ammo Handler
+    if SilentAimConfig.NoReload or SilentAimConfig.InfiniteAmmo then
+        pcall(function()
+            for _, obj in ipairs(char:GetDescendants()) do
+                if obj:IsA("NumberValue") or obj:IsA("IntValue") then
+                    local name = obj.Name:lower()
+                    if SilentAimConfig.InfiniteAmmo and (name:find("ammo") or name:find("clip") or name:find("bullets") or name:find("mag")) then
+                        obj.Value = 999
+                    end
+                    if SilentAimConfig.NoReload and (name:find("reload") or name:find("cooldown")) then
+                        obj.Value = 0
+                    end
+                end
+            end
+            -- Periksa juga dalam Tool aktif
+            local tool = char:FindFirstChildOfClass("Tool")
+            if tool then
+                for _, obj in ipairs(tool:GetDescendants()) do
+                    if (obj:IsA("NumberValue") or obj:IsA("IntValue")) then
+                        local name = obj.Name:lower()
+                        if SilentAimConfig.InfiniteAmmo and (name:find("ammo") or name:find("clip") or name:find("bullets") or name:find("mag")) then
+                            obj.Value = 999
+                        end
+                    end
+                end
+            end
+        end)
+    end
+end)
+
+-- SILENT AIM HOOK DENGAN FILTER AMAN (TIDAK MENGGANGGU TOMBOL MAP / UI LAINNYA)
 local oldNamecall
 oldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
     local method = getnamecallmethod()
     local args = {...}
     
     if SilentAimConfig.Enabled and (method == "FireServer" or method == "InvokeServer") then
-        local targetHead = GetBestSilentAimTarget()
-        if targetHead then
-            for i, v in ipairs(args) do
-                if typeof(v) == "Vector3" then
-                    -- Ubah argumen vektor tembakan agar mengarah ke kepala target
-                    args[i] = targetHead.Position
-                elseif typeof(v) == "Ray" then
-                    args[i] = Ray.new(v.Origin, (targetHead.Position - v.Origin).Unit * v.Direction.Magnitude)
+        local remoteName = tostring(self):lower()
+        -- Pastikan hanya memproses remote yang berkaitan dengan senjata/tembakan, abaikan GUI/Tombol Map
+        if not (remoteName:find("gui") or remoteName:find("button") or remoteName:find("click") or remoteName:find("menu") or remoteName:find("ui")) then
+            local targetHead = GetBestSilentAimTarget()
+            if targetHead then
+                for i, v in ipairs(args) do
+                    if typeof(v) == "Vector3" then
+                        args[i] = targetHead.Position
+                    elseif typeof(v) == "Ray" then
+                        args[i] = Ray.new(v.Origin, (targetHead.Position - v.Origin).Unit * v.Direction.Magnitude)
+                    end
                 end
             end
         end
