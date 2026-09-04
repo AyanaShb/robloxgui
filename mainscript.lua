@@ -1,4 +1,4 @@
--- v1.0.16
+-- v1.0.17
 -- ===================================================================== -- ULTIMATE ANDROID D3D MENU: FISHING EDITION v8 -- ===================================================================== 
 local Players = game:GetService("Players") 
 local UserInputService = game:GetService("UserInputService") 
@@ -515,7 +515,7 @@ CreateSlider(TabContentFrames["skill"], "Silent Aim FOV Size", 50, 300, 120, fun
     SilentAimConfig.FOVSize = val
 end)
 
--- MULTI JUMP TAP-TAP (FIXED LOGIC)
+-- MULTI JUMP TAP-TAP (FIXED LOGIC STABLE)
 UserInputService.JumpRequest:Connect(function()
     if not PlayerConfig.MultiJump then return end
 
@@ -525,12 +525,7 @@ UserInputService.JumpRequest:Connect(function()
     local hrp = char:FindFirstChild("HumanoidRootPart")
 
     if hum and hrp then
-        hum:ChangeState(Enum.HumanoidStateType.RunningNoPhysics)
         hum:ChangeState(Enum.HumanoidStateType.Jumping)
-        
-        local jumpPower = (hum.UseJumpPower and hum.JumpPower) or (hum.JumpHeight and math.sqrt(hum.JumpHeight * 2 * Workspace.Gravity)) or 50
-        hrp.Velocity = Vector3.new(hrp.Velocity.X, jumpPower, hrp.Velocity.Z)
-        hrp.AssemblyLinearVelocity = Vector3.new(hrp.AssemblyLinearVelocity.X, jumpPower, hrp.AssemblyLinearVelocity.Z)
     end
 end)
 
@@ -548,13 +543,8 @@ local function IsVisible(targetPart)
     raycastParams.IgnoreWater = true
 
     local result = Workspace:Raycast(origin, direction, raycastParams)
-    if not result then
-        return true
-    end
-    -- Cek apakah tembus ke target atau bagian tubuh target
-    if result.Instance:IsDescendantOf(targetPart.Parent) then
-        return true
-    end
+    if not result then return true end
+    if result.Instance:IsDescendantOf(targetPart.Parent) then return true end
     return false
 end
 
@@ -565,14 +555,12 @@ local function GetClosestSilentAimTarget()
     local shortestDistance = SilentAimConfig.FOVSize
 
     for _, player in ipairs(Players:GetPlayers()) do
-        -- Team Check
         if player ~= LocalPlayer and (not player.Team or player.Team ~= LocalPlayer.Team) then
             local char = player.Character
             local head = char and char:FindFirstChild("Head")
-            local hum = char and char:FindFirstChildOfClass("Humanoid")
+            local hum = char and char:FindFirstChild_OfClass and char:FindFirstChildOfClass("Humanoid") or char and char:FindFirstChildOfClass("Humanoid")
 
             if head and hum and hum.Health > 0 then
-                -- Wall Check (Visible)
                 if IsVisible(head) then
                     local screenPos, onScreen = Camera:WorldToViewportPoint(head.Position)
                     if onScreen then
@@ -591,6 +579,17 @@ local function GetClosestSilentAimTarget()
     return closestTarget
 end
 
+-- HOOK NAMEALLCALL / SETTING CAMERA & TARGET DIRECTION UTK SILENT AIM
+local function FireSilentAimAtTarget()
+    local targetHead = GetClosestSilentAimTarget()
+    if targetHead then
+        pcall(function()
+            -- Ubah orientasi kamera secara instan / snap kearah target agar peluru berbelok
+            Camera.CFrame = CFrame.new(Camera.CFrame.Position, targetHead.Position)
+        end)
+    end
+end
+
 -- TRIGGER TAP LAYAR RANDOM (DETEKSI SENTUHAN TANPA GESER/MOVE)
 local lastTouchPos = nil
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
@@ -604,15 +603,8 @@ UserInputService.InputEnded:Connect(function(input, gameProcessed)
     if not SilentAimConfig.Enabled then return end
     if (input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1) and lastTouchPos then
         local delta = (input.Position - lastTouchPos).Magnitude
-        if delta < 15 then -- Ambang batas dianggap Tap Murni (bukan swipe/geser)
-            local targetHead = GetClosestSilentAimTarget()
-            if targetHead then
-                -- Trigger Tembak/Aksi Otomatis ke Target saat Tap Layar
-                pcall(function()
-                    firetouchinterest(LocalPlayer.Character.HumanoidRootPart, targetHead, 0)
-                    firetouchinterest(LocalPlayer.Character.HumanoidRootPart, targetHead, 1)
-                end)
-            end
+        if delta < 15 then 
+            FireSilentAimAtTarget()
         end
         lastTouchPos = nil
     end
@@ -680,7 +672,6 @@ end)
 
 -- RENDER LOOP FOR VISUAL UPDATES & SILENT AIM RENDERING
 RunService.RenderStepped:Connect(function()
-    -- Update FOV Circle & Silent Aim Logic
     if SilentAimConfig.Enabled then
         local screenCenter = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
         FOVCircle.Position = screenCenter
@@ -691,18 +682,13 @@ RunService.RenderStepped:Connect(function()
         if targetHead then
             local screenPos, onScreen = Camera:WorldToViewportPoint(targetHead.Position)
             if onScreen then
-                -- Draw Line dari tengah (crosshair) ke target terdekat
                 TargetLine.From = screenCenter
                 TargetLine.To = Vector2.new(screenPos.X, screenPos.Y)
                 TargetLine.Visible = true
 
-                -- Auto Fire ketika crosshair mengenai musuh dalam jangkauan FOV
                 local distToCenter = (Vector2.new(screenPos.X, screenPos.Y) - screenCenter).Magnitude
-                if distToCenter <= (SilentAimConfig.FOVSize * 0.75) then
-                    pcall(function()
-                        firetouchinterest(LocalPlayer.Character.HumanoidRootPart, targetHead, 0)
-                        firetouchinterest(LocalPlayer.Character.HumanoidRootPart, targetHead, 1)
-                    end)
+                if distToCenter <= (SilentAimConfig.FOVSize * 0.8) then
+                    FireSilentAimAtTarget()
                 end
             else
                 TargetLine.Visible = false
