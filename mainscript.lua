@@ -1,4 +1,4 @@
--- v1.0.21
+-- v1.0.22
 -- ===================================================================== -- ULTIMATE ANDROID D3D MENU: FISHING EDITION v10 -- ===================================================================== 
 local Players = game:GetService("Players") 
 local UserInputService = game:GetService("UserInputService") 
@@ -543,7 +543,7 @@ local function IsVisible(targetPart)
     return false
 end
 
--- LOGIKA PRIORITAS TARGET
+-- LOGIKA PRIORITAS TARGET (Terdekat dari Karakter + Terdekat dari Crosshair)
 local function GetBestSilentAimTarget()
     local screenCenter = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
     local bestTarget = nil
@@ -582,64 +582,45 @@ local function GetBestSilentAimTarget()
     return bestTarget
 end
 
--- AMMO, RELOAD & SAFE SILENT AIM HANDLER (TANPA HOOK GLOBAL YANG MERUSAK TOMBOL MAP)
+-- AMMO & NO RELOAD ENHANCED BYPASS (Mencari lewat PlayerGui, ReplicatedStorage, & Character Tool)
 RunService.Stepped:Connect(function()
-    local char = LocalPlayer.Character
-    if not char then return end
+    if not SilentAimConfig.InfiniteAmmo and not SilentAimConfig.NoReload then return end
     
-    -- Ambil tool aktif di tangan player
-    local tool = char:FindFirstChildOfClass("Tool")
-    if tool then
-        for _, descendant in ipairs(tool:GetDescendants()) do
-            -- Bypass Unlimited Ammo untuk Value atau Attribute di dalam senjata
-            if SilentAimConfig.InfiniteAmmo then
-                if descendant:IsA("IntValue") or descendant:IsA("NumberValue") then
-                    local n = descendant.Name:lower()
-                    if n:find("ammo") or n:find("clip") or n:find("bullet") or n:find("mag") then
-                        descendant.Value = 999
-                    end
-                elseif descendant:IsA("ModuleScript") then
-                    pcall(function()
-                        local moduleData = require(descendant)
-                        if type(moduleData) == "table" then
-                            for key, _ in pairs(moduleData) do
-                                local kLower = tostring(key):lower()
-                                if kLower:find("ammo") or kLower:find("clip") or kLower:find("mag") then
-                                    moduleData[key] = 999
-                                end
-                            end
+    pcall(function()
+        local backpack = LocalPlayer:FindFirstChildOfClass("Backpack")
+        local char = LocalPlayer.Character
+        
+        -- Periksa semua container senjata yang mungkin menyimpan data peluru game
+        local containers = {char, backpack, LocalPlayer:FindFirstChild("PlayerGui")}
+        for _, container in ipairs(containers) do
+            if container then
+                for _, obj in ipairs(container:GetDescendants()) do
+                    if obj:IsA("IntValue") or obj:IsA("NumberValue") or obj:IsA("StringValue") then
+                        local n = obj.Name:lower()
+                        if SilentAimConfig.InfiniteAmmo and (n:find("ammo") or n:find("clip") or n:find("bullet") or n:find("mag") or n:find("round")) then
+                            obj.Value = 9999
                         end
-                    end)
-                end
-            end
-            
-            -- Bypass No Reload / Cooldown
-            if SilentAimConfig.NoReload then
-                if descendant:IsA("IntValue") or descendant:IsA("NumberValue") then
-                    local n = descendant.Name:lower()
-                    if n:find("reload") or n:find("cooldown") or n:find("firerate") then
-                        descendant.Value = 0
+                        if SilentAimConfig.NoReload and (n:find("reload") or n:find("cooldown") or n:find("firerate") or n:find("delay")) then
+                            obj.Value = 0
+                        end
                     end
                 end
             end
         end
-    end
+    end)
 end)
 
--- SILENT AIM PENGGANTI (AMAN UNTUK SEMUA TOMBOL GUI / MAP)
--- Menggunakan hook input/kamera saat tap layar tembak agar tidak mengganggu Remote event map
-local oldIndex
-oldIndex = hookmetamethod(game, "__index", function(self, k)
-    if SilentAimConfig.Enabled and not checkcaller() then
-        if self == Camera and k == "CFrame" then
-            local targetHead = GetBestSilentAimTarget()
-            if targetHead and UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton1) or UserInputService.TouchEnabled and #UserInputService:GetTouches() > 0 then
-                -- Mengarahkan pandangan secara instan ke target saat layar disentuh/ditekan
-                return CFrame.new(Camera.CFrame.Position, targetHead.Position)
-            end
+-- SAFE SILENT AIM (TANPA HOOK GLOBAL YANG MERUSAK TOMBOL MAP)
+-- Menggunakan pelacakan tap layar langsung yang aman untuk GUI map/game
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if not SilentAimConfig.Enabled then return end
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        local targetHead = GetBestSilentAimTarget()
+        if targetHead then
+            -- Snap kamera secara instan ke kepala target saat layar disentuh untuk menembak
+            Camera.CFrame = CFrame.new(Camera.CFrame.Position, targetHead.Position)
         end
     end
-    return oldIndex(self, k)
 end)
 
 RunService.Stepped:Connect(function()
