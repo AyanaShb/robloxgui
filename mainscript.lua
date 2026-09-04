@@ -1,5 +1,5 @@
--- v1.0.18
--- ===================================================================== -- ULTIMATE ANDROID D3D MENU: FISHING EDITION v9 -- ===================================================================== 
+-- v1.0.19
+-- ===================================================================== -- ULTIMATE ANDROID D3D MENU: FISHING EDITION v10 -- ===================================================================== 
 local Players = game:GetService("Players") 
 local UserInputService = game:GetService("UserInputService") 
 local Lighting = game:GetService("Lighting") 
@@ -8,13 +8,12 @@ local RunService = game:GetService("RunService")
 local Camera = Workspace.CurrentCamera 
 local LocalPlayer = Players.LocalPlayer 
 
--- FIX UTAMA: PENGAMANAN PARENTING GUI UNTUK ANDROID EXECUTOR
 local ScreenGui = Instance.new("ScreenGui") 
 ScreenGui.Name = "D3D_Ultimate_Android" 
 ScreenGui.ResetOnSpawn = false 
 ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
-local success, err = pcall(function()
+pcall(function()
     if syn and syn.protect_gui then 
         syn.protect_gui(ScreenGui) 
         ScreenGui.Parent = game.CoreGui 
@@ -25,7 +24,7 @@ local success, err = pcall(function()
     end
 end)
 
-if not success or not ScreenGui.Parent then
+if not ScreenGui.Parent then
     pcall(function()
         ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
     end)
@@ -534,61 +533,67 @@ local function IsVisible(targetPart)
     return false
 end
 
-local function GetClosestSilentAimTarget()
+-- LOGIKA PRIORITAS TARGET: TERDEKAT DARI JARAK KARAKTER + PALING DEKAT DENGAN CROSSHAIR DALAM FOV
+local function GetBestSilentAimTarget()
     local screenCenter = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
-    local closestTarget = nil
-    local shortestDistance = SilentAimConfig.FOVSize
+    local bestTarget = nil
+    local bestScore = math.huge
+    local char = LocalPlayer.Character
+    local hrp = char and char:FindFirstChild("HumanoidRootPart")
+    if not hrp then return nil end
 
     for _, player in ipairs(Players:GetPlayers()) do
         if player ~= LocalPlayer and (not player.Team or player.Team ~= LocalPlayer.Team) then
-            local char = player.Character
-            local head = char and char:FindFirstChild("Head")
-            local hum = char and char:FindFirstChildOfClass("Humanoid")
+            local pChar = player.Character
+            local head = pChar and pChar:FindFirstChild("Head")
+            local hum = pChar and pChar:FindFirstChildOfClass("Humanoid")
 
             if head and hum and hum.Health > 0 then
                 if IsVisible(head) then
                     local screenPos, onScreen = Camera:WorldToViewportPoint(head.Position)
                     if onScreen then
                         local screenPos2D = Vector2.new(screenPos.X, screenPos.Y)
-                        local distToCenter = (screenPos2D - screenCenter).Magnitude
-                        if distToCenter <= shortestDistance then
-                            shortestDistance = distToCenter
-                            closestTarget = head
+                        local distToCrosshair = (screenPos2D - screenCenter).Magnitude
+                        
+                        if distToCrosshair <= SilentAimConfig.FOVSize then
+                            local distToPlayer = (hrp.Position - head.Position).Magnitude
+                            -- Skor kombinasi: Jarak Crosshair (prioritas utama akurasi) + Jarak Dunia Nyata (prioritas musuh terdekat)
+                            local score = distToCrosshair + (distToPlayer * 0.2)
+                            
+                            if score < bestScore then
+                                bestScore = score
+                                bestTarget = head
+                            end
                         end
                     end
                 end
             end
         end
     end
-    return closestTarget
+    return bestTarget
 end
 
-local function FireSilentAimAtTarget()
-    local targetHead = GetClosestSilentAimTarget()
-    if targetHead then
-        pcall(function()
-            Camera.CFrame = CFrame.new(Camera.CFrame.Position, targetHead.Position)
-        end)
-    end
-end
-
-local lastTouchPos = nil
-UserInputService.InputBegan:Connect(function(input)
-    if not SilentAimConfig.Enabled then return end
-    if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
-        lastTouchPos = input.Position
-    end
-end)
-
-UserInputService.InputEnded:Connect(function(input)
-    if not SilentAimConfig.Enabled then return end
-    if (input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1) and lastTouchPos then
-        local delta = (input.Position - lastTouchPos).Magnitude
-        if delta < 15 then 
-            FireSilentAimAtTarget()
+-- SILENT AIM HOOK: MEMBELOKKAN ARAH TEMBAKAN/RAYCAST KETIKA TAP LAYAR
+local oldNamecall
+oldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
+    local method = getnamecallmethod()
+    local args = {...}
+    
+    if SilentAimConfig.Enabled and (method == "FireServer" or method == "InvokeServer") then
+        local targetHead = GetBestSilentAimTarget()
+        if targetHead then
+            for i, v in ipairs(args) do
+                if typeof(v) == "Vector3" then
+                    -- Ubah argumen vektor tembakan agar mengarah ke kepala target
+                    args[i] = targetHead.Position
+                elseif typeof(v) == "Ray" then
+                    args[i] = Ray.new(v.Origin, (targetHead.Position - v.Origin).Unit * v.Direction.Magnitude)
+                end
+            end
         end
-        lastTouchPos = nil
     end
+    
+    return oldNamecall(self, unpack(args))
 end)
 
 RunService.Stepped:Connect(function()
@@ -651,18 +656,13 @@ RunService.RenderStepped:Connect(function()
         FOVCircle.Radius = SilentAimConfig.FOVSize
         FOVCircle.Visible = true
 
-        local targetHead = GetClosestSilentAimTarget()
+        local targetHead = GetBestSilentAimTarget()
         if targetHead then
             local screenPos, onScreen = Camera:WorldToViewportPoint(targetHead.Position)
             if onScreen then
                 TargetLine.From = screenCenter
                 TargetLine.To = Vector2.new(screenPos.X, screenPos.Y)
                 TargetLine.Visible = true
-
-                local distToCenter = (Vector2.new(screenPos.X, screenPos.Y) - screenCenter).Magnitude
-                if distToCenter <= (SilentAimConfig.FOVSize * 0.8) then
-                    FireSilentAimAtTarget()
-                end
             else
                 TargetLine.Visible = false
             end
