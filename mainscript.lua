@@ -1,6 +1,3 @@
-Masalah utama mengapa tombol map tetap tidak merespons serta fitur No Reload dan Unlimited Ammo tidak berfungsi adalah karena hook metamethod global (__index atau __namecall) di environment executor Roblox Android memblokir seluruh interaksi UI internal game, dan struktur data senjata game tersebut dienkripsi atau dikelola via RemoteEvent/ModuleScript server-side yang tidak bisa diubah langsung nilainya dari client script (eksekutor).
-Untuk Roblox Android, cara paling aman agar tombol map 100% normal dan fitur peluru/silent aim tetap berjalan adalah dengan menghapus total semua hook metamethod (hookmetamethod) dan beralih murni menggunakan User-Interface Input Listener lokal serta metode tembak langsung (Mouse1Click/VirtualTap redirection).
-Berikut adalah versi perbaikan total (v1.0.22) di mana hook global telah dibersihkan sepenuhnya agar tombol map kembali normal:
 -- v1.0.22
 -- ===================================================================== -- ULTIMATE ANDROID D3D MENU: FISHING EDITION v10 -- ===================================================================== 
 local Players = game:GetService("Players") 
