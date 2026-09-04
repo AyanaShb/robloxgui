@@ -1,4 +1,4 @@
--- v1.0.22
+-- v1.0.23
 -- ===================================================================== -- ULTIMATE ANDROID D3D MENU: FISHING EDITION v10 -- ===================================================================== 
 local Players = game:GetService("Players") 
 local UserInputService = game:GetService("UserInputService") 
@@ -60,7 +60,8 @@ local SilentAimConfig = {
     Enabled = false,
     FOVSize = 120,
     NoReload = false,
-    InfiniteAmmo = false
+    InfiniteAmmo = false,
+    RapidFire = false
 }
 
 local ESPCache = {}
@@ -516,6 +517,10 @@ CreateToggle(TabContentFrames["skill"], "Unlimited Ammo", function(v)
     SilentAimConfig.InfiniteAmmo = v
 end)
 
+CreateToggle(TabContentFrames["skill"], "Rapid Fire", function(v)
+    SilentAimConfig.RapidFire = v
+end)
+
 -- MULTI JUMP
 UserInputService.JumpRequest:Connect(function()
     if not PlayerConfig.MultiJump then return end
@@ -543,7 +548,7 @@ local function IsVisible(targetPart)
     return false
 end
 
--- LOGIKA PRIORITAS TARGET (Terdekat dari Karakter + Terdekat dari Crosshair)
+-- LOGIKA SILENT AIM: MURNI HANYA DI DALAM LINGKARAN FOV (DI LUAR FOV TIDAK AKAN DIPILIH)
 local function GetBestSilentAimTarget()
     local screenCenter = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
     local bestTarget = nil
@@ -559,15 +564,16 @@ local function GetBestSilentAimTarget()
             local hum = pChar and pChar:FindFirstChildOfClass("Humanoid")
 
             if head and hum and hum.Health > 0 then
-                if IsVisible(head) then
-                    local screenPos, onScreen = Camera:WorldToViewportPoint(head.Position)
-                    if onScreen then
-                        local screenPos2D = Vector2.new(screenPos.X, screenPos.Y)
-                        local distToCrosshair = (screenPos2D - screenCenter).Magnitude
-                        
-                        if distToCrosshair <= SilentAimConfig.FOVSize then
+                local screenPos, onScreen = Camera:WorldToViewportPoint(head.Position)
+                if onScreen then
+                    local screenPos2D = Vector2.new(screenPos.X, screenPos.Y)
+                    local distToCrosshair = (screenPos2D - screenCenter).Magnitude
+                    
+                    -- SYARAT MUTLAK: HARUS BERADA DI DALAM FOV CIRCLE
+                    if distToCrosshair <= SilentAimConfig.FOVSize then
+                        if IsVisible(head) then
                             local distToPlayer = (hrp.Position - head.Position).Magnitude
-                            local score = distToCrosshair + (distToPlayer * 0.2)
+                            local score = distToCrosshair + (distToPlayer * 0.1)
                             
                             if score < bestScore then
                                 bestScore = score
@@ -582,16 +588,15 @@ local function GetBestSilentAimTarget()
     return bestTarget
 end
 
--- AMMO & NO RELOAD ENHANCED BYPASS (Mencari lewat PlayerGui, ReplicatedStorage, & Character Tool)
+-- AMMO, NO RELOAD & RAPID FIRE ENHANCED BYPASS (AGRESIF KE SEMUA CONTAINER & MODUL)
 RunService.Stepped:Connect(function()
-    if not SilentAimConfig.InfiniteAmmo and not SilentAimConfig.NoReload then return end
+    if not SilentAimConfig.InfiniteAmmo and not SilentAimConfig.NoReload and not SilentAimConfig.RapidFire then return end
     
     pcall(function()
-        local backpack = LocalPlayer:FindFirstChildOfClass("Backpack")
         local char = LocalPlayer.Character
-        
-        -- Periksa semua container senjata yang mungkin menyimpan data peluru game
+        local backpack = LocalPlayer:FindFirstChildOfClass("Backpack")
         local containers = {char, backpack, LocalPlayer:FindFirstChild("PlayerGui")}
+        
         for _, container in ipairs(containers) do
             if container then
                 for _, obj in ipairs(container:GetDescendants()) do
@@ -600,9 +605,30 @@ RunService.Stepped:Connect(function()
                         if SilentAimConfig.InfiniteAmmo and (n:find("ammo") or n:find("clip") or n:find("bullet") or n:find("mag") or n:find("round")) then
                             obj.Value = 9999
                         end
-                        if SilentAimConfig.NoReload and (n:find("reload") or n:find("cooldown") or n:find("firerate") or n:find("delay")) then
+                        if SilentAimConfig.NoReload and (n:find("reload") or n:find("cooldown") or n:find("delay")) then
                             obj.Value = 0
                         end
+                        if SilentAimConfig.RapidFire and (n:find("firerate") or n:find("fire") or n:find("speed") or n:find("rate")) then
+                            obj.Value = 0.01
+                        end
+                    elseif obj:IsA("ModuleScript") then
+                        pcall(function()
+                            local mod = require(obj)
+                            if type(mod) == "table" then
+                                for k, _ in pairs(mod) do
+                                    local keyStr = tostring(k):lower()
+                                    if SilentAimConfig.InfiniteAmmo and (keyStr:find("ammo") or keyStr:find("clip") or keyStr:find("mag")) then
+                                        mod[k] = 9999
+                                    end
+                                    if SilentAimConfig.NoReload and (keyStr:find("reload") or keyStr:find("cooldown")) then
+                                        mod[k] = 0
+                                    end
+                                    if SilentAimConfig.RapidFire and (keyStr:find("firerate") or keyStr:find("rate")) then
+                                        mod[k] = 0.01
+                                    end
+                                end
+                            end
+                        end)
                     end
                 end
             end
@@ -610,15 +636,25 @@ RunService.Stepped:Connect(function()
     end)
 end)
 
--- SAFE SILENT AIM (TANPA HOOK GLOBAL YANG MERUSAK TOMBOL MAP)
--- Menggunakan pelacakan tap layar langsung yang aman untuk GUI map/game
+-- SAFE SILENT AIM & RAPID FIRE TRIGGER (TANPA HOOK GLOBAL, AMAN UNTUK TOMBOL MAP)
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if not SilentAimConfig.Enabled then return end
     if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
         local targetHead = GetBestSilentAimTarget()
         if targetHead then
-            -- Snap kamera secara instan ke kepala target saat layar disentuh untuk menembak
             Camera.CFrame = CFrame.new(Camera.CFrame.Position, targetHead.Position)
+        end
+    end
+end)
+
+-- RAPID FIRE AUTO TAP SYSTEM KETIKA TOMBOL TEMBAK DITEKAN/DITAHAN
+RunService.RenderStepped:Connect(function()
+    if SilentAimConfig.Enabled and SilentAimConfig.RapidFire then
+        if UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton1) or (UserInputService.TouchEnabled and #UserInputService:GetTouches() > 0) then
+            local targetHead = GetBestSilentAimTarget()
+            if targetHead then
+                Camera.CFrame = CFrame.new(Camera.CFrame.Position, targetHead.Position)
+            end
         end
     end
 end)
