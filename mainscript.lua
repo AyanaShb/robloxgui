@@ -1,6 +1,6 @@
--- v1.0.25 --
+-- v1.0.26 --
 -- =====================================================================
--- ULTIMATE ANDROID D3D MENU: FISHING EDITION v10.25
+-- ULTIMATE ANDROID D3D MENU: FISHING EDITION v10.26
 -- =====================================================================
 
 local Players = game:GetService("Players")
@@ -177,7 +177,7 @@ end)
 local TitleLabel = Instance.new("TextLabel")
 TitleLabel.Size = UDim2.new(1, 0, 0, 36)
 TitleLabel.BackgroundTransparency = 1
-TitleLabel.Text = "× D3D MENU BG AMIN (BULLET TRACK v10.25) ×"
+TitleLabel.Text = "× D3D MENU BG AMIN (BULLET TRACK v10.26) ×"
 TitleLabel.TextColor3 = Color3.fromRGB(240, 240, 255)
 TitleLabel.TextSize = 12.5
 TitleLabel.Font = Enum.Font.GothamBold
@@ -530,7 +530,7 @@ local function IsVisible(targetPart)
     return false
 end
 
--- LOGIKA MENCARI TARGET BULLET TRACK DALAM FOV
+-- LOGIKA MENCARI TARGET (TEAM CHECK, WALL CHECK, CROSSHAIR & DISTANCE)
 local function GetBestSilentAimTarget()
     local screenCenter = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
     local bestTarget = nil
@@ -540,18 +540,28 @@ local function GetBestSilentAimTarget()
     if not hrp then return nil end
 
     for _, player in ipairs(Players:GetPlayers()) do
-        if player ~= LocalPlayer and (not player.Team or player.Team ~= LocalPlayer.Team) then
-            local pChar = player.Character
-            local head = pChar and pChar:FindFirstChild("Head")
-            local hum = pChar and pChar:FindFirstChildOfClass("Humanoid")
-            if head and hum and hum.Health > 0 then
-                local screenPos, onScreen = Camera:WorldToViewportPoint(head.Position)
-                if onScreen then
-                    local screenPos2D = Vector2.new(screenPos.X, screenPos.Y)
-                    local distToCrosshair = (screenPos2D - screenCenter).Magnitude
-                    if distToCrosshair <= SilentAimConfig.FOVSize then
-                        if IsVisible(head) then
+        if player ~= LocalPlayer then
+            -- Team Check
+            local isEnemy = true
+            if LocalPlayer.Team and player.Team and LocalPlayer.Team == player.Team then
+                isEnemy = false
+            end
+
+            if isEnemy then
+                local pChar = player.Character
+                local head = pChar and pChar:FindFirstChild("Head")
+                local hum = pChar and pChar:FindFirstChildOfClass("Humanoid")
+                
+                if head and hum and hum.Health > 0 then
+                    local screenPos, onScreen = Camera:WorldToViewportPoint(head.Position)
+                    if onScreen then
+                        local screenPos2D = Vector2.new(screenPos.X, screenPos.Y)
+                        local distToCrosshair = (screenPos2D - screenCenter).Magnitude
+                        
+                        -- Validasi FOV & Wall Check
+                        if distToCrosshair <= SilentAimConfig.FOVSize and IsVisible(head) then
                             local distToPlayer = (hrp.Position - head.Position).Magnitude
+                            -- Skor prioritas: Mengutamakan yang terdekat dengan crosshair dan jarak terdekat
                             local score = distToCrosshair + (distToPlayer * 0.05)
                             if score < bestScore then
                                 bestScore = score
@@ -566,10 +576,15 @@ local function GetBestSilentAimTarget()
     return bestTarget
 end
 
--- HOOK/OVERRIDE RAYCAST & AMMO GLOBAL UNTUK BULLET TRACK
+-- DETEKSI TRIGGER FIRE (MENEMBAK / MOUSE1 / TOUCH)
+local function IsFiring()
+    return UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton1) or UserInputService:IsMouseButtonPressed(Enum.UserInputType.Touch)
+end
+
+-- HOOK/OVERRIDE RAYCAST (BULLET TRACK HANYA AKTIF SAAT MENEMBAK & ADA TARGET)
 local oldRaycast
 oldRaycast = hookfunction(Workspace.Raycast, function(self, origin, direction, raycastParams)
-    if SilentAimConfig.Enabled and self == Workspace then
+    if SilentAimConfig.Enabled and self == Workspace and IsFiring() then
         local targetHead = GetBestSilentAimTarget()
         if targetHead then
             local originPos = (typeof(origin) == "Vector3") and origin or Camera.CFrame.Position
@@ -684,7 +699,7 @@ RunService.Stepped:Connect(function()
     end
 end)
 
--- RENDER ESP & TARGET LINE
+-- RENDER ESP & TARGET LINE (HANYA MUNCUL DI DALAM FOV DAN KE TARGET TERDEKAT)
 RunService.RenderStepped:Connect(function()
     if SilentAimConfig.Enabled then
         local screenCenter = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
