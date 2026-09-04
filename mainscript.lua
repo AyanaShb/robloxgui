@@ -1,5 +1,5 @@
--- v1.0.23
--- ===================================================================== -- ULTIMATE ANDROID D3D MENU: FISHING EDITION v10 -- ===================================================================== 
+-- v1.0.24
+-- ===================================================================== -- ULTIMATE ANDROID D3D MENU: FISHING EDITION v10.24 -- ===================================================================== 
 local Players = game:GetService("Players") 
 local UserInputService = game:GetService("UserInputService") 
 local Lighting = game:GetService("Lighting") 
@@ -59,9 +59,10 @@ local WorldConfig = {
 local SilentAimConfig = {
     Enabled = false,
     FOVSize = 120,
-    NoReload = false,
-    InfiniteAmmo = false,
-    RapidFire = false
+    NoReload = true,       -- Default ON/Aktif otomatis
+    InfiniteAmmo = true,   -- Default ON/Aktif otomatis
+    NoRecoil = true,       -- Default ON/Aktif otomatis
+    RapidFire = true       -- Otomatis ON mengikuti Silent Aim
 }
 
 local ESPCache = {}
@@ -77,7 +78,7 @@ FOVCircle.NumSides = 64
 local TargetLine = Drawing.new("Line")
 TargetLine.Visible = false
 TargetLine.Thickness = 1.5
-TargetLine.Color = Color3.fromRGB(255, 0, 0)
+TargetLine.Color = Color3.fromRGB(0, 255, 255)
 
 -- FLOATING BUTTON UI (MAIN MENU)
 local FloatButton = Instance.new("TextButton") 
@@ -173,9 +174,9 @@ end)
 local TitleLabel = Instance.new("TextLabel") 
 TitleLabel.Size = UDim2.new(1, 0, 0, 36) 
 TitleLabel.BackgroundTransparency = 1 
-TitleLabel.Text = "× D3D MENU BG AMIN ×" 
+TitleLabel.Text = "× D3D MENU BG AMIN (SILENT AIM v10.24) ×" 
 TitleLabel.TextColor3 = Color3.fromRGB(240, 240, 255) 
-TitleLabel.TextSize = 13.5 
+TitleLabel.TextSize = 12.5 
 TitleLabel.Font = Enum.Font.GothamBold 
 TitleLabel.Parent = MainFrame 
 
@@ -499,7 +500,7 @@ CreateToggle(TabContentFrames["world"], "Floating Teleport Button", function(v)
     TeleportFloatBtn.Visible = v
 end)
 
-CreateToggle(TabContentFrames["skill"], "Silent Aim", function(v)
+CreateToggle(TabContentFrames["skill"], "Silent Aim + Rapid Fire (Auto On)", function(v)
     SilentAimConfig.Enabled = v
     FOVCircle.Visible = v
     TargetLine.Visible = v
@@ -507,18 +508,6 @@ end)
 
 CreateSlider(TabContentFrames["skill"], "Silent Aim FOV Size", 50, 300, 120, function(val)
     SilentAimConfig.FOVSize = val
-end)
-
-CreateToggle(TabContentFrames["skill"], "No Reload", function(v)
-    SilentAimConfig.NoReload = v
-end)
-
-CreateToggle(TabContentFrames["skill"], "Unlimited Ammo", function(v)
-    SilentAimConfig.InfiniteAmmo = v
-end)
-
-CreateToggle(TabContentFrames["skill"], "Rapid Fire", function(v)
-    SilentAimConfig.RapidFire = v
 end)
 
 -- MULTI JUMP
@@ -548,7 +537,7 @@ local function IsVisible(targetPart)
     return false
 end
 
--- LOGIKA SILENT AIM: MURNI HANYA DI DALAM LINGKARAN FOV (DI LUAR FOV TIDAK AKAN DIPILIH)
+-- LOGIKA MENCARI TARGET SILENT AIM DALAM FOV
 local function GetBestSilentAimTarget()
     local screenCenter = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
     local bestTarget = nil
@@ -569,11 +558,11 @@ local function GetBestSilentAimTarget()
                     local screenPos2D = Vector2.new(screenPos.X, screenPos.Y)
                     local distToCrosshair = (screenPos2D - screenCenter).Magnitude
                     
-                    -- SYARAT MUTLAK: HARUS BERADA DI DALAM FOV CIRCLE
+                    -- SYARAT: WAJIB DI DALAM FOV LINGKARAN
                     if distToCrosshair <= SilentAimConfig.FOVSize then
                         if IsVisible(head) then
                             local distToPlayer = (hrp.Position - head.Position).Magnitude
-                            local score = distToCrosshair + (distToPlayer * 0.1)
+                            local score = distToCrosshair + (distToPlayer * 0.05)
                             
                             if score < bestScore then
                                 bestScore = score
@@ -588,10 +577,22 @@ local function GetBestSilentAimTarget()
     return bestTarget
 end
 
--- AMMO, NO RELOAD & RAPID FIRE ENHANCED BYPASS (AGRESIF KE SEMUA CONTAINER & MODUL)
+-- HOOK/OVERRIDE RAYCAST & AMMO GLOBAL UNTUK SILENT AIM (PELURU BERBELOK KE TARGET)
+local oldRaycast
+oldRaycast = hookfunction(Workspace.Raycast, function(self, origin, direction, raycastParams)
+    if SilentAimConfig.Enabled and self == Workspace then
+        local targetHead = GetBestSilentAimTarget()
+        if targetHead then
+            local originPos = (typeof(origin) == "Vector3") and origin or Camera.CFrame.Position
+            local newDirection = (targetHead.Position - originPos).Unit * direction.Magnitude
+            return oldRaycast(self, originPos, newDirection, raycastParams)
+        end
+    end
+    return oldRaycast(self, origin, direction, raycastParams)
+end)
+
+-- NO RELOAD, UNLIMITED AMMO, NO RECOIL & RAPID FIRE BYPASS MODUL
 RunService.Stepped:Connect(function()
-    if not SilentAimConfig.InfiniteAmmo and not SilentAimConfig.NoReload and not SilentAimConfig.RapidFire then return end
-    
     pcall(function()
         local char = LocalPlayer.Character
         local backpack = LocalPlayer:FindFirstChildOfClass("Backpack")
@@ -600,16 +601,19 @@ RunService.Stepped:Connect(function()
         for _, container in ipairs(containers) do
             if container then
                 for _, obj in ipairs(container:GetDescendants()) do
-                    if obj:IsA("IntValue") or obj:IsA("NumberValue") or obj:IsA("StringValue") then
+                    if obj:IsA("IntValue") or obj:IsA("NumberValue") then
                         local n = obj.Name:lower()
-                        if SilentAimConfig.InfiniteAmmo and (n:find("ammo") or n:find("clip") or n:find("bullet") or n:find("mag") or n:find("round")) then
+                        if (SilentAimConfig.InfiniteAmmo or SilentAimConfig.Enabled) and (n:find("ammo") or n:find("clip") or n:find("bullet") or n:find("mag") or n:find("round")) then
                             obj.Value = 9999
                         end
-                        if SilentAimConfig.NoReload and (n:find("reload") or n:find("cooldown") or n:find("delay")) then
+                        if (SilentAimConfig.NoReload or SilentAimConfig.Enabled) and (n:find("reload") or n:find("cooldown") or n:find("delay")) then
                             obj.Value = 0
                         end
-                        if SilentAimConfig.RapidFire and (n:find("firerate") or n:find("fire") or n:find("speed") or n:find("rate")) then
+                        if (SilentAimConfig.RapidFire or SilentAimConfig.Enabled) and (n:find("firerate") or n:find("rate") or n:find("speed")) then
                             obj.Value = 0.01
+                        end
+                        if (SilentAimConfig.NoRecoil or SilentAimConfig.Enabled) and (n:find("recoil") or n:find("spread") or n:find("kick")) then
+                            obj.Value = 0
                         end
                     elseif obj:IsA("ModuleScript") then
                         pcall(function()
@@ -617,14 +621,17 @@ RunService.Stepped:Connect(function()
                             if type(mod) == "table" then
                                 for k, _ in pairs(mod) do
                                     local keyStr = tostring(k):lower()
-                                    if SilentAimConfig.InfiniteAmmo and (keyStr:find("ammo") or keyStr:find("clip") or keyStr:find("mag")) then
+                                    if (SilentAimConfig.InfiniteAmmo or SilentAimConfig.Enabled) and (keyStr:find("ammo") or keyStr:find("clip") or keyStr:find("mag")) then
                                         mod[k] = 9999
                                     end
-                                    if SilentAimConfig.NoReload and (keyStr:find("reload") or keyStr:find("cooldown")) then
+                                    if (SilentAimConfig.NoReload or SilentAimConfig.Enabled) and (keyStr:find("reload") or keyStr:find("cooldown")) then
                                         mod[k] = 0
                                     end
-                                    if SilentAimConfig.RapidFire and (keyStr:find("firerate") or keyStr:find("rate")) then
+                                    if (SilentAimConfig.RapidFire or SilentAimConfig.Enabled) and (keyStr:find("firerate") or keyStr:find("rate")) then
                                         mod[k] = 0.01
+                                    end
+                                    if (SilentAimConfig.NoRecoil or SilentAimConfig.Enabled) and (keyStr:find("recoil") or keyStr:find("spread")) then
+                                        mod[k] = 0
                                     end
                                 end
                             end
@@ -636,29 +643,7 @@ RunService.Stepped:Connect(function()
     end)
 end)
 
--- SAFE SILENT AIM & RAPID FIRE TRIGGER (TANPA HOOK GLOBAL, AMAN UNTUK TOMBOL MAP)
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
-    if not SilentAimConfig.Enabled then return end
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        local targetHead = GetBestSilentAimTarget()
-        if targetHead then
-            Camera.CFrame = CFrame.new(Camera.CFrame.Position, targetHead.Position)
-        end
-    end
-end)
-
--- RAPID FIRE AUTO TAP SYSTEM KETIKA TOMBOL TEMBAK DITEKAN/DITAHAN
-RunService.RenderStepped:Connect(function()
-    if SilentAimConfig.Enabled and SilentAimConfig.RapidFire then
-        if UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton1) or (UserInputService.TouchEnabled and #UserInputService:GetTouches() > 0) then
-            local targetHead = GetBestSilentAimTarget()
-            if targetHead then
-                Camera.CFrame = CFrame.new(Camera.CFrame.Position, targetHead.Position)
-            end
-        end
-    end
-end)
-
+-- UPDATE KARAKTER, WORLD & FLY
 RunService.Stepped:Connect(function()
     local char = LocalPlayer.Character
     if not char then return end
@@ -712,6 +697,7 @@ RunService.Stepped:Connect(function()
     end
 end)
 
+-- RENDER ESP & TARGET LINE
 RunService.RenderStepped:Connect(function()
     if SilentAimConfig.Enabled then
         local screenCenter = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
