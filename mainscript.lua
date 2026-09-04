@@ -1,4 +1,4 @@
--- v1.0.23
+-- v1.0.24
 -- ===================================================================== -- ULTIMATE ANDROID D3D MENU: FISHING EDITION v10 -- ===================================================================== 
 local Players = game:GetService("Players") 
 local UserInputService = game:GetService("UserInputService") 
@@ -60,7 +60,11 @@ local SilentAimConfig = {
     Enabled = false,
     FOVSize = 120,
     NoReload = false,
-    InfiniteAmmo = false
+    InfiniteAmmo = false,
+    Prediction = true,
+    PredictionFactor = 0.13, -- Sesuaikan faktor prediksi keceptan gerak musuh
+    NoRecoil = false,
+    FastFire = false
 }
 
 local ESPCache = {}
@@ -509,12 +513,24 @@ CreateSlider(TabContentFrames["skill"], "Silent Aim FOV Size", 50, 300, 120, fun
     SilentAimConfig.FOVSize = val
 end)
 
+CreateToggle(TabContentFrames["skill"], "Prediction Movement", function(v)
+    SilentAimConfig.Prediction = v
+end)
+
 CreateToggle(TabContentFrames["skill"], "No Reload", function(v)
     SilentAimConfig.NoReload = v
 end)
 
 CreateToggle(TabContentFrames["skill"], "Unlimited Ammo", function(v)
     SilentAimConfig.InfiniteAmmo = v
+end)
+
+CreateToggle(TabContentFrames["skill"], "No Recoil", function(v)
+    SilentAimConfig.NoRecoil = v
+end)
+
+CreateToggle(TabContentFrames["skill"], "Fast Fire / Rapid Speed", function(v)
+    SilentAimConfig.FastFire = v
 end)
 
 -- MULTI JUMP
@@ -544,6 +560,20 @@ local function IsVisible(targetPart)
     return false
 end
 
+-- LOGIKA PREDIKSI GERAKAN TARGET (PREDICTION)
+local function GetPredictedTargetPosition(head, hrp)
+    if not head then return nil end
+    local targetPos = head.Position
+    if SilentAimConfig.Prediction and hrp then
+        -- Menghitung kecepatan target berdasarkan perubahan posisi AssemblyLinearVelocity
+        local velocity = hrp.AssemblyLinearVelocity or hrp.Velocity
+        if velocity then
+            targetPos = targetPos + (velocity * SilentAimConfig.PredictionFactor)
+        end
+    end
+    return targetPos
+end
+
 -- LOGIKA PRIORITAS TARGET (Terdekat dari Karakter + Terdekat dari Crosshair)
 local function GetBestSilentAimTarget()
     local screenCenter = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
@@ -557,22 +587,24 @@ local function GetBestSilentAimTarget()
         if player ~= LocalPlayer and (not player.Team or player.Team ~= LocalPlayer.Team) then
             local pChar = player.Character
             local head = pChar and pChar:FindFirstChild("Head")
+            local pHrp = pChar and pChar:FindFirstChild("HumanoidRootPart")
             local hum = pChar and pChar:FindFirstChildOfClass("Humanoid")
 
-            if head and hum and hum.Health > 0 then
+            if head and pHrp and hum and hum.Health > 0 then
                 if IsVisible(head) then
-                    local screenPos, onScreen = Camera:WorldToViewportPoint(head.Position)
+                    local predictedPos = GetPredictedTargetPosition(head, pHrp)
+                    local screenPos, onScreen = Camera:WorldToViewportPoint(predictedPos)
                     if onScreen then
                         local screenPos2D = Vector2.new(screenPos.X, screenPos.Y)
                         local distToCrosshair = (screenPos2D - screenCenter).Magnitude
                         
                         if distToCrosshair <= SilentAimConfig.FOVSize then
-                            local distToPlayer = (hrp.Position - head.Position).Magnitude
+                            local distToPlayer = (hrp.Position = hrp.Position and (hrp.Position - head.Position).Magnitude or 0)
                             local score = distToCrosshair + (distToPlayer * 0.2)
                             
                             if score < bestScore then
                                 bestScore = score
-                                bestTarget = head
+                                bestTarget = {Head = head, PredictedPos = predictedPos}
                             end
                         end
                     end
@@ -597,9 +629,9 @@ UserInputService.InputEnded:Connect(function(input)
     end
 end)
 
--- UNLIMITED AMMO & NO RELOAD BERBASIS TOOL YANG AKTIF (EQUIPPED) & ATTRIBUTE
+-- UNLIMITED AMMO, NO RELOAD, NO RECOIL & FAST FIRE BYPASS
 RunService.Stepped:Connect(function()
-    if not SilentAimConfig.InfiniteAmmo and not SilentAimConfig.NoReload then return end
+    if not SilentAimConfig.InfiniteAmmo and not SilentAimConfig.NoReload and not SilentAimConfig.NoRecoil and not SilentAimConfig.FastFire then return end
     
     pcall(function()
         local char = LocalPlayer.Character
@@ -615,6 +647,12 @@ RunService.Stepped:Connect(function()
                     if SilentAimConfig.NoReload and (lowerName:find("reload") or lowerName:find("cooldown")) then
                         tool:SetAttribute(attrName, 0)
                     end
+                    if SilentAimConfig.NoRecoil and (lowerName:find("recoil") or lowerName:find("spread") or lowerName:find("kick")) then
+                        tool:SetAttribute(attrName, 0)
+                    end
+                    if SilentAimConfig.FastFire and (lowerName:find("firerate") or lowerName:find("speed") or lowerName:find("delay")) then
+                        tool:SetAttribute(attrName, 0.01)
+                    end
                 end
                 
                 for _, obj in ipairs(tool:GetDescendants()) do
@@ -623,8 +661,14 @@ RunService.Stepped:Connect(function()
                         if SilentAimConfig.InfiniteAmmo and (n:find("ammo") or n:find("clip") or n:find("stored") or n:find("mag")) then
                             obj.Value = 9999
                         end
-                        if SilentAimConfig.NoReload and (n:find("reload") or n:find("cooldown") or n:find("firerate") or n:find("delay")) then
+                        if SilentAimConfig.NoReload and (n:find("reload") or n:find("cooldown")) then
                             obj.Value = 0
+                        end
+                        if SilentAimConfig.NoRecoil and (n:find("recoil") or n:find("spread") or n:find("kickback")) then
+                            obj.Value = 0
+                        end
+                        if SilentAimConfig.FastFire and (n:find("firerate") or n:find("delay") or n:find("firecooldown") or n:find("rate")) then
+                            obj.Value = 0.01
                         end
                     elseif obj:IsA("ModuleScript") then
                         pcall(function()
@@ -636,7 +680,14 @@ RunService.Stepped:Connect(function()
                                 end
                                 if SilentAimConfig.NoReload then
                                     if moduleData.ReloadTime then moduleData.ReloadTime = 0 end
-                                    if moduleData.Cooldown then moduleData.Cooldown = 0 end
+                                end
+                                if SilentAimConfig.NoRecoil then
+                                    if moduleData.Recoil then moduleData.Recoil = 0 end
+                                    if moduleData.Spread then moduleData.Spread = 0 end
+                                end
+                                if SilentAimConfig.FastFire then
+                                    if moduleData.FireRate then moduleData.FireRate = 0.01 end
+                                    if moduleData.Cooldown then moduleData.Cooldown = 0.01 end
                                 end
                             end
                         end)
@@ -707,16 +758,16 @@ RunService.RenderStepped:Connect(function()
         FOVCircle.Radius = SilentAimConfig.FOVSize
         FOVCircle.Visible = true
 
-        local targetHead = GetBestSilentAimTarget()
-        if targetHead then
-            local screenPos, onScreen = Camera:WorldToViewportPoint(targetHead.Position)
+        local targetData = GetBestSilentAimTarget()
+        if targetData and targetData.Head then
+            local screenPos, onScreen = Camera:WorldToViewportPoint(targetData.PredictedPos)
             if onScreen then
                 TargetLine.From = screenCenter
                 TargetLine.To = Vector2.new(screenPos.X, screenPos.Y)
                 TargetLine.Visible = true
                 
                 if isFiring then
-                    Camera.CFrame = CFrame.new(Camera.CFrame.Position, targetHead.Position)
+                    Camera.CFrame = CFrame.new(Camera.CFrame.Position, targetData.PredictedPos)
                 end
             else
                 TargetLine.Visible = false
