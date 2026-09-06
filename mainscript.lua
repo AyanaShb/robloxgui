@@ -1,6 +1,6 @@
--- v1.0.37-ultimate --
+-- v1.0.38-ultimate-fix --
 -- =====================================================================
--- ULTIMATE ANDROID D3D MENU: FULL UNLOCKED & HARD FOV PATCH --
+-- ULTIMATE ANDROID D3D MENU: REALTIME DYNAMIC TARGET & NO-RELOAD --
 -- =====================================================================
 
 local Players = game:GetService("Players")
@@ -8,7 +8,6 @@ local UserInputService = game:GetService("UserInputService")
 local Lighting = game:GetService("Lighting")
 local Workspace = game:GetService("Workspace")
 local RunService = game:GetService("RunService")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Camera = Workspace.CurrentCamera
 local LocalPlayer = Players.LocalPlayer
 
@@ -47,6 +46,7 @@ local PlayerConfig = {
     MultiJump = false,
     InstantFire = false,
     OneHitDamage = false,
+    NoReload = false,
 }
 
 local WorldConfig = {
@@ -56,10 +56,10 @@ local WorldConfig = {
 local SilentAimConfig = {
     Enabled = false,
     FOVSize = 140,
+    WallCheck = false,
 }
 
 local ESPCache = {}
-local hasSnappedThisShot = false
 
 local FOVCircle = Drawing.new("Circle")
 FOVCircle.Visible = false
@@ -71,7 +71,7 @@ FOVCircle.NumSides = 64
 local TargetLine = Drawing.new("Line")
 TargetLine.Visible = false
 TargetLine.Thickness = 1.5
-TargetLine.Color = Color3.fromRGB(255, 0, 0)
+TargetLine.Color = Color3.fromRGB(0, 255, 128) -- Hijau terang untuk menandai target aktif yang sedang dikunci
 
 local FloatButton = Instance.new("TextButton")
 FloatButton.Size = UDim2.new(0, 52, 0, 52)
@@ -125,7 +125,7 @@ end)
 local TitleLabel = Instance.new("TextLabel")
 TitleLabel.Size = UDim2.new(1, 0, 0, 36)
 TitleLabel.BackgroundTransparency = 1
-TitleLabel.Text = "× D3D MENU: ULTIMATE BYPASS v1.0.37 ×"
+TitleLabel.Text = "× D3D MENU: DYNAMIC TARGET & NO-RELOAD ×"
 TitleLabel.TextColor3 = Color3.fromRGB(240, 240, 255)
 TitleLabel.TextSize = 11.5
 TitleLabel.Font = Enum.Font.GothamBold
@@ -187,7 +187,6 @@ for i, tabName in ipairs(tabs) do
     end)
 end
 
--- ESP CONTAINER & GLOBAL CACHE RIGID FIX
 local function RemovePlayerESP(player)
     if ESPCache[player] then
         for _, obj in pairs(ESPCache[player]) do
@@ -359,8 +358,9 @@ CreateToggle(TabContentFrames["Visual"], "ESP Distance", function(v) VisualsConf
 CreateToggle(TabContentFrames["Visual"], "ESP Gender [Cowo/Cewe]", function(v) VisualsConfig.ESP_Gender = v end)
 
 CreateToggle(TabContentFrames["Player"], "Multi-Jump", function(v) PlayerConfig.MultiJump = v end)
-CreateToggle(TabContentFrames["Player"], "Instant Fire Speed (Max Hack)", function(v) PlayerConfig.InstantFire = v end)
+CreateToggle(TabContentFrames["Player"], "Instant Fire Speed (Max)", function(v) PlayerConfig.InstantFire = v end)
 CreateToggle(TabContentFrames["Player"], "1-Hit Instant Kill Damage", function(v) PlayerConfig.OneHitDamage = v end)
+CreateToggle(TabContentFrames["Player"], "Real No-Reload", function(v) PlayerConfig.NoReload = v end)
 
 CreateToggle(TabContentFrames["world"], "Night Mode", function(v)
     WorldConfig.NightMode = v
@@ -371,10 +371,13 @@ CreateToggle(TabContentFrames["world"], "Night Mode", function(v)
     end
 end)
 
-CreateToggle(TabContentFrames["skill"], "Hard-Locked FOV Aimbot", function(v)
+CreateToggle(TabContentFrames["skill"], "Dynamic Aimbot (Realtime)", function(v)
     SilentAimConfig.Enabled = v
     FOVCircle.Visible = v
     TargetLine.Visible = v
+end)
+CreateToggle(TabContentFrames["skill"], "Wall Check (Abaikan Tembok)", function(v)
+    SilentAimConfig.WallCheck = v
 end)
 
 UserInputService.JumpRequest:Connect(function()
@@ -387,7 +390,7 @@ UserInputService.JumpRequest:Connect(function()
     end
 end)
 
--- ABSOLUTE FIRE RATE & DAMAGE OVERRIDE
+-- ABSOLUTE WEAPON HACK (INSTANT FIRE, 1-HIT DAMAGE, NO RELOAD)
 RunService.Stepped:Connect(function()
     local char = LocalPlayer.Character
     if not char then return end
@@ -397,11 +400,18 @@ RunService.Stepped:Connect(function()
             for _, descendant in ipairs(tool:GetDescendants()) do
                 if descendant:IsA("NumberValue") or descendant:IsA("IntValue") then
                     local name = string.lower(descendant.Name)
-                    if PlayerConfig.InstantFire and (string.find(name, "cooldown") or string.find(name, "firerate") or string.find(name, "delay") or string.find(name, "fire") or string.find(name, "speed")) then
+                    if PlayerConfig.InstantFire and (string.find(name, "cooldown") or string.find(name, "firerate") or string.find(name, "delay") or string.find(name, "fire") or string.find(name, "speed") or string.find(name, "rate")) then
                         descendant.Value = 0
                     end
                     if PlayerConfig.OneHitDamage and (string.find(name, "damage") or string.find(name, "dmg") or string.find(name, "power") or string.find(name, "hit")) then
                         descendant.Value = 999999
+                    end
+                    if PlayerConfig.NoReload and (string.find(name, "ammo") or string.find(name, "clip") or string.find(name, "mag") or string.find(name, "reload") or string.find(name, "capacity")) then
+                        if string.find(name, "reload") then
+                            descendant.Value = 0
+                        else
+                            descendant.Value = 999
+                        end
                     end
                 end
             end
@@ -409,8 +419,35 @@ RunService.Stepped:Connect(function()
     end
 end)
 
--- STRICT FOV FILTER (HANYA TARGET DALAM LINGKARAN)
-local function GetStrictFOVTarget()
+-- WALL CHECK FUNCTION DENGAN RAYCAST AMAN
+local function IsVisible(targetPart)
+    if not SilentAimConfig.WallCheck then return true end
+    local char = LocalPlayer.Character
+    local hrp = char and char:FindFirstChild("HumanoidRootPart")
+    if not hrp then return false end
+
+    local origin = Camera.CFrame.Position
+    local direction = targetPart.Position - origin
+
+    local raycastParams = RaycastParams.new()
+    raycastParams.FilterType = Enum.RaycastFilterType.Blacklist
+    raycastParams.FilterDescendantsInstances = {char}
+    raycastParams.IgnoreWater = true
+
+    local result = Workspace:Raycast(origin, direction, raycastParams)
+    if not result then
+        return true
+    else
+        local hitInstance = result.Instance
+        if hitInstance:IsDescendantOf(targetPart.Parent) then
+            return true
+        end
+    end
+    return false
+end
+
+-- REALTIME DYNAMIC TARGET SELECTION (BERUBAH OTOMATIS MENGIKUTI ARAH CROSSHAIR/GERAKAN)
+local function GetDynamicTarget()
     local screenCenter = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
     local bestTarget, bestDist = nil, math.huge
     local char = LocalPlayer.Character
@@ -429,10 +466,12 @@ local function GetStrictFOVTarget()
                     local screenPos2D = Vector2.new(screenPos.X, screenPos.Y)
                     local dist = (screenPos2D - screenCenter).Magnitude
                     
-                    -- WAJIB DI DALAM FOV DAN MENJADI JARAK TERDEKAT DARI PUSAT LINGKARAN
+                    -- WAJIB DALAM FOV, LOLOS WALL CHECK (JIKA AKTIF), DAN PALING DEKAT DENGAN PUSAT LAYAR SECARA REALTIME
                     if dist <= SilentAimConfig.FOVSize and dist < bestDist then
-                        bestDist = dist
-                        bestTarget = head
+                        if IsVisible(head) then
+                            bestDist = dist
+                            bestTarget = head
+                        end
                     end
                 end
             end
@@ -441,41 +480,20 @@ local function GetStrictFOVTarget()
     return bestTarget
 end
 
-UserInputService.InputBegan:Connect(function(input)
-    if SilentAimConfig.Enabled and (input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch) then
-        if not hasSnappedThisShot then
-            local targetHead = GetStrictFOVTarget()
-            if targetHead then
-                Camera.CFrame = CFrame.new(Camera.CFrame.Position, targetHead.Position)
-                hasSnappedThisShot = true
-            end
-        end
-    end
-end)
-
-UserInputService.InputEnded:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        hasSnappedThisShot = false
-    end
-end)
-
-RunService.Stepped:Connect(function()
-    if WorldConfig.NightMode then
-        Lighting.ClockTime = 0
-        Lighting.Brightness = 0.2
-        Lighting.Ambient = Color3.fromRGB(0, 0, 0)
-    end
-end)
-
+-- REALTIME FRAME-BY-FRAME CAMERA LOCK SAAT AIMBOT AKTIF
 RunService.RenderStepped:Connect(function()
+    local screenCenter = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
+
     if SilentAimConfig.Enabled then
-        local screenCenter = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
         FOVCircle.Position = screenCenter
         FOVCircle.Radius = SilentAimConfig.FOVSize
         FOVCircle.Visible = true
 
-        local targetHead = GetStrictFOVTarget()
+        local targetHead = GetDynamicTarget()
         if targetHead then
+            -- Realtime tracking: Kamera mengunci target terdekat di dalam FOV secara mulus mengikuti pergerakan
+            Camera.CFrame = CFrame.new(Camera.CFrame.Position, targetHead.Position)
+
             local screenPos, onScreen = Camera:WorldToViewportPoint(targetHead.Position)
             if onScreen then
                 TargetLine.From = screenCenter
@@ -490,6 +508,12 @@ RunService.RenderStepped:Connect(function()
     else
         FOVCircle.Visible = false
         TargetLine.Visible = false
+    end
+
+    if WorldConfig.NightMode then
+        Lighting.ClockTime = 0
+        Lighting.Brightness = 0.2
+        Lighting.Ambient = Color3.fromRGB(0, 0, 0)
     end
 
     for player, esp in pairs(ESPCache) do
