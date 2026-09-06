@@ -1,4 +1,4 @@
-Implementasi ini mencakup peningkatan kecepatan tembak (fire rate) secara real-time, filter tim otomatis (ESP dan target hanya menyasar musuh), serta sinkronisasi mutlak untuk pemain yang bergabung, keluar, atau berganti tim.
+--Implementasi ini mencakup peningkatan kecepatan tembak (fire rate) secara real-time, filter tim otomatis (ESP dan target hanya menyasar musuh), serta sinkronisasi mutlak untuk pemain yang bergabung, keluar, atau berganti tim.
 -- v1.0.35 --
 -- =====================================================================
 -- ULTIMATE ANDROID D3D MENU: TEAM FILTER, FIRE RATE & DYNAMIC SYNC --
