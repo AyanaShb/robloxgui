@@ -1,6 +1,6 @@
--- v1.0.40-true-headshot-offset --
+-- v1.0.41-auto-aim-ultimate --
 -- =====================================================================
--- ULTIMATE ANDROID D3D MENU: TRUE HEADSHOT OFFSET & NO-RELOCK --
+-- ULTIMATE ANDROID D3D MENU: AUTO AIM TAB & COMPLETE FIX --
 -- =====================================================================
 
 local Players = game:GetService("Players")
@@ -44,19 +44,19 @@ local VisualsConfig = {
 
 local PlayerConfig = {
     MultiJump = false,
-    InstantFire = false,
-    OneHitDamage = false,
+    RapidFire = false,
     NoReload = false,
+    NoRecoil = false,
 }
 
 local WorldConfig = {
     NightMode = false,
 }
 
-local SilentAimConfig = {
+local AutoAimConfig = {
     Enabled = false,
     FOVSize = 140,
-    WallCheck = false,
+    AutoFireOnBody = false,
 }
 
 local ESPCache = {}
@@ -125,7 +125,7 @@ end)
 local TitleLabel = Instance.new("TextLabel")
 TitleLabel.Size = UDim2.new(1, 0, 0, 36)
 TitleLabel.BackgroundTransparency = 1
-TitleLabel.Text = "× D3D MENU: TRUE HEADSHOT OFFSET ×"
+TitleLabel.Text = "× D3D MENU: AUTO AIM ULTIMATE ×"
 TitleLabel.TextColor3 = Color3.fromRGB(240, 240, 255)
 TitleLabel.TextSize = 11.5
 TitleLabel.Font = Enum.Font.GothamBold
@@ -139,7 +139,7 @@ TabContainer.Parent = MainFrame
 
 Instance.new("UICorner", TabContainer).CornerRadius = UDim.new(0, 10)
 
-local tabs = {"Visual", "Player", "world", "skill"}
+local tabs = {"Visual", "Player", "world", "Auto aim"}
 local TabContentFrames = {}
 
 for i, tabName in ipairs(tabs) do
@@ -358,9 +358,9 @@ CreateToggle(TabContentFrames["Visual"], "ESP Distance", function(v) VisualsConf
 CreateToggle(TabContentFrames["Visual"], "ESP Gender [Cowo/Cewe]", function(v) VisualsConfig.ESP_Gender = v end)
 
 CreateToggle(TabContentFrames["Player"], "Multi-Jump", function(v) PlayerConfig.MultiJump = v end)
-CreateToggle(TabContentFrames["Player"], "Instant Fire Speed (Max)", function(v) PlayerConfig.InstantFire = v end)
-CreateToggle(TabContentFrames["Player"], "1-Hit Instant Kill Damage", function(v) PlayerConfig.OneHitDamage = v end)
+CreateToggle(TabContentFrames["Player"], "Rapid Fire", function(v) PlayerConfig.RapidFire = v end)
 CreateToggle(TabContentFrames["Player"], "Real No-Reload", function(v) PlayerConfig.NoReload = v end)
+CreateToggle(TabContentFrames["Player"], "Real No-Recoil", function(v) PlayerConfig.NoRecoil = v end)
 
 CreateToggle(TabContentFrames["world"], "Night Mode", function(v)
     WorldConfig.NightMode = v
@@ -371,13 +371,13 @@ CreateToggle(TabContentFrames["world"], "Night Mode", function(v)
     end
 end)
 
-CreateToggle(TabContentFrames["skill"], "Silent Headshot Snap (On Shoot)", function(v)
-    SilentAimConfig.Enabled = v
+CreateToggle(TabContentFrames["Auto aim"], "Auto Aim (On/Off)", function(v)
+    AutoAimConfig.Enabled = v
     FOVCircle.Visible = v
     TargetLine.Visible = v
 end)
-CreateToggle(TabContentFrames["skill"], "Wall Check (Abaikan Tembok)", function(v)
-    SilentAimConfig.WallCheck = v
+CreateToggle(TabContentFrames["Auto aim"], "Auto Fire When Crosshair on Body (Headshot Snap)", function(v)
+    AutoAimConfig.AutoFireOnBody = v
 end)
 
 UserInputService.JumpRequest:Connect(function()
@@ -390,6 +390,7 @@ UserInputService.JumpRequest:Connect(function()
     end
 end)
 
+-- WEAPON MODIFICATIONS (RAPID FIRE, NO-RELOAD, NO-RECOIL)
 RunService.Stepped:Connect(function()
     local char = LocalPlayer.Character
     if not char then return end
@@ -399,11 +400,8 @@ RunService.Stepped:Connect(function()
             for _, descendant in ipairs(tool:GetDescendants()) do
                 if descendant:IsA("NumberValue") or descendant:IsA("IntValue") then
                     local name = string.lower(descendant.Name)
-                    if PlayerConfig.InstantFire and (string.find(name, "cooldown") or string.find(name, "firerate") or string.find(name, "delay") or string.find(name, "fire") or string.find(name, "speed") or string.find(name, "rate")) then
+                    if PlayerConfig.RapidFire and (string.find(name, "cooldown") or string.find(name, "firerate") or string.find(name, "delay") or string.find(name, "fire") or string.find(name, "speed") or string.find(name, "rate")) then
                         descendant.Value = 0
-                    end
-                    if PlayerConfig.OneHitDamage and (string.find(name, "damage") or string.find(name, "dmg") or string.find(name, "power") or string.find(name, "hit")) then
-                        descendant.Value = 999999
                     end
                     if PlayerConfig.NoReload and (string.find(name, "ammo") or string.find(name, "clip") or string.find(name, "mag") or string.find(name, "reload") or string.find(name, "capacity")) then
                         if string.find(name, "reload") then
@@ -412,40 +410,19 @@ RunService.Stepped:Connect(function()
                             descendant.Value = 999
                         end
                     end
+                elseif PlayerConfig.NoRecoil and (descendant:IsA("Vector3Value") or descendant:IsA("CFrameValue")) then
+                    local name = string.lower(descendant.Name)
+                    if string.find(name, "recoil") or string.find(name, "spread") or string.find(name, "kick") then
+                        descendant.Value = Vector3.new(0, 0, 0)
+                    end
                 end
             end
         end
     end
 end)
 
-local function IsVisible(targetPart)
-    if not SilentAimConfig.WallCheck then return true end
-    local char = LocalPlayer.Character
-    local hrp = char and char:FindFirstChild("HumanoidRootPart")
-    if not hrp then return false end
-
-    local origin = Camera.CFrame.Position
-    local direction = targetPart.Position - origin
-
-    local raycastParams = RaycastParams.new()
-    raycastParams.FilterType = Enum.RaycastFilterType.Blacklist
-    raycastParams.FilterDescendantsInstances = {char}
-    raycastParams.IgnoreWater = true
-
-    local result = Workspace:Raycast(origin, direction, raycastParams)
-    if not result then
-        return true
-    else
-        local hitInstance = result.Instance
-        if hitInstance:IsDescendantOf(targetPart.Parent) then
-            return true
-        end
-    end
-    return false
-end
-
--- MENCARI KEPALA DENGAN DITAMBAHKAN POSITIVE VERTICAL OFFSET AGAR PAS DI ATAS/TIDAK MELLESING KE BADAN
-local function GetTrueHeadshotTarget()
+-- MENCARI TARGET KEPALA DENGAN OFFSET NAIK DI ATAS KEPALA
+local function GetAutoAimTargetPos()
     local screenCenter = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
     local bestTargetPos, bestDist = nil, math.huge
     local char = LocalPlayer.Character
@@ -459,19 +436,17 @@ local function GetTrueHeadshotTarget()
             local hum = pChar and pChar:FindFirstChildOfClass("Humanoid")
 
             if head and hum and hum.Health > 0 then
-                -- Tambahkan offset tinggi (Y) secara presisi ke atas agar tembakan naik pas di atas kepala/ubun-ubun
-                local exactHeadPos = head.Position + Vector3.new(0, 0.45, 0)
+                -- Offset naik dikit pas di atas kepala
+                local exactHeadPos = head.Position + Vector3.new(0, 0.5, 0)
                 local screenPos, onScreen = Camera:WorldToViewportPoint(exactHeadPos)
                 
                 if onScreen then
                     local screenPos2D = Vector2.new(screenPos.X, screenPos.Y)
                     local dist = (screenPos2D - screenCenter).Magnitude
                     
-                    if dist <= SilentAimConfig.FOVSize and dist < bestDist then
-                        if IsVisible(head) then
-                            bestDist = dist
-                            bestTargetPos = exactHeadPos
-                        end
+                    if dist <= AutoAimConfig.FOVSize and dist < bestDist then
+                        bestDist = dist
+                        bestTargetPos = exactHeadPos
                     end
                 end
             end
@@ -480,10 +455,43 @@ local function GetTrueHeadshotTarget()
     return bestTargetPos
 end
 
--- SNAP INSTAN HANYA PAS KLIK/TEMBAK TANPA MENGUNCI (NOCLOCK) & TARGET DIATUR PAS KE KEPALA ATAS
+-- DETEKSI CROSSHAIR DI AREA TUBUH (BODY) LALU SNAP INSTAN KE KEPALA DAN AUTO FIRE
+local function CheckCrosshairOnBodyAndShoot()
+    if not AutoAimConfig.Enabled or not AutoAimConfig.AutoFireOnBody then return end
+    local screenCenter = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
+
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer then
+            local pChar = player.Character
+            local torso = pChar and (pChar:FindFirstChild("UpperTorso") or pChar:FindFirstChild("Torso") or pChar:FindFirstChild("HumanoidRootPart"))
+            local head = pChar and pChar:FindFirstChild("Head")
+            local hum = pChar and pChar:FindFirstChildOfClass("Humanoid")
+
+            if torso and head and hum and hum.Health > 0 then
+                local tPos, onScreen = Camera:WorldToViewportPoint(torso.Position)
+                if onScreen then
+                    local tPos2D = Vector2.new(tPos.X, tPos.Y)
+                    -- Jika crosshair mendekati body musuh, arahkan ke atas kepala dan trigger tembak
+                    if (tPos2D - screenCenter).Magnitude < 60 then
+                        local targetHeadPos = head.Position + Vector3.new(0, 0.5, 0)
+                        Camera.CFrame = CFrame.new(Camera.CFrame.Position, targetHeadPos)
+                        
+                        -- Simulasi klik / tembak otomatis
+                        pcall(function()
+                            mouse1click()
+                        end)
+                        break
+                    end
+                end
+            end
+        end
+    end
+end
+
+-- SNAP INSTAN KETIKA MENEMBAK (KLIK) SAAT AUTO AIM AKTIF
 UserInputService.InputBegan:Connect(function(input)
-    if SilentAimConfig.Enabled and (input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch) then
-        local targetHeadPos = GetTrueHeadshotTarget()
+    if AutoAimConfig.Enabled and (input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch) then
+        local targetHeadPos = GetAutoAimTargetPos()
         if targetHeadPos then
             Camera.CFrame = CFrame.new(Camera.CFrame.Position, targetHeadPos)
         end
@@ -493,12 +501,14 @@ end)
 RunService.RenderStepped:Connect(function()
     local screenCenter = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
 
-    if SilentAimConfig.Enabled then
+    if AutoAimConfig.Enabled then
         FOVCircle.Position = screenCenter
-        FOVCircle.Radius = SilentAimConfig.FOVSize
+        FOVCircle.Radius = AutoAimConfig.FOVSize
         FOVCircle.Visible = true
 
-        local targetHeadPos = GetTrueHeadshotTarget()
+        CheckCrosshairOnBodyAndShoot()
+
+        local targetHeadPos = GetAutoAimTargetPos()
         if targetHeadPos then
             local screenPos, onScreen = Camera:WorldToViewportPoint(targetHeadPos)
             if onScreen then
