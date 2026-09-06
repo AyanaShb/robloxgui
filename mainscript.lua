@@ -1,6 +1,6 @@
--- v1.0.25 --
+-- v1.0.27 --
 -- =====================================================================
--- ULTIMATE ANDROID D3D MENU: FISHING EDITION v10 + PREDICT + BYPASS --
+-- ULTIMATE ANDROID D3D MENU: FISHING EDITION v11 + SAFE MATERIAL CHAMS --
 -- =====================================================================
 
 local Players = game:GetService("Players")
@@ -13,10 +13,11 @@ local Camera = Workspace.CurrentCamera
 local LocalPlayer = Players.LocalPlayer
 
 -- ==========================================
--- AUTO BYPASS ANTI-CHEAT (RUNS AUTOMATICALLY)
+-- ADVANCED STEALTH BYPASS ANTI-CHEAT
 -- ==========================================
 task.spawn(function()
     pcall(function()
+        -- 1. Bypass Environment Readonly Checks
         if setreadonly then
             pcall(function()
                 setreadonly(getrenv(), false)
@@ -25,34 +26,48 @@ task.spawn(function()
             end)
         end
         
-        if make_writeable then
-            pcall(function()
-                make_writeable(getreg())
-            end)
-        end
-        
-        if detour_function then
-            detour_function = function(...)
-                return true
-            end
-        end
-        
-        if getconnections then
-            pcall(function()
-                for _, connection in ipairs(getconnections(ScriptContext.Error)) do
-                    connection:Disable()
-                end
-            end)
-        end
-        
+        -- 2. Spoofing Calling Script untuk Mencegah Deteksi Pemanggil Eksternal
         if getcallingscript then
             pcall(function()
-                getcallingscript = function()
+                local oldGetCallingScript
+                oldGetCallingScript = hookfunction(getcallingscript, newcclosure(function(...)
+                    if not checkcaller() then
+                        return oldGetCallingScript(...)
+                    end
                     return nil
-                end
+                end))
             end)
         end
-        
+
+        -- 3. Advanced Namecall Interception (Lebih Aman daripada Overwrite Langsung)
+        if hookmetamethod and getnamecallmethod then
+            pcall(function()
+                local oldNamecall
+                oldNamecall = hookmetamethod(game, "__namecall", newcclosure(function(self, ...)
+                    local method = getnamecallmethod()
+                    if not checkcaller() then
+                        return oldNamecall(self, ...)
+                    end
+                    
+                    if method == "FireServer" or method == "InvokeServer" then
+                        local name = tostring(self.Name):lower()
+                        if name:find("handshake") or name:find("validate") or name:find("verify") or name:find("integrity") or name:find("anti") or name:find("cheat") then
+                            return true 
+                        end
+                    end
+                    return oldNamecall(self, ...)
+                end))
+            end)
+        end
+
+        -- 4. Bersihkan Error Handler agar Telemetri Game tidak Melaporkan Script
+        pcall(function()
+            for _, connection in ipairs(getconnections(ScriptContext.Error)) do
+                connection:Disable()
+            end
+        end)
+
+        -- 5. Hapus Jejak Signature / Hash di Global Environment
         for _, tableName in ipairs({"_G", "shared"}) do
             pcall(function()
                 local target = getgenv()[tableName]
@@ -65,25 +80,6 @@ task.spawn(function()
                     end
                 end
             end)
-        end
-        
-        for _, remote in ipairs(ReplicatedStorage:GetDescendants()) do
-            if remote:IsA("RemoteEvent") or remote:IsA("RemoteFunction") then
-                local name = remote.Name:lower()
-                if name:find("handshake") or name:find("validate") or name:find("verify") or name:find("integrity") or name:find("anti") then
-                    pcall(function()
-                        if remote:IsA("RemoteEvent") then
-                            remote.FireServer = function(...)
-                                return true
-                            end
-                        elseif remote:IsA("RemoteFunction") then
-                            remote.InvokeServer = function(...)
-                                return true
-                            end
-                        end
-                    end)
-                end
-            end
         end
     end)
 end)
@@ -256,7 +252,7 @@ end)
 local TitleLabel = Instance.new("TextLabel")
 TitleLabel.Size = UDim2.new(1, 0, 0, 36)
 TitleLabel.BackgroundTransparency = 1
-TitleLabel.Text = "× D3D MENU BG AMIN (BYPASS) ×"
+TitleLabel.Text = "× D3D MENU BG AMIN (STEALTH CHAMS) ×"
 TitleLabel.TextColor3 = Color3.fromRGB(240, 240, 255)
 TitleLabel.TextSize = 13.5
 TitleLabel.Font = Enum.Font.GothamBold
@@ -360,24 +356,25 @@ end
 Players.PlayerAdded:Connect(CreatePlayerESP)
 Players.PlayerRemoving:Connect(RemovePlayerESP)
 
+-- SAFE CHAMS (MATERIAL OVERRIDE TANPA INSTANCE HIGHLIGHT)
 local function UpdateChams()
     for _, player in ipairs(Players:GetPlayers()) do
         if player ~= LocalPlayer and player.Character then
             local char = player.Character
-            local highlight = char:FindFirstChild("D3D_ChamsHighlight")
-            if VisualsConfig.ChamsGlow then
-                if not highlight then
-                    highlight = Instance.new("Highlight")
-                    highlight.Name = "D3D_ChamsHighlight"
-                    highlight.Adornee = char
-                    highlight.Parent = char
+            for _, part in ipairs(char:GetDescendants()) do
+                if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
+                    if VisualsConfig.ChamsGlow then
+                        pcall(function()
+                            part.Color = VisualsConfig.ChamsColor
+                            part.Material = Enum.Material.Neon
+                        end)
+                    else
+                        pcall(function()
+                            part.Color = Color3.fromRGB(255, 255, 255)
+                            part.Material = Enum.Material.SmoothPlastic
+                        end)
+                    end
                 end
-                highlight.FillColor = VisualsConfig.ChamsColor
-                highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
-                highlight.FillTransparency = 0.4
-                highlight.OutlineTransparency = 0.1
-            else
-                if highlight then highlight:Destroy() end
             end
         end
     end
@@ -536,8 +533,8 @@ CreateToggle(TabContentFrames["Visual"], "ESP Distance", function(v) VisualsConf
 CreateToggle(TabContentFrames["Visual"], "ESP Gender [Cowo/Cewe]", function(v) VisualsConfig.ESP_Gender = v end)
 CreateToggle(TabContentFrames["Visual"], "ESP Item Nearby", function(v) VisualsConfig.ESP_Item = v end)
 CreateSlider(TabContentFrames["Visual"], "ESP Item Radius", 10, 500, 50, function(val) VisualsConfig.ItemRadius = val end)
-CreateToggle(TabContentFrames["Visual"], "Chams Body Color (Glow)", function(v) VisualsConfig.ChamsGlow = v UpdateChams() end)
-CreateColorPicker(TabContentFrames["Visual"], "Chams Circle Color Picker", function(c) VisualsConfig.ChamsColor = c UpdateChams() end)
+CreateToggle(TabContentFrames["Visual"], "Safe Chams Material (Neon)", function(v) VisualsConfig.ChamsGlow = v UpdateChams() end)
+CreateColorPicker(TabContentFrames["Visual"], "Chams Color Picker", function(c) VisualsConfig.ChamsColor = c UpdateChams() end)
 
 CreateToggle(TabContentFrames["Player"], "Speed Run", function(v)
     PlayerConfig.SpeedHack = v
@@ -680,7 +677,7 @@ UserInputService.InputEnded:Connect(function(input)
     end
 end)
 
--- UNLIMITED AMMO & NO RELOAD BERBASIS TOOL YANG AKTIF (EQUIPPED) & ATTRIBUTE
+-- UNLIMITED AMMO & NO RELOAD
 RunService.Stepped:Connect(function()
     if not SilentAimConfig.InfiniteAmmo and not SilentAimConfig.NoReload then return end
     pcall(function()
@@ -779,6 +776,10 @@ RunService.Stepped:Connect(function()
 end)
 
 RunService.RenderStepped:Connect(function()
+    if VisualsConfig.ChamsGlow then
+        UpdateChams()
+    end
+
     if SilentAimConfig.Enabled then
         local screenCenter = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
         FOVCircle.Position = screenCenter
