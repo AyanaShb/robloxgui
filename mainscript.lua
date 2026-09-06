@@ -1,6 +1,6 @@
--- v1.0.38 --
+-- v1.0.39 --
 -- =====================================================================
--- ULTIMATE ANDROID D3D MENU: FIRE RATE 0.009 & WALLCHECK TARGET --
+-- ULTIMATE ANDROID D3D MENU: FIX GUI PARENTING & WALLCHECK --
 -- =====================================================================
 
 local Players = game:GetService("Players")
@@ -16,18 +16,19 @@ ScreenGui.Name = "D3D_Ultimate_Android"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
-pcall(function()
-    if syn and syn.protect_gui then
+-- PERBAIKAN UTAMA: Memastikan GUI sukses masuk ke CoreGui atau PlayerGui
+local success = pcall(function()
+    if gethui then
+        ScreenGui.Parent = gethui()
+    elseif syn and syn.protect_gui then
         syn.protect_gui(ScreenGui)
         ScreenGui.Parent = game.CoreGui
-    elseif gethui then
-        ScreenGui.Parent = gethui()
     else
         ScreenGui.Parent = game:GetService("CoreGui")
     end
 end)
 
-if not ScreenGui.Parent then
+if not success or not ScreenGui.Parent then
     pcall(function()
         ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
     end)
@@ -56,7 +57,7 @@ local WorldConfig = {
 local SilentAimConfig = {
     Enabled = false,
     FOVSize = 120,
-    WallCheck = true, -- Default aktif agar mengabaikan musuh di balik tembok
+    WallCheck = true,
 }
 
 local ESPCache = {}
@@ -129,9 +130,9 @@ end)
 local TitleLabel = Instance.new("TextLabel")
 TitleLabel.Size = UDim2.new(1, 0, 0, 36)
 TitleLabel.BackgroundTransparency = 1
-TitleLabel.Text = "× D3D MENU: 0.009 FIRE RATE & WALLCHECK ×"
+TitleLabel.Text = "× D3D MENU: FIRE RATE 0.009 & WALLCHECK ×"
 TitleLabel.TextColor3 = Color3.fromRGB(240, 240, 255)
-TitleLabel.TextSize = 12.5
+TitleLabel.TextSize = 11.5
 TitleLabel.Font = Enum.Font.GothamBold
 TitleLabel.Parent = MainFrame
 
@@ -191,7 +192,6 @@ for i, tabName in ipairs(tabs) do
     end)
 end
 
--- VALIDASI TIM (HANYA MUSUH)
 local function IsEnemy(player)
     if player == LocalPlayer then return false end
     if LocalPlayer.Team and player.Team then
@@ -274,13 +274,6 @@ local function SetupPlayer(player)
             CreatePlayerESP(player)
         end
     end)
-
-    player.CharacterAdded:Connect(function(newChar)
-        task.spawn(function()
-            newChar:WaitForChild("HumanoidRootPart", 5)
-            newChar:WaitForChild("Head", 5)
-        end)
-    end)
 end
 
 for _, p in ipairs(Players:GetPlayers()) do
@@ -290,7 +283,6 @@ end
 Players.PlayerAdded:Connect(SetupPlayer)
 Players.PlayerRemoving:Connect(RemovePlayerESP)
 
--- UI BUILDERS
 local function CreateToggle(parent, text, callback)
     local frame = Instance.new("Frame")
     frame.Size = UDim2.new(1, 0, 0, 36)
@@ -372,7 +364,6 @@ local function CreateColorPicker(parent, text, callback)
     frame.Parent = parent
 end
 
--- POPULATE TABS
 CreateToggle(TabContentFrames["Visual"], "Skeleton ESP (Enemy Only)", function(v) VisualsConfig.ESP_Skeleton = v end)
 CreateColorPicker(TabContentFrames["Visual"], "Skeleton Color Custom", function(c) 
     VisualsConfig.SkeletonColor = c 
@@ -418,7 +409,6 @@ UserInputService.JumpRequest:Connect(function()
     end
 end)
 
--- MODIFIKASI FIRE RATE DIKUNCI DI ANGKA 0.009
 RunService.Stepped:Connect(function()
     if not PlayerConfig.FireRateMultiplier then return end
     local char = LocalPlayer.Character
@@ -440,7 +430,6 @@ RunService.Stepped:Connect(function()
     end
 end)
 
--- FUNGSI WALLCHECK MENGGUNAKAN RAYCAST
 local function IsVisible(targetPart)
     if not SilentAimConfig.WallCheck then return true end
     local char = LocalPlayer.Character
@@ -452,18 +441,10 @@ local function IsVisible(targetPart)
 
     local raycastParams = RaycastParams.new()
     raycastParams.FilterType = Enum.RaycastFilterType.Blacklist
-    
-    -- Abaikan karakter player sendiri dan senjata/aksesorisnya
-    local filterList = {char}
-    if player and player.Character then
-        table.insert(filterList, player.Character)
-    end
-    raycastParams.FilterDescendantsInstances = filterList
+    raycastParams.FilterDescendantsInstances = {char}
     raycastParams.IgnoreWater = true
 
     local result = Workspace:Raycast(origin, direction, raycastParams)
-    
-    -- Jika tidak menabrak objek apa pun, atau objek yang ditabrak adalah bagian dari karakter target, maka terlihat
     if not result then
         return true
     else
@@ -489,7 +470,6 @@ local function GetInstantHeadTarget()
             local hum = pChar and pChar:FindFirstChildOfClass("Humanoid")
 
             if head and hum and hum.Health > 0 then
-                -- Validasi WallCheck sebelum memasukkan ke kandidat target
                 if IsVisible(head) then
                     local screenPos, onScreen = Camera:WorldToViewportPoint(head.Position)
                     if onScreen then
@@ -655,7 +635,7 @@ RunService.RenderStepped:Connect(function()
                     esp.Name.Visible = false
                 end
 
--               if VisualsConfig.ESP_Distance then
+                if VisualsConfig.ESP_Distance then
                     esp.Distance.Text = string.format("[%dM]", math.floor(distance))
                     esp.Distance.Position = Vector2.new(vector.X, vector.Y + 20)
                     esp.Distance.Visible = true
