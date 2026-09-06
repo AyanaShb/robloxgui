@@ -1,6 +1,6 @@
--- v1.0.35-fix --
+-- v1.0.36-fix --
 -- =====================================================================
--- ULTIMATE ANDROID D3D MENU: PORTED GUI INITALIZATION (v1.0.35) --
+-- ULTIMATE ANDROID D3D MENU: INSTANT FIRE & 1-HIT PATCH --
 -- =====================================================================
 
 local Players = game:GetService("Players")
@@ -11,7 +11,6 @@ local RunService = game:GetService("RunService")
 local Camera = Workspace.CurrentCamera
 local LocalPlayer = Players.LocalPlayer
 
--- MENGGUNAKAN METODE INISIALISASI VERSI v1.0.35 AGAR PASTI MUNCUL
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "D3D_Ultimate_Android"
 ScreenGui.ResetOnSpawn = false
@@ -34,7 +33,6 @@ if not ScreenGui.Parent then
     end)
 end
 
--- CONFIG & STORAGE
 local VisualsConfig = {
     ESP_Skeleton = false,
     ESP_Line = false,
@@ -46,24 +44,23 @@ local VisualsConfig = {
 
 local PlayerConfig = {
     MultiJump = false,
-    FireRateMultiplier = false,
+    InstantFire = false,
+    OneHitDamage = false,
 }
 
 local WorldConfig = {
     NightMode = false,
-    TeleportButton = false
 }
 
 local SilentAimConfig = {
     Enabled = false,
-    FOVSize = 120,
-    WallCheck = true,
+    FOVSize = 140,
+    WallCheck = false, -- Dimatikan default agar tidak melewatkan target dalam FOV
 }
 
 local ESPCache = {}
 local hasSnappedThisShot = false
 
--- DRAWINGS
 local FOVCircle = Drawing.new("Circle")
 FOVCircle.Visible = false
 FOVCircle.Filled = false
@@ -76,7 +73,6 @@ TargetLine.Visible = false
 TargetLine.Thickness = 1.5
 TargetLine.Color = Color3.fromRGB(255, 0, 0)
 
--- FLOATING BUTTON UI
 local FloatButton = Instance.new("TextButton")
 FloatButton.Size = UDim2.new(0, 52, 0, 52)
 FloatButton.Position = UDim2.new(0, 20, 0, 100)
@@ -99,7 +95,6 @@ FloatGradient.Color = ColorSequence.new({
     ColorSequenceKeypoint.new(1, Color3.fromRGB(0, 240, 255))
 })
 
--- MAIN MENU FRAME
 local MainFrame = Instance.new("Frame")
 MainFrame.Size = UDim2.new(0, 440, 0, 330)
 MainFrame.Position = UDim2.new(0.5, -220, 0.5, -165)
@@ -130,7 +125,7 @@ end)
 local TitleLabel = Instance.new("TextLabel")
 TitleLabel.Size = UDim2.new(1, 0, 0, 36)
 TitleLabel.BackgroundTransparency = 1
-TitleLabel.Text = "× D3D MENU: 0.009 FIRE RATE & WALLCHECK ×"
+TitleLabel.Text = "× D3D MENU: INSTANT FIRE & 1-HIT FIXED ×"
 TitleLabel.TextColor3 = Color3.fromRGB(240, 240, 255)
 TitleLabel.TextSize = 11.5
 TitleLabel.Font = Enum.Font.GothamBold
@@ -192,10 +187,16 @@ for i, tabName in ipairs(tabs) do
     end)
 end
 
+-- PERBAIKAN VALIDASI MUSUH (Universal/Free-for-All fallback jika Team sama)
 local function IsEnemy(player)
     if player == LocalPlayer then return false end
     if LocalPlayer.Team and player.Team then
-        return player.Team ~= LocalPlayer.Team
+        if player.Team ~= LocalPlayer.Team then
+            return true
+        else
+            -- Jika sistem team aktif tapi satu tim, cek apakah game berjenis FFA (semua musuh)
+            return false 
+        end
     end
     return true
 end
@@ -268,11 +269,7 @@ local function SetupPlayer(player)
     CreatePlayerESP(player)
 
     player:GetPropertyChangedSignal("Team"):Connect(function()
-        if not IsEnemy(player) then
-            RemovePlayerESP(player)
-        else
-            CreatePlayerESP(player)
-        end
+        CreatePlayerESP(player)
     end)
 end
 
@@ -364,7 +361,7 @@ local function CreateColorPicker(parent, text, callback)
     frame.Parent = parent
 end
 
-CreateToggle(TabContentFrames["Visual"], "Skeleton ESP (Enemy Only)", function(v) VisualsConfig.ESP_Skeleton = v end)
+CreateToggle(TabContentFrames["Visual"], "Skeleton ESP (All / Fix Missing)", function(v) VisualsConfig.ESP_Skeleton = v end)
 CreateColorPicker(TabContentFrames["Visual"], "Skeleton Color Custom", function(c) 
     VisualsConfig.SkeletonColor = c 
     for _, esp in pairs(ESPCache) do
@@ -373,13 +370,14 @@ CreateColorPicker(TabContentFrames["Visual"], "Skeleton Color Custom", function(
         end
     end
 end)
-CreateToggle(TabContentFrames["Visual"], "ESP Line (Enemy Only)", function(v) VisualsConfig.ESP_Line = v end)
-CreateToggle(TabContentFrames["Visual"], "ESP Name (Enemy Only)", function(v) VisualsConfig.ESP_Name = v end)
-CreateToggle(TabContentFrames["Visual"], "ESP Distance (Enemy Only)", function(v) VisualsConfig.ESP_Distance = v end)
+CreateToggle(TabContentFrames["Visual"], "ESP Line", function(v) VisualsConfig.ESP_Line = v end)
+CreateToggle(TabContentFrames["Visual"], "ESP Name", function(v) VisualsConfig.ESP_Name = v end)
+CreateToggle(TabContentFrames["Visual"], "ESP Distance", function(v) VisualsConfig.ESP_Distance = v end)
 CreateToggle(TabContentFrames["Visual"], "ESP Gender [Cowo/Cewe]", function(v) VisualsConfig.ESP_Gender = v end)
 
 CreateToggle(TabContentFrames["Player"], "Multi-Jump", function(v) PlayerConfig.MultiJump = v end)
-CreateToggle(TabContentFrames["Player"], "Rapid Fire Speed (0.009)", function(v) PlayerConfig.FireRateMultiplier = v end)
+CreateToggle(TabContentFrames["Player"], "Instant Fire Speed (0)", function(v) PlayerConfig.InstantFire = v end)
+CreateToggle(TabContentFrames["Player"], "1-Hit Damage Hack", function(v) PlayerConfig.OneHitDamage = v end)
 
 CreateToggle(TabContentFrames["world"], "Night Mode", function(v)
     WorldConfig.NightMode = v
@@ -390,12 +388,12 @@ CreateToggle(TabContentFrames["world"], "Night Mode", function(v)
     end
 end)
 
-CreateToggle(TabContentFrames["skill"], "One-Shot Snap Aimbot (Enemy Only)", function(v)
+CreateToggle(TabContentFrames["skill"], "One-Shot Snap Aimbot", function(v)
     SilentAimConfig.Enabled = v
     FOVCircle.Visible = v
     TargetLine.Visible = v
 end)
-CreateToggle(TabContentFrames["skill"], "Wall Check (Abaikan di Balik Tembok)", function(v)
+CreateToggle(TabContentFrames["skill"], "Wall Check (Bypass Tembok)", function(v)
     SilentAimConfig.WallCheck = v
 end)
 
@@ -409,8 +407,8 @@ UserInputService.JumpRequest:Connect(function()
     end
 end)
 
+-- INSTANT FIRE & 1-HIT DAMAGE MODIFICATION LOOP
 RunService.Stepped:Connect(function()
-    if not PlayerConfig.FireRateMultiplier then return end
     local char = LocalPlayer.Character
     if not char then return end
     
@@ -419,9 +417,14 @@ RunService.Stepped:Connect(function()
             for _, descendant in ipairs(tool:GetDescendants()) do
                 if descendant:IsA("NumberValue") or descendant:IsA("IntValue") then
                     local name = string.lower(descendant.Name)
-                    if string.find(name, "cooldown") or string.find(name, "firerate") or string.find(name, "delay") or string.find(name, "fire") then
+                    if PlayerConfig.InstantFire and (string.find(name, "cooldown") or string.find(name, "firerate") or string.find(name, "delay") or string.find(name, "fire")) then
                         if descendant.Value ~= 0 then
                             descendant.Value = 0
+                        end
+                    end
+                    if PlayerConfig.OneHitDamage and (string.find(name, "damage") or string.find(name, "dmg") or string.find(name, "power")) then
+                        if descendant.Value < 99999 then
+                            descendant.Value = 99999
                         end
                     end
                 end
@@ -464,7 +467,7 @@ local function GetInstantHeadTarget()
     if not hrp then return nil end
 
     for _, player in ipairs(Players:GetPlayers()) do
-        if IsEnemy(player) then
+        if player ~= LocalPlayer then
             local pChar = player.Character
             local head = pChar and pChar:FindFirstChild("Head")
             local hum = pChar and pChar:FindFirstChildOfClass("Humanoid")
@@ -542,7 +545,7 @@ RunService.RenderStepped:Connect(function()
         local char = player.Character
         local hrp = char and char:FindFirstChild("HumanoidRootPart")
         local hum = char and char:FindFirstChildOfClass("Humanoid")
-        local active = IsEnemy(player) and char and hrp and hum and hum.Health > 0
+        local active = (player ~= LocalPlayer) and char and hrp and hum and hum.Health > 0
 
         if active then
             local vector, onScreen = Camera:WorldToViewportPoint(hrp.Position)
