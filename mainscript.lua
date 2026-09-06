@@ -1,6 +1,6 @@
--- v1.0.24 --
+-- v1.0.25 --
 -- =====================================================================
--- ULTIMATE ANDROID D3D MENU: FISHING EDITION v10 + PREDICT --
+-- ULTIMATE ANDROID D3D MENU: FISHING EDITION v10 + PREDICT + BYPASS --
 -- =====================================================================
 
 local Players = game:GetService("Players")
@@ -8,8 +8,85 @@ local UserInputService = game:GetService("UserInputService")
 local Lighting = game:GetService("Lighting")
 local Workspace = game:GetService("Workspace")
 local RunService = game:GetService("RunService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Camera = Workspace.CurrentCamera
 local LocalPlayer = Players.LocalPlayer
+
+-- ==========================================
+-- AUTO BYPASS ANTI-CHEAT (RUNS AUTOMATICALLY)
+-- ==========================================
+task.spawn(function()
+    pcall(function()
+        if setreadonly then
+            pcall(function()
+                setreadonly(getrenv(), false)
+                setreadonly(getreg(), false)
+                setreadonly(getgc(), false)
+            end)
+        end
+        
+        if make_writeable then
+            pcall(function()
+                make_writeable(getreg())
+            end)
+        end
+        
+        if detour_function then
+            detour_function = function(...)
+                return true
+            end
+        end
+        
+        if getconnections then
+            pcall(function()
+                for _, connection in ipairs(getconnections(ScriptContext.Error)) do
+                    connection:Disable()
+                end
+            end)
+        end
+        
+        if getcallingscript then
+            pcall(function()
+                getcallingscript = function()
+                    return nil
+                end
+            end)
+        end
+        
+        for _, tableName in ipairs({"_G", "shared"}) do
+            pcall(function()
+                local target = getgenv()[tableName]
+                if target and type(target) == "table" then
+                    for key, _ in pairs(target) do
+                        local strKey = tostring(key):lower()
+                        if strKey:find("signature") or strKey:find("checksum") or strKey:find("hash") then
+                            target[key] = nil
+                        end
+                    end
+                end
+            end)
+        end
+        
+        for _, remote in ipairs(ReplicatedStorage:GetDescendants()) do
+            if remote:IsA("RemoteEvent") or remote:IsA("RemoteFunction") then
+                local name = remote.Name:lower()
+                if name:find("handshake") or name:find("validate") or name:find("verify") or name:find("integrity") or name:find("anti") then
+                    pcall(function()
+                        if remote:IsA("RemoteEvent") then
+                            remote.FireServer = function(...)
+                                return true
+                            end
+                        elseif remote:IsA("RemoteFunction") then
+                            remote.InvokeServer = function(...)
+                                return true
+                            end
+                        end
+                    end)
+                end
+            end
+        end
+    end)
+end)
 
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "D3D_Ultimate_Android"
@@ -179,7 +256,7 @@ end)
 local TitleLabel = Instance.new("TextLabel")
 TitleLabel.Size = UDim2.new(1, 0, 0, 36)
 TitleLabel.BackgroundTransparency = 1
-TitleLabel.Text = "× D3D MENU BG AMIN (PREDICT) ×"
+TitleLabel.Text = "× D3D MENU BG AMIN (BYPASS) ×"
 TitleLabel.TextColor3 = Color3.fromRGB(240, 240, 255)
 TitleLabel.TextSize = 13.5
 TitleLabel.Font = Enum.Font.GothamBold
