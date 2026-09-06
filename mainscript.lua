@@ -1,6 +1,7 @@
--- v1.0.31 --
+Implementasi ini mencakup peningkatan kecepatan tembak (fire rate) secara real-time, filter tim otomatis (ESP dan target hanya menyasar musuh), serta sinkronisasi mutlak untuk pemain yang bergabung, keluar, atau berganti tim.
+-- v1.0.35 --
 -- =====================================================================
--- ULTIMATE ANDROID D3D MENU: SKELETON ESP & ONE-SHOT SNAP AIMBOT --
+-- ULTIMATE ANDROID D3D MENU: TEAM FILTER, FIRE RATE & DYNAMIC SYNC --
 -- =====================================================================
 
 local Players = game:GetService("Players")
@@ -45,6 +46,7 @@ local VisualsConfig = {
 
 local PlayerConfig = {
     MultiJump = false,
+    FireRateMultiplier = false,
 }
 
 local WorldConfig = {
@@ -60,7 +62,7 @@ local SilentAimConfig = {
 local ESPCache = {}
 local hasSnappedThisShot = false
 
--- DRAWINGS (FOV CIRCLE & TARGET LINE)
+-- DRAWINGS
 local FOVCircle = Drawing.new("Circle")
 FOVCircle.Visible = false
 FOVCircle.Filled = false
@@ -73,7 +75,7 @@ TargetLine.Visible = false
 TargetLine.Thickness = 1.5
 TargetLine.Color = Color3.fromRGB(255, 0, 0)
 
--- FLOATING BUTTON UI (MAIN MENU)
+-- FLOATING BUTTON UI
 local FloatButton = Instance.new("TextButton")
 FloatButton.Size = UDim2.new(0, 52, 0, 52)
 FloatButton.Position = UDim2.new(0, 20, 0, 100)
@@ -95,47 +97,6 @@ FloatGradient.Color = ColorSequence.new({
     ColorSequenceKeypoint.new(0.5, Color3.fromRGB(120, 0, 255)),
     ColorSequenceKeypoint.new(1, Color3.fromRGB(0, 240, 255))
 })
-
--- FLOATING BUTTON TELEPORT
-local TeleportFloatBtn = Instance.new("TextButton")
-TeleportFloatBtn.Size = UDim2.new(0, 52, 0, 52)
-TeleportFloatBtn.Position = UDim2.new(0, 20, 0, 170)
-TeleportFloatBtn.BackgroundColor3 = Color3.fromRGB(140, 0, 255)
-TeleportFloatBtn.Text = "TP"
-TeleportFloatBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-TeleportFloatBtn.TextSize = 14
-TeleportFloatBtn.Font = Enum.Font.GothamBold
-TeleportFloatBtn.Active = true
-TeleportFloatBtn.Draggable = true
-TeleportFloatBtn.Visible = false
-TeleportFloatBtn.Parent = ScreenGui
-
-Instance.new("UICorner", TeleportFloatBtn).CornerRadius = UDim.new(1, 0)
-local TpStroke = Instance.new("UIStroke", TeleportFloatBtn)
-TpStroke.Thickness = 2
-TpStroke.Color = Color3.fromRGB(255, 255, 255)
-
-local function DoTeleport()
-    local char = LocalPlayer.Character
-    local hrp = char and char:FindFirstChild("HumanoidRootPart")
-    if not hrp then return end
-    
-    local otherPlayers = Players:GetPlayers()
-    local validTargets = {}
-    
-    for _, p in ipairs(otherPlayers) do
-        if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
-            table.insert(validTargets, p.Character.HumanoidRootPart)
-        end
-    end
-    
-    if #validTargets > 0 then
-        local targetHRP = validTargets[math.random(1, #validTargets)]
-        hrp.CFrame = targetHRP.CFrame + Vector3.new(0, 3, 0)
-    end
-end
-
-TeleportFloatBtn.MouseButton1Click:Connect(DoTeleport)
 
 -- MAIN MENU FRAME
 local MainFrame = Instance.new("Frame")
@@ -168,9 +129,9 @@ end)
 local TitleLabel = Instance.new("TextLabel")
 TitleLabel.Size = UDim2.new(1, 0, 0, 36)
 TitleLabel.BackgroundTransparency = 1
-TitleLabel.Text = "× D3D MENU: ONE-SHOT SNAP AIM ×"
+TitleLabel.Text = "× D3D MENU: ENEMY ONLY & FIRE RATE ×"
 TitleLabel.TextColor3 = Color3.fromRGB(240, 240, 255)
-TitleLabel.TextSize = 13.5
+TitleLabel.TextSize = 13
 TitleLabel.Font = Enum.Font.GothamBold
 TitleLabel.Parent = MainFrame
 
@@ -230,9 +191,32 @@ for i, tabName in ipairs(tabs) do
     end)
 end
 
--- SKELETON ESP SETUP
+-- VALIDASI TIM (HANYA MUSUH)
+local function IsEnemy(player)
+    if player == LocalPlayer then return false end
+    if LocalPlayer.Team and player.Team then
+        return player.Team ~= LocalPlayer.Team
+    end
+    return true -- Jika game tidak menggunakan sistem Tim/FFA, anggap semua musuh
+end
+
+local function RemovePlayerESP(player)
+    if ESPCache[player] then
+        for _, obj in pairs(ESPCache[player]) do
+            if type(obj) == "table" then
+                for _, bone in pairs(obj) do pcall(function() bone:Remove() end) end
+            else
+                pcall(function() obj:Remove() end)
+            end
+        end
+        ESPCache[player] = nil
+    end
+end
+
 local function CreatePlayerESP(player)
     if player == LocalPlayer then return end
+    RemovePlayerESP(player)
+
     local espData = {
         Line = Drawing.new("Line"),
         Name = Drawing.new("Text"),
@@ -279,24 +263,32 @@ local function CreatePlayerESP(player)
     ESPCache[player] = espData
 end
 
-local function RemovePlayerESP(player)
-    if ESPCache[player] then
-        for _, obj in pairs(ESPCache[player]) do
-            if type(obj) == "table" then
-                for _, bone in pairs(obj) do pcall(function() bone:Remove() end) end
-            else
-                pcall(function() obj:Remove() end)
-            end
+-- PENGATURAN DINAMIS PEMAIN MASUK, KELUAR, DAN GANTI TIM
+local function SetupPlayer(player)
+    if player == LocalPlayer then return end
+    CreatePlayerESP(player)
+
+    player:GetPropertyChangedSignal("Team"):Connect(function()
+        if not IsEnemy(player) then
+            RemovePlayerESP(player)
+        else
+            CreatePlayerESP(player)
         end
-        ESPCache[player] = nil
-    end
+    end)
+
+    player.CharacterAdded:Connect(function(newChar)
+        task.spawn(function()
+            newChar:WaitForChild("HumanoidRootPart", 5)
+            newChar:WaitForChild("Head", 5)
+        end)
+    end)
 end
 
 for _, p in ipairs(Players:GetPlayers()) do
-    CreatePlayerESP(p)
+    SetupPlayer(p)
 end
 
-Players.PlayerAdded:Connect(CreatePlayerESP)
+Players.PlayerAdded:Connect(SetupPlayer)
 Players.PlayerRemoving:Connect(RemovePlayerESP)
 
 -- UI BUILDERS
@@ -382,7 +374,7 @@ local function CreateColorPicker(parent, text, callback)
 end
 
 -- POPULATE TABS
-CreateToggle(TabContentFrames["Visual"], "Skeleton ESP (Full Body)", function(v) VisualsConfig.ESP_Skeleton = v end)
+CreateToggle(TabContentFrames["Visual"], "Skeleton ESP (Enemy Only)", function(v) VisualsConfig.ESP_Skeleton = v end)
 CreateColorPicker(TabContentFrames["Visual"], "Skeleton Color Custom", function(c) 
     VisualsConfig.SkeletonColor = c 
     for _, esp in pairs(ESPCache) do
@@ -391,12 +383,13 @@ CreateColorPicker(TabContentFrames["Visual"], "Skeleton Color Custom", function(
         end
     end
 end)
-CreateToggle(TabContentFrames["Visual"], "ESP Line (Top Center)", function(v) VisualsConfig.ESP_Line = v end)
-CreateToggle(TabContentFrames["Visual"], "ESP Name", function(v) VisualsConfig.ESP_Name = v end)
-CreateToggle(TabContentFrames["Visual"], "ESP Distance", function(v) VisualsConfig.ESP_Distance = v end)
+CreateToggle(TabContentFrames["Visual"], "ESP Line (Enemy Only)", function(v) VisualsConfig.ESP_Line = v end)
+CreateToggle(TabContentFrames["Visual"], "ESP Name (Enemy Only)", function(v) VisualsConfig.ESP_Name = v end)
+CreateToggle(TabContentFrames["Visual"], "ESP Distance (Enemy Only)", function(v) VisualsConfig.ESP_Distance = v end)
 CreateToggle(TabContentFrames["Visual"], "ESP Gender [Cowo/Cewe]", function(v) VisualsConfig.ESP_Gender = v end)
 
 CreateToggle(TabContentFrames["Player"], "Multi-Jump", function(v) PlayerConfig.MultiJump = v end)
+CreateToggle(TabContentFrames["Player"], "Rapid Fire Speed (Brutal)", function(v) PlayerConfig.FireRateMultiplier = v end)
 
 CreateToggle(TabContentFrames["world"], "Night Mode", function(v)
     WorldConfig.NightMode = v
@@ -406,12 +399,8 @@ CreateToggle(TabContentFrames["world"], "Night Mode", function(v)
         Lighting.Ambient = Color3.fromRGB(120, 120, 120)
     end
 end)
-CreateToggle(TabContentFrames["world"], "Floating Teleport Button", function(v)
-    WorldConfig.TeleportButton = v
-    TeleportFloatBtn.Visible = v
-end)
 
-CreateToggle(TabContentFrames["skill"], "One-Shot Snap Aimbot", function(v)
+CreateToggle(TabContentFrames["skill"], "One-Shot Snap Aimbot (Enemy Only)", function(v)
     SilentAimConfig.Enabled = v
     FOVCircle.Visible = v
     TargetLine.Visible = v
@@ -427,6 +416,29 @@ UserInputService.JumpRequest:Connect(function()
     end
 end)
 
+-- MODIFIKASI FIRE RATE / KECEPATAN TEMBAK SENJATA SECARA REALTIME
+RunService.Stepped:Connect(function()
+    if not PlayerConfig.FireRateMultiplier then return end
+    local char = LocalPlayer.Character
+    if not char then return end
+    
+    for _, tool in ipairs(char:GetChildren()) do
+        if tool:IsA("Tool") then
+            -- Cari modul konfigurasi senjata atau nilai cooldown tembak di dalam tool
+            for _, descendant in ipairs(tool:GetDescendants()) do
+                if descendant:IsA("NumberValue") or descendant:IsA("IntValue") then
+                    local name = string.lower(descendant.Name)
+                    if string.find(name, "cooldown") or string.find(name, "firerate") or string.find(name, "delay") or string.find(name, "fire") then
+                        if descendant.Value > 0.02 then
+                            descendant.Value = 0.02 -- Percepat jeda tembak menjadi sangat singkat
+                        end
+                    end
+                end
+            end
+        end
+    end
+end)
+
 local function GetInstantHeadTarget()
     local screenCenter = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
     local bestTarget, bestDist = nil, math.huge
@@ -435,7 +447,7 @@ local function GetInstantHeadTarget()
     if not hrp then return nil end
 
     for _, player in ipairs(Players:GetPlayers()) do
-        if player ~= LocalPlayer then
+        if IsEnemy(player) then
             local pChar = player.Character
             local head = pChar and pChar:FindFirstChild("Head")
             local hum = pChar and pChar:FindFirstChildOfClass("Humanoid")
@@ -456,13 +468,11 @@ local function GetInstantHeadTarget()
     return bestTarget
 end
 
--- TRIGGER ONE-SHOT SNAP KETIKA TOMBOL TEMBAK DITEKAN
 UserInputService.InputBegan:Connect(function(input)
     if SilentAimConfig.Enabled and (input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch) then
         if not hasSnappedThisShot then
             local targetHead = GetInstantHeadTarget()
             if targetHead then
-                -- Menembak tepat ke head sekali secara instan, setelah itu kamera bebas bergerak lagi
                 Camera.CFrame = CFrame.new(Camera.CFrame.Position, targetHead.Position)
                 hasSnappedThisShot = true
             end
@@ -513,7 +523,7 @@ RunService.RenderStepped:Connect(function()
         local char = player.Character
         local hrp = char and char:FindFirstChild("HumanoidRootPart")
         local hum = char and char:FindFirstChildOfClass("Humanoid")
-        local active = char and hrp and hum and hum.Health > 0
+        local active = IsEnemy(player) and char and hrp and hum and hum.Health > 0
 
         if active then
             local vector, onScreen = Camera:WorldToViewportPoint(hrp.Position)
@@ -635,9 +645,11 @@ RunService.RenderStepped:Connect(function()
                 if type(obj) == "table" then
                     for _, bone in pairs(obj) do bone.Visible = false end
                 else
+                    obj.UriVisible = false
                     obj.Visible = false
                 end
             end
         end
     end
 end)
+
