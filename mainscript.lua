@@ -1,6 +1,6 @@
--- v1.0.27 --
+-- v1.0.28 --
 -- =====================================================================
--- ULTIMATE ANDROID D3D MENU: FISHING EDITION v11 + SAFE MATERIAL CHAMS --
+-- ULTIMATE ANDROID D3D MENU: FISHING EDITION v12 + ADVANCED MOVEMENT BYPASS --
 -- =====================================================================
 
 local Players = game:GetService("Players")
@@ -17,7 +17,6 @@ local LocalPlayer = Players.LocalPlayer
 -- ==========================================
 task.spawn(function()
     pcall(function()
-        -- 1. Bypass Environment Readonly Checks
         if setreadonly then
             pcall(function()
                 setreadonly(getrenv(), false)
@@ -26,7 +25,6 @@ task.spawn(function()
             end)
         end
         
-        -- 2. Spoofing Calling Script untuk Mencegah Deteksi Pemanggil Eksternal
         if getcallingscript then
             pcall(function()
                 local oldGetCallingScript
@@ -39,7 +37,6 @@ task.spawn(function()
             end)
         end
 
-        -- 3. Advanced Namecall Interception (Lebih Aman daripada Overwrite Langsung)
         if hookmetamethod and getnamecallmethod then
             pcall(function()
                 local oldNamecall
@@ -60,14 +57,12 @@ task.spawn(function()
             end)
         end
 
-        -- 4. Bersihkan Error Handler agar Telemetri Game tidak Melaporkan Script
         pcall(function()
             for _, connection in ipairs(getconnections(ScriptContext.Error)) do
                 connection:Disable()
             end
         end)
 
-        -- 5. Hapus Jejak Signature / Hash di Global Environment
         for _, tableName in ipairs({"_G", "shared"}) do
             pcall(function()
                 local target = getgenv()[tableName]
@@ -120,7 +115,7 @@ local VisualsConfig = {
 
 local PlayerConfig = {
     SpeedHack = false,
-    SpeedValue = 16,
+    SpeedValue = 22, -- Dibatasi agar tidak memicu deteksi batas maksimal server
     Fly = false,
     MultiJump = false,
     WallHack = false
@@ -252,7 +247,7 @@ end)
 local TitleLabel = Instance.new("TextLabel")
 TitleLabel.Size = UDim2.new(1, 0, 0, 36)
 TitleLabel.BackgroundTransparency = 1
-TitleLabel.Text = "× D3D MENU BG AMIN (STEALTH CHAMS) ×"
+TitleLabel.Text = "× D3D MENU BG AMIN (STEALTH CHAMS FULL) ×"
 TitleLabel.TextColor3 = Color3.fromRGB(240, 240, 255)
 TitleLabel.TextSize = 13.5
 TitleLabel.Font = Enum.Font.GothamBold
@@ -356,25 +351,26 @@ end
 Players.PlayerAdded:Connect(CreatePlayerESP)
 Players.PlayerRemoving:Connect(RemovePlayerESP)
 
--- SAFE CHAMS (MATERIAL OVERRIDE TANPA INSTANCE HIGHLIGHT)
+-- FULL BODY CHAMS WITH ALWAYS ON TOP HIGHLIGHT
 local function UpdateChams()
     for _, player in ipairs(Players:GetPlayers()) do
         if player ~= LocalPlayer and player.Character then
             local char = player.Character
-            for _, part in ipairs(char:GetDescendants()) do
-                if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
-                    if VisualsConfig.ChamsGlow then
-                        pcall(function()
-                            part.Color = VisualsConfig.ChamsColor
-                            part.Material = Enum.Material.Neon
-                        end)
-                    else
-                        pcall(function()
-                            part.Color = Color3.fromRGB(255, 255, 255)
-                            part.Material = Enum.Material.SmoothPlastic
-                        end)
-                    end
+            local hl = char:FindFirstChild("D3D_SafeHighlight")
+            if VisualsConfig.ChamsGlow then
+                if not hl then
+                    hl = Instance.new("Highlight")
+                    hl.Name = "D3D_SafeHighlight"
+                    hl.Adornee = char
+                    hl.Parent = char
                 end
+                hl.FillColor = VisualsConfig.ChamsColor
+                hl.OutlineColor = Color3.fromRGB(255, 255, 255)
+                hl.FillTransparency = 0.3
+                hl.OutlineTransparency = 0.1
+                hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+            else
+                if hl then hl:Destroy() end
             end
         end
     end
@@ -533,18 +529,13 @@ CreateToggle(TabContentFrames["Visual"], "ESP Distance", function(v) VisualsConf
 CreateToggle(TabContentFrames["Visual"], "ESP Gender [Cowo/Cewe]", function(v) VisualsConfig.ESP_Gender = v end)
 CreateToggle(TabContentFrames["Visual"], "ESP Item Nearby", function(v) VisualsConfig.ESP_Item = v end)
 CreateSlider(TabContentFrames["Visual"], "ESP Item Radius", 10, 500, 50, function(val) VisualsConfig.ItemRadius = val end)
-CreateToggle(TabContentFrames["Visual"], "Safe Chams Material (Neon)", function(v) VisualsConfig.ChamsGlow = v UpdateChams() end)
+CreateToggle(TabContentFrames["Visual"], "Full Chams (Glow & Tembus Dinding)", function(v) VisualsConfig.ChamsGlow = v UpdateChams() end)
 CreateColorPicker(TabContentFrames["Visual"], "Chams Color Picker", function(c) VisualsConfig.ChamsColor = c UpdateChams() end)
 
-CreateToggle(TabContentFrames["Player"], "Speed Run", function(v)
-    PlayerConfig.SpeedHack = v
-    if not v and LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
-        LocalPlayer.Character:FindFirstChildOfClass("Humanoid").WalkSpeed = 16
-    end
-end)
-CreateSlider(TabContentFrames["Player"], "Speed Value", 16, 200, 16, function(val) PlayerConfig.SpeedValue = val end)
+CreateToggle(TabContentFrames["Player"], "Safe Speed Boost", function(v) PlayerConfig.SpeedHack = v end)
+CreateSlider(TabContentFrames["Player"], "Speed Value", 16, 26, 20, function(val) PlayerConfig.SpeedValue = val end)
 CreateToggle(TabContentFrames["Player"], "Fly (Hold Jump)", function(v) PlayerConfig.Fly = v end)
-CreateToggle(TabContentFrames["Player"], "Multi Jump", function(v) PlayerConfig.MultiJump = v end)
+CreateToggle(TabContentFrames["Player"], "Stealth Multi-Jump", function(v) PlayerConfig.MultiJump = v end)
 CreateToggle(TabContentFrames["Player"], "Wall Hack", function(v)
     PlayerConfig.WallHack = v
     if not v and LocalPlayer.Character then
@@ -588,14 +579,14 @@ CreateSlider(TabContentFrames["skill"], "Prediction Factor", 1, 50, 13, function
 CreateToggle(TabContentFrames["skill"], "No Reload", function(v) SilentAimConfig.NoReload = v end)
 CreateToggle(TabContentFrames["skill"], "Unlimited Ammo", function(v) SilentAimConfig.InfiniteAmmo = v end)
 
--- MULTI JUMP
+-- STEALTH MULTI JUMP MENGGUNAKANIMPULS POSISI BAWAH TANPA CHANGESTATE
 UserInputService.JumpRequest:Connect(function()
     if not PlayerConfig.MultiJump then return end
     local char = LocalPlayer.Character
     if not char then return end
-    local hum = char:FindFirstChildOfClass("Humanoid")
-    if hum then
-        hum:ChangeState(Enum.HumanoidStateType.Jumping)
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    if hrp then
+        hrp.Velocity = Vector3.new(hrp.Velocity.X, 42, hrp.Velocity.Z)
     end
 end)
 
@@ -617,7 +608,6 @@ local function IsVisible(targetPart)
     return false
 end
 
--- LOGIKA PRIORITAS TARGET + PREDIKSI PERGERAKAN
 local function GetBestSilentAimTarget()
     local screenCenter = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
     local bestTarget = nil
@@ -663,7 +653,6 @@ local function GetBestSilentAimTarget()
     return bestTarget
 end
 
--- DETEKSI HOLD / TEKAN TOMBOL TEMBAK
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if not SilentAimConfig.Enabled then return end
     if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
@@ -677,7 +666,6 @@ UserInputService.InputEnded:Connect(function(input)
     end
 end)
 
--- UNLIMITED AMMO & NO RELOAD
 RunService.Stepped:Connect(function()
     if not SilentAimConfig.InfiniteAmmo and not SilentAimConfig.NoReload then return end
     pcall(function()
@@ -730,8 +718,12 @@ RunService.Stepped:Connect(function()
     local hum = char:FindFirstChildOfClass("Humanoid")
     local hrp = char:FindFirstChild("HumanoidRootPart")
 
-    if hum and PlayerConfig.SpeedHack then
-        hum.WalkSpeed = PlayerConfig.SpeedValue
+    -- BYPASS SPEED HACK (Menggunakan CFrame Translate agar tidak mendeteksi modifikasi WalkSpeed Humanoid)
+    if PlayerConfig.SpeedHack and hrp and hum then
+        local moveDir = hum.MoveDirection
+        if moveDir.Magnitude > 0 then
+            hrp.CFrame = hrp.CFrame + (moveDir * (PlayerConfig.SpeedValue / 350))
+        end
     end
 
     if WorldConfig.NightMode then
