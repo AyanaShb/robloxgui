@@ -420,8 +420,8 @@ RunService.Stepped:Connect(function()
                 if descendant:IsA("NumberValue") or descendant:IsA("IntValue") then
                     local name = string.lower(descendant.Name)
                     if string.find(name, "cooldown") or string.find(name, "firerate") or string.find(name, "delay") or string.find(name, "fire") then
-                        if descendant.Value ~= 0.009 then
-                            descendant.Value = 0.009
+                        if descendant.Value ~= 0 then
+                            descendant.Value = 0
                         end
                     end
                 end
