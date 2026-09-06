@@ -1,6 +1,6 @@
--- v1.0.30 --
+-- v1.0.31 --
 -- =====================================================================
--- ULTIMATE ANDROID D3D MENU: SKELETON ESP & INSTANT SNAP AIMBOT --
+-- ULTIMATE ANDROID D3D MENU: SKELETON ESP & ONE-SHOT SNAP AIMBOT --
 -- =====================================================================
 
 local Players = game:GetService("Players")
@@ -44,7 +44,6 @@ local VisualsConfig = {
 }
 
 local PlayerConfig = {
-    Fly = false,
     MultiJump = false,
 }
 
@@ -59,7 +58,7 @@ local SilentAimConfig = {
 }
 
 local ESPCache = {}
-local isFiring = false
+local hasSnappedThisShot = false
 
 -- DRAWINGS (FOV CIRCLE & TARGET LINE)
 local FOVCircle = Drawing.new("Circle")
@@ -169,7 +168,7 @@ end)
 local TitleLabel = Instance.new("TextLabel")
 TitleLabel.Size = UDim2.new(1, 0, 0, 36)
 TitleLabel.BackgroundTransparency = 1
-TitleLabel.Text = "× D3D MENU: SKELETON & INSTANT AIM ×"
+TitleLabel.Text = "× D3D MENU: ONE-SHOT SNAP AIM ×"
 TitleLabel.TextColor3 = Color3.fromRGB(240, 240, 255)
 TitleLabel.TextSize = 13.5
 TitleLabel.Font = Enum.Font.GothamBold
@@ -231,7 +230,7 @@ for i, tabName in ipairs(tabs) do
     end)
 end
 
--- SKELETON ESP SETUP (FULL BODY JOINTS)
+-- SKELETON ESP SETUP
 local function CreatePlayerESP(player)
     if player == LocalPlayer then return end
     local espData = {
@@ -412,7 +411,7 @@ CreateToggle(TabContentFrames["world"], "Floating Teleport Button", function(v)
     TeleportFloatBtn.Visible = v
 end)
 
-CreateToggle(TabContentFrames["skill"], "Instant Silent Aim / Aimbot", function(v)
+CreateToggle(TabContentFrames["skill"], "One-Shot Snap Aimbot", function(v)
     SilentAimConfig.Enabled = v
     FOVCircle.Visible = v
     TargetLine.Visible = v
@@ -428,7 +427,6 @@ UserInputService.JumpRequest:Connect(function()
     end
 end)
 
--- LOGIC TARGET HEAD DIDALAM FOV LGSG KENA LOCK INSTANT 0 DETIK
 local function GetInstantHeadTarget()
     local screenCenter = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
     local bestTarget, bestDist = nil, math.huge
@@ -458,14 +456,23 @@ local function GetInstantHeadTarget()
     return bestTarget
 end
 
+-- TRIGGER ONE-SHOT SNAP KETIKA TOMBOL TEMBAK DITEKAN
 UserInputService.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        isFiring = true
+    if SilentAimConfig.Enabled and (input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch) then
+        if not hasSnappedThisShot then
+            local targetHead = GetInstantHeadTarget()
+            if targetHead then
+                -- Menembak tepat ke head sekali secara instan, setelah itu kamera bebas bergerak lagi
+                Camera.CFrame = CFrame.new(Camera.CFrame.Position, targetHead.Position)
+                hasSnappedThisShot = true
+            end
+        end
     end
 end)
+
 UserInputService.InputEnded:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        isFiring = false
+        hasSnappedThisShot = false
     end
 end)
 
@@ -491,10 +498,6 @@ RunService.RenderStepped:Connect(function()
                 TargetLine.From = screenCenter
                 TargetLine.To = Vector2.new(screenPos.X, screenPos.Y)
                 TargetLine.Visible = true
-                if isFiring then
-                    -- Lock instan 0 detik ke Head target saat tombol tembak ditekan
-                    Camera.CFrame = CFrame.new(Camera.CFrame.Position, targetHead.Position)
-                end
             else
                 TargetLine.Visible = false
             end
@@ -517,7 +520,6 @@ RunService.RenderStepped:Connect(function()
             if onScreen then
                 local distance = (Camera.CFrame.Position - hrp.Position).Magnitude
                 
-                -- SKELETON FULL BODY RENDER
                 if VisualsConfig.ESP_Skeleton then
                     local parts = {
                         Head = char:FindFirstChild("Head"),
