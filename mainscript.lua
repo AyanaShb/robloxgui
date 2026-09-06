@@ -1,6 +1,6 @@
--- v1.0.39-silent-headshot --
+-- v1.0.40-true-headshot-offset --
 -- =====================================================================
--- ULTIMATE ANDROID D3D MENU: SILENT SNAP HEADSHOT & NO-RELOCK --
+-- ULTIMATE ANDROID D3D MENU: TRUE HEADSHOT OFFSET & NO-RELOCK --
 -- =====================================================================
 
 local Players = game:GetService("Players")
@@ -125,7 +125,7 @@ end)
 local TitleLabel = Instance.new("TextLabel")
 TitleLabel.Size = UDim2.new(1, 0, 0, 36)
 TitleLabel.BackgroundTransparency = 1
-TitleLabel.Text = "× D3D MENU: SILENT HEADSHOT SNAP ×"
+TitleLabel.Text = "× D3D MENU: TRUE HEADSHOT OFFSET ×"
 TitleLabel.TextColor3 = Color3.fromRGB(240, 240, 255)
 TitleLabel.TextSize = 11.5
 TitleLabel.Font = Enum.Font.GothamBold
@@ -444,10 +444,10 @@ local function IsVisible(targetPart)
     return false
 end
 
--- MENCARI TITIK KEPALA YANG BENAR-BENAR PRESISI PAS DI TENGAH TARGET DALAM FOV
-local function GetExactHeadTarget()
+-- MENCARI KEPALA DENGAN DITAMBAHKAN POSITIVE VERTICAL OFFSET AGAR PAS DI ATAS/TIDAK MELLESING KE BADAN
+local function GetTrueHeadshotTarget()
     local screenCenter = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
-    local bestTarget, bestDist = nil, math.huge
+    local bestTargetPos, bestDist = nil, math.huge
     local char = LocalPlayer.Character
     local hrp = char and char:FindFirstChild("HumanoidRootPart")
     if not hrp then return nil end
@@ -459,8 +459,8 @@ local function GetExactHeadTarget()
             local hum = pChar and pChar:FindFirstChildOfClass("Humanoid")
 
             if head and hum and hum.Health > 0 then
-                -- Hitung posisi presisi tepat di titik pusat kepala (ditambah sedikit offset jika perlu)
-                local exactHeadPos = head.Position
+                -- Tambahkan offset tinggi (Y) secara presisi ke atas agar tembakan naik pas di atas kepala/ubun-ubun
+                local exactHeadPos = head.Position + Vector3.new(0, 0.45, 0)
                 local screenPos, onScreen = Camera:WorldToViewportPoint(exactHeadPos)
                 
                 if onScreen then
@@ -470,23 +470,22 @@ local function GetExactHeadTarget()
                     if dist <= SilentAimConfig.FOVSize and dist < bestDist then
                         if IsVisible(head) then
                             bestDist = dist
-                            bestTarget = head
+                            bestTargetPos = exactHeadPos
                         end
                     end
                 end
             end
         end
     end
-    return bestTarget
+    return bestTargetPos
 end
 
--- LOGIKA INSTANT SNAP HANYA SAAT MENEMBAK (TIDAK MENGUNCI/NOCLOCK)
+-- SNAP INSTAN HANYA PAS KLIK/TEMBAK TANPA MENGUNCI (NOCLOCK) & TARGET DIATUR PAS KE KEPALA ATAS
 UserInputService.InputBegan:Connect(function(input)
     if SilentAimConfig.Enabled and (input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch) then
-        local targetHead = GetExactHeadTarget()
-        if targetHead then
-            -- Langsung snap instan tepat ke bagian kepala persis saat peluru dilepaskan/klik ditekan
-            Camera.CFrame = CFrame.new(Camera.CFrame.Position, targetHead.Position)
+        local targetHeadPos = GetTrueHeadshotTarget()
+        if targetHeadPos then
+            Camera.CFrame = CFrame.new(Camera.CFrame.Position, targetHeadPos)
         end
     end
 end)
@@ -499,10 +498,9 @@ RunService.RenderStepped:Connect(function()
         FOVCircle.Radius = SilentAimConfig.FOVSize
         FOVCircle.Visible = true
 
-        -- Garis FOV hanya mendeteksi dan mengarah ke target aktif yang valid di dalam lingkaran
-        local targetHead = GetExactHeadTarget()
-        if targetHead then
-            local screenPos, onScreen = Camera:WorldToViewportPoint(targetHead.Position)
+        local targetHeadPos = GetTrueHeadshotTarget()
+        if targetHeadPos then
+            local screenPos, onScreen = Camera:WorldToViewportPoint(targetHeadPos)
             if onScreen then
                 TargetLine.From = screenCenter
                 TargetLine.To = Vector2.new(screenPos.X, screenPos.Y)
