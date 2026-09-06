@@ -1,6 +1,6 @@
--- v1.0.39 --
+-- v1.0.35-fix --
 -- =====================================================================
--- ULTIMATE ANDROID D3D MENU: FIX GUI PARENTING & WALLCHECK --
+-- ULTIMATE ANDROID D3D MENU: PORTED GUI INITALIZATION (v1.0.35) --
 -- =====================================================================
 
 local Players = game:GetService("Players")
@@ -11,24 +11,24 @@ local RunService = game:GetService("RunService")
 local Camera = Workspace.CurrentCamera
 local LocalPlayer = Players.LocalPlayer
 
+-- MENGGUNAKAN METODE INISIALISASI VERSI v1.0.35 AGAR PASTI MUNCUL
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "D3D_Ultimate_Android"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
--- PERBAIKAN UTAMA: Memastikan GUI sukses masuk ke CoreGui atau PlayerGui
-local success = pcall(function()
-    if gethui then
-        ScreenGui.Parent = gethui()
-    elseif syn and syn.protect_gui then
+pcall(function()
+    if syn and syn.protect_gui then
         syn.protect_gui(ScreenGui)
         ScreenGui.Parent = game.CoreGui
+    elseif gethui then
+        ScreenGui.Parent = gethui()
     else
         ScreenGui.Parent = game:GetService("CoreGui")
     end
 end)
 
-if not success or not ScreenGui.Parent then
+if not ScreenGui.Parent then
     pcall(function()
         ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
     end)
@@ -130,7 +130,7 @@ end)
 local TitleLabel = Instance.new("TextLabel")
 TitleLabel.Size = UDim2.new(1, 0, 0, 36)
 TitleLabel.BackgroundTransparency = 1
-TitleLabel.Text = "× D3D MENU: FIRE RATE 0.009 & WALLCHECK ×"
+TitleLabel.Text = "× D3D MENU: 0.009 FIRE RATE & WALLCHECK ×"
 TitleLabel.TextColor3 = Color3.fromRGB(240, 240, 255)
 TitleLabel.TextSize = 11.5
 TitleLabel.Font = Enum.Font.GothamBold
