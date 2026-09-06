@@ -1,7 +1,6 @@
---Implementasi ini mencakup peningkatan kecepatan tembak (fire rate) secara real-time, filter tim otomatis (ESP dan target hanya menyasar musuh), serta sinkronisasi mutlak untuk pemain yang bergabung, keluar, atau berganti tim.
--- v1.0.35 --
+-- v1.0.38 --
 -- =====================================================================
--- ULTIMATE ANDROID D3D MENU: TEAM FILTER, FIRE RATE & DYNAMIC SYNC --
+-- ULTIMATE ANDROID D3D MENU: FIRE RATE 0.009 & WALLCHECK TARGET --
 -- =====================================================================
 
 local Players = game:GetService("Players")
@@ -57,6 +56,7 @@ local WorldConfig = {
 local SilentAimConfig = {
     Enabled = false,
     FOVSize = 120,
+    WallCheck = true, -- Default aktif agar mengabaikan musuh di balik tembok
 }
 
 local ESPCache = {}
@@ -129,9 +129,9 @@ end)
 local TitleLabel = Instance.new("TextLabel")
 TitleLabel.Size = UDim2.new(1, 0, 0, 36)
 TitleLabel.BackgroundTransparency = 1
-TitleLabel.Text = "× D3D MENU: ENEMY ONLY & FIRE RATE ×"
+TitleLabel.Text = "× D3D MENU: 0.009 FIRE RATE & WALLCHECK ×"
 TitleLabel.TextColor3 = Color3.fromRGB(240, 240, 255)
-TitleLabel.TextSize = 13
+TitleLabel.TextSize = 12.5
 TitleLabel.Font = Enum.Font.GothamBold
 TitleLabel.Parent = MainFrame
 
@@ -197,7 +197,7 @@ local function IsEnemy(player)
     if LocalPlayer.Team and player.Team then
         return player.Team ~= LocalPlayer.Team
     end
-    return true -- Jika game tidak menggunakan sistem Tim/FFA, anggap semua musuh
+    return true
 end
 
 local function RemovePlayerESP(player)
@@ -263,7 +263,6 @@ local function CreatePlayerESP(player)
     ESPCache[player] = espData
 end
 
--- PENGATURAN DINAMIS PEMAIN MASUK, KELUAR, DAN GANTI TIM
 local function SetupPlayer(player)
     if player == LocalPlayer then return end
     CreatePlayerESP(player)
@@ -389,7 +388,7 @@ CreateToggle(TabContentFrames["Visual"], "ESP Distance (Enemy Only)", function(v
 CreateToggle(TabContentFrames["Visual"], "ESP Gender [Cowo/Cewe]", function(v) VisualsConfig.ESP_Gender = v end)
 
 CreateToggle(TabContentFrames["Player"], "Multi-Jump", function(v) PlayerConfig.MultiJump = v end)
-CreateToggle(TabContentFrames["Player"], "Rapid Fire Speed (Brutal)", function(v) PlayerConfig.FireRateMultiplier = v end)
+CreateToggle(TabContentFrames["Player"], "Rapid Fire Speed (0.009)", function(v) PlayerConfig.FireRateMultiplier = v end)
 
 CreateToggle(TabContentFrames["world"], "Night Mode", function(v)
     WorldConfig.NightMode = v
@@ -405,6 +404,9 @@ CreateToggle(TabContentFrames["skill"], "One-Shot Snap Aimbot (Enemy Only)", fun
     FOVCircle.Visible = v
     TargetLine.Visible = v
 end)
+CreateToggle(TabContentFrames["skill"], "Wall Check (Abaikan di Balik Tembok)", function(v)
+    SilentAimConfig.WallCheck = v
+end)
 
 UserInputService.JumpRequest:Connect(function()
     if not PlayerConfig.MultiJump then return end
@@ -416,7 +418,7 @@ UserInputService.JumpRequest:Connect(function()
     end
 end)
 
--- MODIFIKASI FIRE RATE / KECEPATAN TEMBAK SENJATA SECARA REALTIME
+-- MODIFIKASI FIRE RATE DIKUNCI DI ANGKA 0.009
 RunService.Stepped:Connect(function()
     if not PlayerConfig.FireRateMultiplier then return end
     local char = LocalPlayer.Character
@@ -424,13 +426,12 @@ RunService.Stepped:Connect(function()
     
     for _, tool in ipairs(char:GetChildren()) do
         if tool:IsA("Tool") then
-            -- Cari modul konfigurasi senjata atau nilai cooldown tembak di dalam tool
             for _, descendant in ipairs(tool:GetDescendants()) do
                 if descendant:IsA("NumberValue") or descendant:IsA("IntValue") then
                     local name = string.lower(descendant.Name)
                     if string.find(name, "cooldown") or string.find(name, "firerate") or string.find(name, "delay") or string.find(name, "fire") then
-                        if descendant.Value > 0.02 then
-                            descendant.Value = 0.02 -- Percepat jeda tembak menjadi sangat singkat
+                        if descendant.Value ~= 0.009 then
+                            descendant.Value = 0.009
                         end
                     end
                 end
@@ -438,6 +439,41 @@ RunService.Stepped:Connect(function()
         end
     end
 end)
+
+-- FUNGSI WALLCHECK MENGGUNAKAN RAYCAST
+local function IsVisible(targetPart)
+    if not SilentAimConfig.WallCheck then return true end
+    local char = LocalPlayer.Character
+    local hrp = char and char:FindFirstChild("HumanoidRootPart")
+    if not hrp then return false end
+
+    local origin = Camera.CFrame.Position
+    local direction = targetPart.Position - origin
+
+    local raycastParams = RaycastParams.new()
+    raycastParams.FilterType = Enum.RaycastFilterType.Blacklist
+    
+    -- Abaikan karakter player sendiri dan senjata/aksesorisnya
+    local filterList = {char}
+    if player and player.Character then
+        table.insert(filterList, player.Character)
+    end
+    raycastParams.FilterDescendantsInstances = filterList
+    raycastParams.IgnoreWater = true
+
+    local result = Workspace:Raycast(origin, direction, raycastParams)
+    
+    -- Jika tidak menabrak objek apa pun, atau objek yang ditabrak adalah bagian dari karakter target, maka terlihat
+    if not result then
+        return true
+    else
+        local hitInstance = result.Instance
+        if hitInstance:IsDescendantOf(targetPart.Parent) then
+            return true
+        end
+    end
+    return false
+end
 
 local function GetInstantHeadTarget()
     local screenCenter = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
@@ -453,13 +489,16 @@ local function GetInstantHeadTarget()
             local hum = pChar and pChar:FindFirstChildOfClass("Humanoid")
 
             if head and hum and hum.Health > 0 then
-                local screenPos, onScreen = Camera:WorldToViewportPoint(head.Position)
-                if onScreen then
-                    local screenPos2D = Vector2.new(screenPos.X, screenPos.Y)
-                    local dist = (screenPos2D - screenCenter).Magnitude
-                    if dist <= SilentAimConfig.FOVSize and dist < bestDist then
-                        bestDist = dist
-                        bestTarget = head
+                -- Validasi WallCheck sebelum memasukkan ke kandidat target
+                if IsVisible(head) then
+                    local screenPos, onScreen = Camera:WorldToViewportPoint(head.Position)
+                    if onScreen then
+                        local screenPos2D = Vector2.new(screenPos.X, screenPos.Y)
+                        local dist = (screenPos2D - screenCenter).Magnitude
+                        if dist <= SilentAimConfig.FOVSize and dist < bestDist then
+                            bestDist = dist
+                            bestTarget = head
+                        end
                     end
                 end
             end
@@ -616,7 +655,7 @@ RunService.RenderStepped:Connect(function()
                     esp.Name.Visible = false
                 end
 
-                if VisualsConfig.ESP_Distance then
+-               if VisualsConfig.ESP_Distance then
                     esp.Distance.Text = string.format("[%dM]", math.floor(distance))
                     esp.Distance.Position = Vector2.new(vector.X, vector.Y + 20)
                     esp.Distance.Visible = true
@@ -645,11 +684,9 @@ RunService.RenderStepped:Connect(function()
                 if type(obj) == "table" then
                     for _, bone in pairs(obj) do bone.Visible = false end
                 else
-                    obj.UriVisible = false
                     obj.Visible = false
                 end
             end
         end
     end
 end)
-
