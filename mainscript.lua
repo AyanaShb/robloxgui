@@ -1,6 +1,6 @@
--- v1.0.38-ultimate-fix --
+-- v1.0.39-silent-headshot --
 -- =====================================================================
--- ULTIMATE ANDROID D3D MENU: REALTIME DYNAMIC TARGET & NO-RELOAD --
+-- ULTIMATE ANDROID D3D MENU: SILENT SNAP HEADSHOT & NO-RELOCK --
 -- =====================================================================
 
 local Players = game:GetService("Players")
@@ -71,7 +71,7 @@ FOVCircle.NumSides = 64
 local TargetLine = Drawing.new("Line")
 TargetLine.Visible = false
 TargetLine.Thickness = 1.5
-TargetLine.Color = Color3.fromRGB(0, 255, 128) -- Hijau terang untuk menandai target aktif yang sedang dikunci
+TargetLine.Color = Color3.fromRGB(0, 255, 128)
 
 local FloatButton = Instance.new("TextButton")
 FloatButton.Size = UDim2.new(0, 52, 0, 52)
@@ -125,7 +125,7 @@ end)
 local TitleLabel = Instance.new("TextLabel")
 TitleLabel.Size = UDim2.new(1, 0, 0, 36)
 TitleLabel.BackgroundTransparency = 1
-TitleLabel.Text = "× D3D MENU: DYNAMIC TARGET & NO-RELOAD ×"
+TitleLabel.Text = "× D3D MENU: SILENT HEADSHOT SNAP ×"
 TitleLabel.TextColor3 = Color3.fromRGB(240, 240, 255)
 TitleLabel.TextSize = 11.5
 TitleLabel.Font = Enum.Font.GothamBold
@@ -371,7 +371,7 @@ CreateToggle(TabContentFrames["world"], "Night Mode", function(v)
     end
 end)
 
-CreateToggle(TabContentFrames["skill"], "Dynamic Aimbot (Realtime)", function(v)
+CreateToggle(TabContentFrames["skill"], "Silent Headshot Snap (On Shoot)", function(v)
     SilentAimConfig.Enabled = v
     FOVCircle.Visible = v
     TargetLine.Visible = v
@@ -390,7 +390,6 @@ UserInputService.JumpRequest:Connect(function()
     end
 end)
 
--- ABSOLUTE WEAPON HACK (INSTANT FIRE, 1-HIT DAMAGE, NO RELOAD)
 RunService.Stepped:Connect(function()
     local char = LocalPlayer.Character
     if not char then return end
@@ -419,7 +418,6 @@ RunService.Stepped:Connect(function()
     end
 end)
 
--- WALL CHECK FUNCTION DENGAN RAYCAST AMAN
 local function IsVisible(targetPart)
     if not SilentAimConfig.WallCheck then return true end
     local char = LocalPlayer.Character
@@ -446,8 +444,8 @@ local function IsVisible(targetPart)
     return false
 end
 
--- REALTIME DYNAMIC TARGET SELECTION (BERUBAH OTOMATIS MENGIKUTI ARAH CROSSHAIR/GERAKAN)
-local function GetDynamicTarget()
+-- MENCARI TITIK KEPALA YANG BENAR-BENAR PRESISI PAS DI TENGAH TARGET DALAM FOV
+local function GetExactHeadTarget()
     local screenCenter = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
     local bestTarget, bestDist = nil, math.huge
     local char = LocalPlayer.Character
@@ -461,12 +459,14 @@ local function GetDynamicTarget()
             local hum = pChar and pChar:FindFirstChildOfClass("Humanoid")
 
             if head and hum and hum.Health > 0 then
-                local screenPos, onScreen = Camera:WorldToViewportPoint(head.Position)
+                -- Hitung posisi presisi tepat di titik pusat kepala (ditambah sedikit offset jika perlu)
+                local exactHeadPos = head.Position
+                local screenPos, onScreen = Camera:WorldToViewportPoint(exactHeadPos)
+                
                 if onScreen then
                     local screenPos2D = Vector2.new(screenPos.X, screenPos.Y)
                     local dist = (screenPos2D - screenCenter).Magnitude
                     
-                    -- WAJIB DALAM FOV, LOLOS WALL CHECK (JIKA AKTIF), DAN PALING DEKAT DENGAN PUSAT LAYAR SECARA REALTIME
                     if dist <= SilentAimConfig.FOVSize and dist < bestDist then
                         if IsVisible(head) then
                             bestDist = dist
@@ -480,7 +480,17 @@ local function GetDynamicTarget()
     return bestTarget
 end
 
--- REALTIME FRAME-BY-FRAME CAMERA LOCK SAAT AIMBOT AKTIF
+-- LOGIKA INSTANT SNAP HANYA SAAT MENEMBAK (TIDAK MENGUNCI/NOCLOCK)
+UserInputService.InputBegan:Connect(function(input)
+    if SilentAimConfig.Enabled and (input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch) then
+        local targetHead = GetExactHeadTarget()
+        if targetHead then
+            -- Langsung snap instan tepat ke bagian kepala persis saat peluru dilepaskan/klik ditekan
+            Camera.CFrame = CFrame.new(Camera.CFrame.Position, targetHead.Position)
+        end
+    end
+end)
+
 RunService.RenderStepped:Connect(function()
     local screenCenter = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
 
@@ -489,11 +499,9 @@ RunService.RenderStepped:Connect(function()
         FOVCircle.Radius = SilentAimConfig.FOVSize
         FOVCircle.Visible = true
 
-        local targetHead = GetDynamicTarget()
+        -- Garis FOV hanya mendeteksi dan mengarah ke target aktif yang valid di dalam lingkaran
+        local targetHead = GetExactHeadTarget()
         if targetHead then
-            -- Realtime tracking: Kamera mengunci target terdekat di dalam FOV secara mulus mengikuti pergerakan
-            Camera.CFrame = CFrame.new(Camera.CFrame.Position, targetHead.Position)
-
             local screenPos, onScreen = Camera:WorldToViewportPoint(targetHead.Position)
             if onScreen then
                 TargetLine.From = screenCenter
