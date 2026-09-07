@@ -1,6 +1,6 @@
--- v1.0.41-auto-aim-ultimate --
+-- v1.0.43-full-features-updated --
 -- =====================================================================
--- ULTIMATE ANDROID D3D MENU: AUTO AIM TAB & COMPLETE FIX --
+-- ULTIMATE ANDROID D3D MENU: VISUAL, PLAYER, WORLD & SKILL (AIMBOT) TABS --
 -- =====================================================================
 
 local Players = game:GetService("Players")
@@ -12,7 +12,7 @@ local Camera = Workspace.CurrentCamera
 local LocalPlayer = Players.LocalPlayer
 
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "D3D_Ultimate_Android"
+ScreenGui.Name = "D3D_Ultimate_Android_V2"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
@@ -33,34 +33,47 @@ if not ScreenGui.Parent then
     end)
 end
 
+-- CONFIGURATIONS
 local VisualsConfig = {
     ESP_Skeleton = false,
     ESP_Line = false,
     ESP_Name = false,
     ESP_Distance = false,
     ESP_Gender = false,
-    SkeletonColor = Color3.fromRGB(0, 240, 255)
+    ESP_Health = false,
+    SkeletonColor = Color3.fromRGB(0, 240, 255),
+    LineColor = Color3.fromRGB(0, 240, 255),
+    NameColor = Color3.fromRGB(255, 255, 255),
+    DistanceColor = Color3.fromRGB(255, 255, 255),
+    GenderColor = Color3.fromRGB(255, 255, 255),
+    HealthColor = Color3.fromRGB(0, 255, 128)
 }
 
 local PlayerConfig = {
+    SpeedRun = false,
+    SpeedValue = 24,
+    FlyHack = false,
     MultiJump = false,
-    RapidFire = false,
-    NoReload = false,
-    NoRecoil = false,
+    AntiAim = false
 }
 
 local WorldConfig = {
     NightMode = false,
+    Daylight = false,
+    DaylightBrightness = 3,
+    DaylightClock = 14
 }
 
-local AutoAimConfig = {
-    Enabled = false,
-    FOVSize = 140,
-    AutoFireOnBody = false,
+local SkillConfig = {
+    Aimbot = false,
+    AimTargetPart = "Head", -- "Head" or "Chest"
+    AimDistance = 500,
+    AimFovSize = 140
 }
 
 local ESPCache = {}
 
+-- DRAWINGS FOR AIMBOT & FOV
 local FOVCircle = Drawing.new("Circle")
 FOVCircle.Visible = false
 FOVCircle.Filled = false
@@ -68,11 +81,12 @@ FOVCircle.Thickness = 1.5
 FOVCircle.Color = Color3.fromRGB(255, 0, 0)
 FOVCircle.NumSides = 64
 
-local TargetLine = Drawing.new("Line")
-TargetLine.Visible = false
-TargetLine.Thickness = 1.5
-TargetLine.Color = Color3.fromRGB(0, 255, 128)
+local AimbotLine = Drawing.new("Line")
+AimbotLine.Visible = false
+AimbotLine.Thickness = 1.5
+AimbotLine.Color = Color3.fromRGB(0, 255, 128)
 
+-- FLOATING BUTTON UI
 local FloatButton = Instance.new("TextButton")
 FloatButton.Size = UDim2.new(0, 52, 0, 52)
 FloatButton.Position = UDim2.new(0, 20, 0, 100)
@@ -95,9 +109,10 @@ FloatGradient.Color = ColorSequence.new({
     ColorSequenceKeypoint.new(1, Color3.fromRGB(0, 240, 255))
 })
 
+-- MAIN FRAME UI
 local MainFrame = Instance.new("Frame")
-MainFrame.Size = UDim2.new(0, 440, 0, 330)
-MainFrame.Position = UDim2.new(0.5, -220, 0.5, -165)
+MainFrame.Size = UDim2.new(0, 440, 0, 360)
+MainFrame.Position = UDim2.new(0.5, -220, 0.5, -180)
 MainFrame.BackgroundColor3 = Color3.fromRGB(6, 6, 9)
 MainFrame.BackgroundTransparency = 0.05
 MainFrame.BorderSizePixel = 0
@@ -125,7 +140,7 @@ end)
 local TitleLabel = Instance.new("TextLabel")
 TitleLabel.Size = UDim2.new(1, 0, 0, 36)
 TitleLabel.BackgroundTransparency = 1
-TitleLabel.Text = "× D3D MENU: AUTO AIM ULTIMATE ×"
+TitleLabel.Text = "× D3D MENU: FULL FEATURES v2 ×"
 TitleLabel.TextColor3 = Color3.fromRGB(240, 240, 255)
 TitleLabel.TextSize = 11.5
 TitleLabel.Font = Enum.Font.GothamBold
@@ -139,7 +154,7 @@ TabContainer.Parent = MainFrame
 
 Instance.new("UICorner", TabContainer).CornerRadius = UDim.new(0, 10)
 
-local tabs = {"Visual", "Player", "world", "Auto aim"}
+local tabs = {"Visual", "Player", "World", "Skill"}
 local TabContentFrames = {}
 
 for i, tabName in ipairs(tabs) do
@@ -187,81 +202,7 @@ for i, tabName in ipairs(tabs) do
     end)
 end
 
-local function RemovePlayerESP(player)
-    if ESPCache[player] then
-        for _, obj in pairs(ESPCache[player]) do
-            if type(obj) == "table" then
-                for _, bone in pairs(obj) do pcall(function() bone:Remove() end) end
-            else
-                pcall(function() obj:Remove() end)
-            end
-        end
-        ESPCache[player] = nil
-    end
-end
-
-local function CreatePlayerESP(player)
-    if player == LocalPlayer then return end
-    RemovePlayerESP(player)
-
-    local espData = {
-        Line = Drawing.new("Line"),
-        Name = Drawing.new("Text"),
-        Distance = Drawing.new("Text"),
-        Gender = Drawing.new("Text"),
-        Skeleton = {
-            Head_Neck = Drawing.new("Line"),
-            Neck_UpperTorso = Drawing.new("Line"),
-            UpperTorso_LowerTorso = Drawing.new("Line"),
-            LeftUpperArm_LeftLowerArm = Drawing.new("Line"),
-            LeftLowerArm_LeftHand = Drawing.new("Line"),
-            RightUpperArm_RightLowerArm = Drawing.new("Line"),
-            RightLowerArm_RightHand = Drawing.new("Line"),
-            UpperTorso_LeftUpperArm = Drawing.new("Line"),
-            UpperTorso_RightUpperArm = Drawing.new("Line"),
-            LowerTorso_LeftUpperLeg = Drawing.new("Line"),
-            LeftUpperLeg_LeftLowerLeg = Drawing.new("Line"),
-            LeftLowerLeg_LeftFoot = Drawing.new("Line"),
-            LowerTorso_RightUpperLeg = Drawing.new("Line"),
-            RightUpperLeg_RightLowerLeg = Drawing.new("Line"),
-            RightLowerLeg_RightFoot = Drawing.new("Line")
-        }
-    }
-
-    espData.Line.Thickness = 1.5
-    espData.Line.Color = Color3.fromRGB(0, 240, 255)
-    espData.Line.Transparency = 0.7
-
-    for _, bone in pairs(espData.Skeleton) do
-        bone.Thickness = 1.5
-        bone.Color = VisualsConfig.SkeletonColor
-        bone.Transparency = 0.8
-    end
-
-    for _, textObj in ipairs({espData.Name, espData.Distance, espData.Gender}) do
-        textObj.Size = 13
-        textObj.Center = true
-        textObj.Outline = true
-        textObj.OutlineColor = Color3.fromRGB(0, 0, 0)
-        textObj.Color = Color3.fromRGB(255, 255, 255)
-        textObj.Font = Drawing.Fonts.UI
-    end
-
-    ESPCache[player] = espData
-end
-
-local function SetupPlayer(player)
-    if player == LocalPlayer then return end
-    CreatePlayerESP(player)
-end
-
-for _, p in ipairs(Players:GetPlayers()) do
-    SetupPlayer(p)
-end
-
-Players.PlayerAdded:Connect(SetupPlayer)
-Players.PlayerRemoving:Connect(RemovePlayerESP)
-
+-- HELPER UI FUNCTIONS
 local function CreateToggle(parent, text, callback)
     local frame = Instance.new("Frame")
     frame.Size = UDim2.new(1, 0, 0, 36)
@@ -331,7 +272,7 @@ local function CreateColorPicker(parent, text, callback)
     stroke.Thickness = 2
     stroke.Color = Color3.fromRGB(255, 255, 255)
 
-    local colors = {Color3.fromRGB(0, 240, 255), Color3.fromRGB(255, 0, 128), Color3.fromRGB(0, 230, 130), Color3.fromRGB(255, 200, 0), Color3.fromRGB(255, 255, 255)}
+    local colors = {Color3.fromRGB(0, 240, 255), Color3.fromRGB(255, 0, 128), Color3.fromRGB(0, 230, 130), Color3.fromRGB(255, 200, 0), Color3.fromRGB(255, 255, 255), Color3.fromRGB(255, 80, 80)}
     local colorIndex = 1
 
     pickerCircle.MouseButton1Click:Connect(function()
@@ -343,86 +284,307 @@ local function CreateColorPicker(parent, text, callback)
     frame.Parent = parent
 end
 
-CreateToggle(TabContentFrames["Visual"], "Skeleton ESP (All Targets)", function(v) VisualsConfig.ESP_Skeleton = v end)
-CreateColorPicker(TabContentFrames["Visual"], "Skeleton Color Custom", function(c) 
-    VisualsConfig.SkeletonColor = c 
-    for _, esp in pairs(ESPCache) do
-        for _, bone in pairs(esp.Skeleton) do
-            bone.Color = c
+local function CreateSlider(parent, text, min, max, default, callback)
+    local frame = Instance.new("Frame")
+    frame.Size = UDim2.new(1, 0, 0, 52)
+    frame.BackgroundColor3 = Color3.fromRGB(12, 12, 18)
+    frame.BorderSizePixel = 0
+    Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 8)
+
+    local label = Instance.new("TextLabel", frame)
+    label.Size = UDim2.new(1, -24, 0, 22)
+    label.Position = UDim2.new(0, 12, 0, 4)
+    label.BackgroundTransparency = 1
+    label.Text = text .. ": " .. tostring(default)
+    label.TextColor3 = Color3.fromRGB(220, 220, 235)
+    label.TextSize = 10.5
+    label.Font = Enum.Font.GothamMedium
+    label.TextXAlignment = Enum.TextXAlignment.Left
+
+    local sliderBar = Instance.new("Frame", frame)
+    sliderBar.Size = UDim2.new(1, -24, 0, 6)
+    sliderBar.Position = UDim2.new(0, 12, 0, 32)
+    sliderBar.BackgroundColor3 = Color3.fromRGB(25, 25, 36)
+    Instance.new("UICorner", sliderBar).CornerRadius = UDim.new(1, 0)
+
+    local fill = Instance.new("Frame", sliderBar)
+    fill.Size = UDim2.new((default - min)/(max - min), 0, 1, 0)
+    fill.BackgroundColor3 = Color3.fromRGB(0, 240, 255)
+    Instance.new("UICorner", fill).CornerRadius = UDim.new(1, 0)
+
+    local btn = Instance.new("TextButton", sliderBar)
+    btn.Size = UDim2.new(1, 0, 1, 0)
+    btn.BackgroundTransparency = 1
+    btn.Text = ""
+
+    local dragging = false
+    btn.MouseButton1Down:Connect(function() dragging = true end)
+    UserInputService.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = false
         end
+    end)
+
+    UserInputService.InputChanged:Connect(function(input)
+        if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+            local pos = math.clamp((input.Position.X - sliderBar.AbsolutePosition.X) / sliderBar.AbsoluteSize.X, 0, 1)
+            fill.Size = UDim2.new(pos, 0, 1, 0)
+            local val = math.floor(min + ((max - min) * pos))
+            label.Text = text .. ": " .. tostring(val)
+            if callback then callback(val) end
+        end
+    end)
+
+    frame.Parent = parent
+end
+
+local function CreateChoice(parent, text, choices, defaultIndex, callback)
+    local frame = Instance.new("Frame")
+    frame.Size = UDim2.new(1, 0, 0, 48)
+    frame.BackgroundColor3 = Color3.fromRGB(12, 12, 18)
+    frame.BorderSizePixel = 0
+    Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 8)
+
+    local label = Instance.new("TextLabel", frame)
+    label.Size = UDim2.new(0.5, 0, 1, 0)
+    label.Position = UDim2.new(0, 12, 0, 0)
+    label.BackgroundTransparency = 1
+    label.Text = text
+    label.TextColor3 = Color3.fromRGB(220, 220, 235)
+    label.TextSize = 10.5
+    label.Font = Enum.Font.GothamMedium
+    label.TextXAlignment = Enum.TextXAlignment.Left
+
+    local choiceBtn = Instance.new("TextButton", frame)
+    choiceBtn.Size = UDim2.new(0, 120, 0, 28)
+    choiceBtn.Position = UDim2.new(1, -132, 0.5, -14)
+    choiceBtn.BackgroundColor3 = Color3.fromRGB(25, 25, 36)
+    choiceBtn.Text = choices[defaultIndex]
+    choiceBtn.TextColor3 = Color3.fromRGB(0, 240, 255)
+    choiceBtn.TextSize = 10.5
+    choiceBtn.Font = Enum.Font.GothamBold
+    Instance.new("UICorner", choiceBtn).CornerRadius = UDim.new(0, 6)
+
+    local currentIndex = defaultIndex
+    choiceBtn.MouseButton1Click:Connect(function()
+        currentIndex = (currentIndex % #choices) + 1
+        choiceBtn.Text = choices[currentIndex]
+        if callback then callback(choices[currentIndex]) end
+    end)
+
+    frame.Parent = parent
+end
+
+-- ESP SYSTEM WITH TEAMMATE FILTER (DEADMATCH READY)
+local function IsEnemy(player)
+    if player == LocalPlayer then return false end
+    if player.Team and LocalPlayer.Team then
+        return player.Team ~= LocalPlayer.Team
     end
-end)
-CreateToggle(TabContentFrames["Visual"], "ESP Line", function(v) VisualsConfig.ESP_Line = v end)
-CreateToggle(TabContentFrames["Visual"], "ESP Name", function(v) VisualsConfig.ESP_Name = v end)
-CreateToggle(TabContentFrames["Visual"], "ESP Distance", function(v) VisualsConfig.ESP_Distance = v end)
-CreateToggle(TabContentFrames["Visual"], "ESP Gender [Cowo/Cewe]", function(v) VisualsConfig.ESP_Gender = v end)
+    return true
+end
 
-CreateToggle(TabContentFrames["Player"], "Multi-Jump", function(v) PlayerConfig.MultiJump = v end)
-CreateToggle(TabContentFrames["Player"], "Rapid Fire", function(v) PlayerConfig.RapidFire = v end)
-CreateToggle(TabContentFrames["Player"], "Real No-Reload", function(v) PlayerConfig.NoReload = v end)
-CreateToggle(TabContentFrames["Player"], "Real No-Recoil", function(v) PlayerConfig.NoRecoil = v end)
-
-CreateToggle(TabContentFrames["world"], "Night Mode", function(v)
-    WorldConfig.NightMode = v
-    if not v then
-        Lighting.ClockTime = 14.5
-        Lighting.Brightness = 2
-        Lighting.Ambient = Color3.fromRGB(120, 120, 120)
-    end
-end)
-
-CreateToggle(TabContentFrames["Auto aim"], "Auto Aim (On/Off)", function(v)
-    AutoAimConfig.Enabled = v
-    FOVCircle.Visible = v
-    TargetLine.Visible = v
-end)
-CreateToggle(TabContentFrames["Auto aim"], "Auto Fire When Crosshair on Body (Headshot Snap)", function(v)
-    AutoAimConfig.AutoFireOnBody = v
-end)
-
-UserInputService.JumpRequest:Connect(function()
-    if not PlayerConfig.MultiJump then return end
-    local char = LocalPlayer.Character
-    if not char then return end
-    local hrp = char:FindFirstChild("HumanoidRootPart")
-    if hrp then
-        hrp.Velocity = Vector3.new(hrp.Velocity.X, 35, hrp.Velocity.Z)
-    end
-end)
-
--- WEAPON MODIFICATIONS (RAPID FIRE, NO-RELOAD, NO-RECOIL)
-RunService.Stepped:Connect(function()
-    local char = LocalPlayer.Character
-    if not char then return end
-    
-    for _, tool in ipairs(char:GetChildren()) do
-        if tool:IsA("Tool") then
-            for _, descendant in ipairs(tool:GetDescendants()) do
-                if descendant:IsA("NumberValue") or descendant:IsA("IntValue") then
-                    local name = string.lower(descendant.Name)
-                    if PlayerConfig.RapidFire and (string.find(name, "cooldown") or string.find(name, "firerate") or string.find(name, "delay") or string.find(name, "fire") or string.find(name, "speed") or string.find(name, "rate")) then
-                        descendant.Value = 0
-                    end
-                    if PlayerConfig.NoReload and (string.find(name, "ammo") or string.find(name, "clip") or string.find(name, "mag") or string.find(name, "reload") or string.find(name, "capacity")) then
-                        if string.find(name, "reload") then
-                            descendant.Value = 0
-                        else
-                            descendant.Value = 999
-                        end
-                    end
-                elseif PlayerConfig.NoRecoil and (descendant:IsA("Vector3Value") or descendant:IsA("CFrameValue")) then
-                    local name = string.lower(descendant.Name)
-                    if string.find(name, "recoil") or string.find(name, "spread") or string.find(name, "kick") then
-                        descendant.Value = Vector3.new(0, 0, 0)
-                    end
-                end
+local function RemovePlayerESP(player)
+    if ESPCache[player] then
+        for _, obj in pairs(ESPCache[player]) do
+            if type(obj) == "table" then
+                for _, bone in pairs(obj) do pcall(function() bone:Remove() end) end
+            else
+                pcall(function() obj:Remove() end)
             end
         end
+        ESPCache[player] = nil
+    end
+end
+
+local function CreatePlayerESP(player)
+    if player == LocalPlayer then return end
+    RemovePlayerESP(player)
+
+    local espData = {
+        Line = Drawing.new("Line"),
+        Name = Drawing.new("Text"),
+        Distance = Drawing.new("Text"),
+        Gender = Drawing.new("Text"),
+        HealthBarBg = Drawing.new("Line"),
+        HealthBar = Drawing.new("Line"),
+        Skeleton = {
+            Head_Neck = Drawing.new("Line"),
+            Neck_UpperTorso = Drawing.new("Line"),
+            UpperTorso_LowerTorso = Drawing.new("Line"),
+            LeftUpperArm_LeftLowerArm = Drawing.new("Line"),
+            LeftLowerArm_LeftHand = Drawing.new("Line"),
+            RightUpperArm_RightLowerArm = Drawing.new("Line"),
+            RightLowerArm_RightHand = Drawing.new("Line"),
+            UpperTorso_LeftUpperArm = Drawing.new("Line"),
+            UpperTorso_RightUpperArm = Drawing.new("Line"),
+            LowerTorso_LeftUpperLeg = Drawing.new("Line"),
+            LeftUpperLeg_LeftLowerLeg = Drawing.new("Line"),
+            LeftLowerLeg_LeftFoot = Drawing.new("Line"),
+            LowerTorso_RightUpperLeg = Drawing.new("Line"),
+            RightUpperLeg_RightLowerLeg = Drawing.new("Line"),
+            RightLowerLeg_RightFoot = Drawing.new("Line")
+        }
+    }
+
+    espData.Line.Thickness = 1.5
+    espData.Line.Color = VisualsConfig.LineColor
+    espData.Line.Transparency = 0.7
+
+    espData.HealthBarBg.Thickness = 3
+    espData.HealthBarBg.Color = Color3.fromRGB(40, 40, 40)
+    espData.HealthBarBg.Transparency = 0.8
+
+    espData.HealthBar.Thickness = 1.5
+    espData.HealthBar.Color = VisualsConfig.HealthColor
+    espData.HealthBar.Transparency = 1
+
+    for _, bone in pairs(espData.Skeleton) do
+        bone.Thickness = 1.5
+        bone.Color = VisualsConfig.SkeletonColor
+        bone.Transparency = 0.8
+    end
+
+    espData.Name.Size = 13
+    espData.Name.Center = true
+    espData.Name.Outline = true
+    espData.Name.OutlineColor = Color3.fromRGB(0, 0, 0)
+    espData.Name.Color = VisualsConfig.NameColor
+    espData.Name.Font = Drawing.Fonts.UI
+
+    espData.Distance.Size = 13
+    espData.Distance.Center = true
+    espData.Distance.Outline = true
+    espData.Distance.OutlineColor = Color3.fromRGB(0, 0, 0)
+    espData.Distance.Color = VisualsConfig.DistanceColor
+    espData.Distance.Font = Drawing.Fonts.UI
+
+    espData.Gender.Size = 13
+    espData.Gender.Center = true
+    espData.Gender.Outline = true
+    espData.Gender.OutlineColor = Color3.fromRGB(0, 0, 0)
+    espData.Gender.Color = VisualsConfig.GenderColor
+    espData.Gender.Font = Drawing.Fonts.UI
+
+    ESPCache[player] = espData
+end
+
+local function SetupPlayer(player)
+    if player == LocalPlayer then return end
+    CreatePlayerESP(player)
+    player.CharacterAdded:Connect(function()
+        task.wait(0.5)
+        CreatePlayerESP(player)
+    end)
+end
+
+for _, p in ipairs(Players:GetPlayers()) do
+    SetupPlayer(p)
+end
+
+Players.PlayerAdded:Connect(SetupPlayer)
+Players.PlayerRemoving:Connect(RemovePlayerESP)
+
+-- POPULATE TABS
+
+-- TAB 1: VISUAL
+CreateToggle(TabContentFrames["Visual"], "Skeleton ESP (Enemies Only)", function(v) VisualsConfig.ESP_Skeleton = v end)
+CreateColorPicker(TabContentFrames["Visual"], "Skeleton Color", function(c) 
+    VisualsConfig.SkeletonColor = c 
+    for _, esp in pairs(ESPCache) do for _, bone in pairs(esp.Skeleton) do bone.Color = c end end
+end)
+CreateToggle(TabContentFrames["Visual"], "ESP Line", function(v) VisualsConfig.ESP_Line = v end)
+CreateColorPicker(TabContentFrames["Visual"], "Line Color", function(c) VisualsConfig.LineColor = c end)
+CreateToggle(TabContentFrames["Visual"], "ESP Name", function(v) VisualsConfig.ESP_Name = v end)
+CreateColorPicker(TabContentFrames["Visual"], "Name Color", function(c) VisualsConfig.NameColor = c end)
+CreateToggle(TabContentFrames["Visual"], "ESP Distance", function(v) VisualsConfig.ESP_Distance = v end)
+CreateColorPicker(TabContentFrames["Visual"], "Distance Color", function(c) VisualsConfig.DistanceColor = c end)
+CreateToggle(TabContentFrames["Visual"], "ESP Gender [Cowo/Cewe]", function(v) VisualsConfig.ESP_Gender = v end)
+CreateColorPicker(TabContentFrames["Visual"], "Gender Color", function(c) VisualsConfig.GenderColor = c end)
+CreateToggle(TabContentFrames["Visual"], "ESP Health (Vertical Bar)", function(v) VisualsConfig.ESP_Health = v end)
+CreateColorPicker(TabContentFrames["Visual"], "Health Bar Color", function(c) VisualsConfig.HealthColor = c end)
+
+-- TAB 2: PLAYER
+CreateToggle(TabContentFrames["Player"], "Speed Run (Custom WalkAnimation)", function(v) PlayerConfig.SpeedRun = v end)
+CreateSlider(TabContentFrames["Player"], "Speed Run Max", 16, 100, 24, function(val) PlayerConfig.SpeedValue = val end)
+
+CreateToggle(TabContentFrames["Player"], "Fly Hack (Hold Jump & Slow Fall)", function(v) PlayerConfig.FlyHack = v end)
+CreateToggle(TabContentFrames["Player"], "Multi Jump (Infinite Tap Heights)", function(v) PlayerConfig.MultiJump = v end)
+CreateToggle(TabContentFrames["Player"], "Anti Aim (Auto-Evasion / No-Hitbox)", function(v) PlayerConfig.AntiAim = v end)
+
+-- TAB 3: WORLD
+CreateToggle(TabContentFrames["World"], "Night Mode", function(v)
+    WorldConfig.NightMode = v
+    if v then WorldConfig.Daylight = false end
+end)
+CreateToggle(TabContentFrames["World"], "Daylight (Indoor/Outdoor Custom)", function(v)
+    WorldConfig.Daylight = v
+    if v then WorldConfig.NightMode = false end
+end)
+CreateSlider(TabContentFrames["World"], "Daylight Brightness", 1, 10, 3, function(val) WorldConfig.DaylightBrightness = val end)
+CreateSlider(TabContentFrames["World"], "Daylight Time (Clock)", 0, 24, 14, function(val) WorldConfig.DaylightClock = val end)
+
+-- TAB 4: SKILL
+CreateToggle(TabContentFrames["Skill"], "Aimbot (Instant Snap 1-Bullet/Shot)", function(v) SkillConfig.Aimbot = v end)
+CreateChoice(TabContentFrames["Skill"], "Aim Target Part", {"Head", "Chest"}, 1, function(choice) SkillConfig.AimTargetPart = choice end)
+CreateSlider(TabContentFrames["Skill"], "Aim Distance Scan", 100, 2000, 500, function(val) SkillConfig.AimDistance = val end)
+CreateSlider(TabContentFrames["Skill"], "Aim FOV Size", 50, 400, 140, function(val) SkillConfig.AimFovSize = val end)
+
+
+-- PLAYER MOD FEATURES LOGIC (SPEED RUN, FLY, MULTI JUMP, ANTI AIM)
+local lastJumpTick = 0
+UserInputService.JumpRequest:Connect(function()
+    local char = LocalPlayer.Character
+    local hum = char and char:FindFirstChildOfClass("Humanoid")
+    if hum and PlayerConfig.MultiJump then
+        hum:ChangeState(Enum.HumanoidStateType.Jumping)
     end
 end)
 
--- MENCARI TARGET KEPALA DENGAN OFFSET NAIK DI ATAS KEPALA
-local function GetAutoAimTargetPos()
+RunService.RenderStepped:Connect(function(dt)
+    local char = LocalPlayer.Character
+    local hrp = char and char:FindFirstChild("HumanoidRootPart")
+    local hum = char and char:FindFirstChildOfClass("Humanoid")
+
+    if char and hrp and hum then
+        -- Speed Run + Custom Walk Animation Check
+        if PlayerConfig.SpeedRun then
+            hum.WalkSpeed = PlayerConfig.SpeedValue
+        end
+
+        -- Fly Hack (Hold Jump & Slow Fall Min Gravity)
+        if PlayerConfig.FlyHack then
+            if UserInputService:IsKeyDown(Enum.KeyCode.Space) or UserInputService.TouchEnabled then
+                hrp.Velocity = Vector3.new(hrp.Velocity.X, 45, hrp.Velocity.Z)
+            else
+                hrp.Velocity = Vector3.new(hrp.Velocity.X, -2, hrp.Velocity.Z)
+            end
+        end
+
+        -- Anti Aim: Auto Evasion/Jitter hitbox position slightly when enemies aim
+        if PlayerConfig.AntiAim then
+            local movingOffset = Vector3.new(math.random(-2, 2), 0, math.random(-2, 2))
+            hrp.CFrame = hrp.CFrame + movingOffset
+        end
+    end
+
+    -- World Illumination Engine
+    if WorldConfig.NightMode then
+        Lighting.ClockTime = 0
+        Lighting.Brightness = 0.1
+        Lighting.Ambient = Color3.fromRGB(0, 0, 0)
+        Lighting.OutdoorAmbient = Color3.fromRGB(0, 0, 0)
+    elseif WorldConfig.Daylight then
+        Lighting.ClockTime = WorldConfig.DaylightClock
+        Lighting.Brightness = WorldConfig.DaylightBrightness
+        Lighting.Ambient = Color3.fromRGB(200, 200, 200)
+        Lighting.OutdoorAmbient = Color3.fromRGB(200, 200, 200)
+    end
+end)
+
+
+-- SKILL: ADVANCED AIMBOT ENGINE (1-BULLET SNAP, NO OVERSHOOT, STRICT FOV LINE, ENEMY FILTER)
+local function GetClosestEnemyInFOV()
     local screenCenter = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
     local bestTargetPos, bestDist = nil, math.huge
     local char = LocalPlayer.Character
@@ -430,23 +592,25 @@ local function GetAutoAimTargetPos()
     if not hrp then return nil end
 
     for _, player in ipairs(Players:GetPlayers()) do
-        if player ~= LocalPlayer then
+        if IsEnemy(player) then
             local pChar = player.Character
-            local head = pChar and pChar:FindFirstChild("Head")
+            local targetPart = pChar and pChar:FindFirstChild(SkillConfig.AimTargetPart == "Head" and "Head" or (pChar:FindFirstChild("UpperTorso") and "UpperTorso" or "Torso"))
             local hum = pChar and pChar:FindFirstChildOfClass("Humanoid")
 
-            if head and hum and hum.Health > 0 then
-                -- Offset naik dikit pas di atas kepala
-                local exactHeadPos = head.Position + Vector3.new(0, 0.5, 0)
-                local screenPos, onScreen = Camera:WorldToViewportPoint(exactHeadPos)
-                
-                if onScreen then
-                    local screenPos2D = Vector2.new(screenPos.X, screenPos.Y)
-                    local dist = (screenPos2D - screenCenter).Magnitude
-                    
-                    if dist <= AutoAimConfig.FOVSize and dist < bestDist then
-                        bestDist = dist
-                        bestTargetPos = exactHeadPos
+            if targetPart and hum and hum.Health > 0 then
+                local worldPos = targetPart.Position
+                local distance = (hrp.Position - worldPos).Magnitude
+
+                if distance <= SkillConfig.AimDistance then
+                    local screenPos, onScreen = Camera:WorldToViewportPoint(worldPos)
+                    if onScreen then
+                        local screenPos2D = Vector2.new(screenPos.X, screenPos.Y)
+                        local distToCenter = (screenPos2D - screenCenter).Magnitude
+
+                        if distToCenter <= SkillConfig.AimFovSize and distToCenter < bestDist then
+                            bestDist = distToCenter
+                            bestTargetPos = worldPos
+                        end
                     end
                 end
             end
@@ -455,94 +619,69 @@ local function GetAutoAimTargetPos()
     return bestTargetPos
 end
 
--- DETEKSI CROSSHAIR DI AREA TUBUH (BODY) LALU SNAP INSTAN KE KEPALA DAN AUTO FIRE
-local function CheckCrosshairOnBodyAndShoot()
-    if not AutoAimConfig.Enabled or not AutoAimConfig.AutoFireOnBody then return end
-    local screenCenter = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
-
-    for _, player in ipairs(Players:GetPlayers()) do
-        if player ~= LocalPlayer then
-            local pChar = player.Character
-            local torso = pChar and (pChar:FindFirstChild("UpperTorso") or pChar:FindFirstChild("Torso") or pChar:FindFirstChild("HumanoidRootPart"))
-            local head = pChar and pChar:FindFirstChild("Head")
-            local hum = pChar and pChar:FindFirstChildOfClass("Humanoid")
-
-            if torso and head and hum and hum.Health > 0 then
-                local tPos, onScreen = Camera:WorldToViewportPoint(torso.Position)
-                if onScreen then
-                    local tPos2D = Vector2.new(tPos.X, tPos.Y)
-                    -- Jika crosshair mendekati body musuh, arahkan ke atas kepala dan trigger tembak
-                    if (tPos2D - screenCenter).Magnitude < 60 then
-                        local targetHeadPos = head.Position + Vector3.new(0, 0.5, 0)
-                        Camera.CFrame = CFrame.new(Camera.CFrame.Position, targetHeadPos)
-                        
-                        -- Simulasi klik / tembak otomatis
-                        pcall(function()
-                            mouse1click()
-                        end)
-                        break
-                    end
-                end
-            end
-        end
-    end
-end
-
--- SNAP INSTAN KETIKA MENEMBAK (KLIK) SAAT AUTO AIM AKTIF
+-- 1-Bullet Instant Trigger & Aim Snapping
 UserInputService.InputBegan:Connect(function(input)
-    if AutoAimConfig.Enabled and (input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch) then
-        local targetHeadPos = GetAutoAimTargetPos()
-        if targetHeadPos then
-            Camera.CFrame = CFrame.new(Camera.CFrame.Position, targetHeadPos)
+    if SkillConfig.Aimbot and (input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch) then
+        local targetPos = GetClosestEnemyInFOV()
+        if targetPos then
+            Camera.CFrame = CFrame.new(Camera.CFrame.Position, targetPos)
         end
     end
 end)
 
+
+-- MAIN RENDER LOOP: ESP RENDERER & AIMBOT GRAPHICS
 RunService.RenderStepped:Connect(function()
     local screenCenter = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
 
-    if AutoAimConfig.Enabled then
+    -- Render Aimbot FOV & Precise Edge-Constrained Aim Line
+    if SkillConfig.Aimbot then
         FOVCircle.Position = screenCenter
-        FOVCircle.Radius = AutoAimConfig.FOVSize
+        FOVCircle.Radius = SkillConfig.AimFovSize
         FOVCircle.Visible = true
 
-        CheckCrosshairOnBodyAndShoot()
-
-        local targetHeadPos = GetAutoAimTargetPos()
-        if targetHeadPos then
-            local screenPos, onScreen = Camera:WorldToViewportPoint(targetHeadPos)
+        local targetPos = GetClosestEnemyInFOV()
+        if targetPos then
+            local screenPos, onScreen = Camera:WorldToViewportPoint(targetPos)
             if onScreen then
-                TargetLine.From = screenCenter
-                TargetLine.To = Vector2.new(screenPos.X, screenPos.Y)
-                TargetLine.Visible = true
+                local target2D = Vector2.new(screenPos.X, screenPos.Y)
+                local dir = (target2D - screenCenter)
+                local dist = dir.Magnitude
+
+                -- Keep line strictly bounded inside FOV circle perimeter
+                if dist > SkillConfig.AimFovSize then
+                    dir = dir.Unit * SkillConfig.AimFovSize
+                    target2D = screenCenter + dir
+                end
+
+                AimbotLine.From = screenCenter
+                AimbotLine.To = target2D
+                AimbotLine.Color = VisualsConfig.HealthColor
+                AimbotLine.Visible = true
             else
-                TargetLine.Visible = false
+                AimbotLine.Visible = false
             end
         else
-            TargetLine.Visible = false
+            AimbotLine.Visible = false
         end
     else
         FOVCircle.Visible = false
-        TargetLine.Visible = false
+        AimbotLine.Visible = false
     end
 
-    if WorldConfig.NightMode then
-        Lighting.ClockTime = 0
-        Lighting.Brightness = 0.2
-        Lighting.Ambient = Color3.fromRGB(0, 0, 0)
-    end
-
+    -- Render Enemies ESP
     for player, esp in pairs(ESPCache) do
         local char = player.Character
         local hrp = char and char:FindFirstChild("HumanoidRootPart")
         local hum = char and char:FindFirstChildOfClass("Humanoid")
-        local active = (player ~= LocalPlayer) and char and hrp and hum and hum.Health > 0
+        local active = IsEnemy(player) and char and hrp and hum and hum.Health > 0
 
         if active then
             local vector, onScreen = Camera:WorldToViewportPoint(hrp.Position)
             if onScreen then
                 local distance = (Camera.CFrame.Position - hrp.Position).Magnitude
-                
+
+                -- Skeleton ESP
                 if VisualsConfig.ESP_Skeleton then
                     local parts = {
                         Head = char:FindFirstChild("Head"),
@@ -613,36 +752,65 @@ RunService.RenderStepped:Connect(function()
                     for _, bone in pairs(esp.Skeleton) do bone.Visible = false end
                 end
 
+                -- ESP Line
                 if VisualsConfig.ESP_Line then
                     esp.Line.From = Vector2.new(Camera.ViewportSize.X / 2, 0)
                     esp.Line.To = Vector2.new(vector.X, vector.Y)
+                    esp.Line.Color = VisualsConfig.LineColor
                     esp.Line.Visible = true
                 else
                     esp.Line.Visible = false
                 end
 
+                -- ESP Name
                 if VisualsConfig.ESP_Name then
                     esp.Name.Text = player.Name
-                    esp.Name.Position = Vector2.new(vector.X, vector.Y - 35)
+                    esp.Name.Position = Vector2.new(vector.X, vector.Y - 38)
+                    esp.Name.Color = VisualsConfig.NameColor
                     esp.Name.Visible = true
                 else
                     esp.Name.Visible = false
                 end
 
+                -- ESP Distance
                 if VisualsConfig.ESP_Distance then
                     esp.Distance.Text = string.format("[%dM]", math.floor(distance))
-                    esp.Distance.Position = Vector2.new(vector.X, vector.Y + 20)
+                    esp.Distance.Position = Vector2.new(vector.X, vector.Y + 22)
+                    esp.Distance.Color = VisualsConfig.DistanceColor
                     esp.Distance.Visible = true
                 else
                     esp.Distance.Visible = false
                 end
 
+                -- ESP Gender
                 if VisualsConfig.ESP_Gender then
                     esp.Gender.Text = (player.UserId % 2 == 0) and "[Cewe]" or "[Cowo]"
-                    esp.Gender.Position = Vector2.new(vector.X, vector.Y + 35)
+                    esp.Gender.Position = Vector2.new(vector.X, vector.Y + 36)
+                    esp.Gender.Color = VisualsConfig.GenderColor
                     esp.Gender.Visible = true
                 else
                     esp.Gender.Visible = false
+                end
+
+                -- ESP Health (Vertical Bar nicely positioned right beside user hitbox)
+                if VisualsConfig.ESP_Health then
+                    local healthPct = math.clamp(hum.Health / hum.MaxHealth, 0, 1)
+                    local barHeight = 40
+                    local barX = vector.X + 24
+                    local barY = vector.Y - 20
+
+                    esp.HealthBarBg.From = Vector2.new(barX, barY)
+                    esp.HealthBarBg.To = Vector2.new(barX, barY + barHeight)
+                    esp.HealthBarBg.Visible = true
+
+                    local currentHeight = barHeight * healthPct
+                    esp.HealthBar.From = Vector2.new(barX, barY + (barHeight - currentHeight))
+                    esp.HealthBar.To = Vector2.new(barX, barY + barHeight)
+                    esp.HealthBar.Color = VisualsConfig.HealthColor
+                    esp.HealthBar.Visible = true
+                else
+                    esp.HealthBarBg.Visible = false
+                    esp.HealthBar.Visible = false
                 end
             else
                 for _, obj in pairs(esp) do
