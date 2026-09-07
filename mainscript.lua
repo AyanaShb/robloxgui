@@ -1,6 +1,6 @@
--- v1.0.45-fov-lock-and-streaming-fix --
+-- v1.0.46-android-ui-fix --
 -- =====================================================================
--- ULTIMATE ANDROID D3D MENU: STRICT FOV CLAMPING & STREAMING BYPASS --
+-- ULTIMATE ANDROID D3D MENU: FIXED UI & FOV STRICT CLAMPING --
 -- =====================================================================
 
 local Players = game:GetService("Players")
@@ -12,22 +12,23 @@ local Camera = Workspace.CurrentCamera
 local LocalPlayer = Players.LocalPlayer
 
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "D3D_Ultimate_Android_V4"
+ScreenGui.Name = "D3D_Ultimate_Android_V5"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
+-- SUPER SAFE GUI PARENTING FOR ANDROID EXECUTORS
 pcall(function()
-    if syn and syn.protect_gui then
+    if gethui then
+        ScreenGui.Parent = gethui()
+    elseif syn and syn.protect_gui then
         syn.protect_gui(ScreenGui)
         ScreenGui.Parent = game.CoreGui
-    elseif gethui then
-        ScreenGui.Parent = gethui()
     else
         ScreenGui.Parent = game:GetService("CoreGui")
     end
 end)
 
-if not ScreenGui.Parent then
+if not ScreenGui.Parent or ScreenGui.Parent == nil then
     pcall(function()
         ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
     end)
@@ -93,6 +94,7 @@ AimbotLine.Visible = false
 AimbotLine.Thickness = 1.5
 AimbotLine.Color = Color3.fromRGB(0, 255, 128)
 
+-- FLOATING BUTTON (DIJAMIN MUNCUL DI POJOK KIRI ATAS)
 local FloatButton = Instance.new("TextButton")
 FloatButton.Size = UDim2.new(0, 52, 0, 52)
 FloatButton.Position = UDim2.new(0, 20, 0, 100)
@@ -115,14 +117,16 @@ FloatGradient.Color = ColorSequence.new({
     ColorSequenceKeypoint.new(1, Color3.fromRGB(0, 240, 255))
 })
 
+-- MAIN MENU FRAME
 local MainFrame = Instance.new("Frame")
-MainFrame.Size = UDim2.new(0, 440, 0, 360)
-MainFrame.Position = UDim2.new(0.5, -220, 0.5, -180)
+MainFrame.Size = UDim2.new(0, 420, 0, 350)
+MainFrame.Position = UDim2.new(0.5, -210, 0.5, -175)
 MainFrame.BackgroundColor3 = Color3.fromRGB(6, 6, 9)
 MainFrame.BackgroundTransparency = 0.05
 MainFrame.BorderSizePixel = 0
 MainFrame.Active = true
 MainFrame.Draggable = true
+MainFrame.Visible = true
 MainFrame.Parent = ScreenGui
 
 Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 16)
@@ -145,9 +149,9 @@ end)
 local TitleLabel = Instance.new("TextLabel")
 TitleLabel.Size = UDim2.new(1, 0, 0, 36)
 TitleLabel.BackgroundTransparency = 1
-TitleLabel.Text = "× D3D MENU: STRICT FOV & STREAMING FIX ×"
+TitleLabel.Text = "× D3D MENU: ANDROID STABLE FIX ×"
 TitleLabel.TextColor3 = Color3.fromRGB(240, 240, 255)
-TitleLabel.TextSize = 11.5
+TitleLabel.TextSize = 11
 TitleLabel.Font = Enum.Font.GothamBold
 TitleLabel.Parent = MainFrame
 
@@ -379,7 +383,6 @@ local function CreateChoice(parent, text, choices, defaultIndex, callback)
     frame.Parent = parent
 end
 
--- UNIVERSAL ENEMY DETECTION (SUPPORTING ALL TEAMS, DUMMIES, AND UNICODE NAMES)
 local function IsEnemy(player)
     if player == LocalPlayer then return false end
     if player.Team and LocalPlayer.Team then
@@ -388,7 +391,6 @@ local function IsEnemy(player)
     return true
 end
 
--- ADVANCED RAYCAST CHECKER (IGNORES WALLS/OBJECTS)
 local function IsVisibleThroughWalls(targetPart)
     local char = LocalPlayer.Character
     local head = char and char:FindFirstChild("Head")
@@ -412,8 +414,6 @@ local function IsVisibleThroughWalls(targetPart)
     end
     return true
 end
-
-local ESPCache = {}
 
 local function RemovePlayerESP(player)
     if ESPCache[player] then
@@ -503,7 +503,7 @@ end
 Players.PlayerAdded:Connect(SetupPlayer)
 Players.PlayerRemoving:Connect(RemovePlayerESP)
 
--- VISUAL TAB
+-- TABS SETUP
 CreateToggle(TabContentFrames["Visual"], "Skeleton ESP (Enemies Only)", function(v) VisualsConfig.ESP_Skeleton = v end)
 CreateColorPicker(TabContentFrames["Visual"], "Skeleton Color", function(c) 
     VisualsConfig.SkeletonColor = c 
@@ -520,14 +520,12 @@ CreateColorPicker(TabContentFrames["Visual"], "Gender Color", function(c) Visual
 CreateToggle(TabContentFrames["Visual"], "ESP Health (Vertical Bar)", function(v) VisualsConfig.ESP_Health = v end)
 CreateColorPicker(TabContentFrames["Visual"], "Health Bar Color", function(c) VisualsConfig.HealthColor = c end)
 
--- PLAYER TAB
 CreateToggle(TabContentFrames["Player"], "Speed Run", function(v) PlayerConfig.SpeedRun = v end)
 CreateSlider(TabContentFrames["Player"], "Speed Run Max", 16, 100, 24, function(val) PlayerConfig.SpeedValue = val end)
 CreateToggle(TabContentFrames["Player"], "Fly Hack (Hold Jump & Slow Fall)", function(v) PlayerConfig.FlyHack = v end)
 CreateToggle(TabContentFrames["Player"], "Multi Jump", function(v) PlayerConfig.MultiJump = v end)
 CreateToggle(TabContentFrames["Player"], "Anti Aim (Auto-Evasion)", function(v) PlayerConfig.AntiAim = v end)
 
--- WORLD TAB (WITH ABSOLUTE RESET TO ORIGINAL LIGHTING)
 CreateToggle(TabContentFrames["World"], "Night Mode", function(v)
     WorldConfig.NightMode = v
     if v then
@@ -559,14 +557,11 @@ end)
 CreateSlider(TabContentFrames["World"], "Daylight Brightness", 1, 10, 3, function(val) WorldConfig.DaylightBrightness = val end)
 CreateSlider(TabContentFrames["World"], "Daylight Time (Clock)", 0, 24, 14, function(val) WorldConfig.DaylightClock = val end)
 
--- SKILL TAB
 CreateToggle(TabContentFrames["Skill"], "Aimbot (Strict FOV Lock)", function(v) SkillConfig.Aimbot = v end)
 CreateChoice(TabContentFrames["Skill"], "Aim Target Part", {"Head", "Chest"}, 1, function(choice) SkillConfig.AimTargetPart = choice end)
 CreateSlider(TabContentFrames["Skill"], "Aim Distance Scan", 100, 2000, 500, function(val) SkillConfig.AimDistance = val end)
 CreateSlider(TabContentFrames["Skill"], "Aim FOV Size", 50, 400, 140, function(val) SkillConfig.AimFovSize = val end)
 
-
--- PLAYER ENGINE
 UserInputService.JumpRequest:Connect(function()
     local char = LocalPlayer.Character
     local hum = char and char:FindFirstChildOfClass("Humanoid")
@@ -612,7 +607,6 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
--- SKILL: STRICT FOV-CLAMPED AIMBOT ENGINE
 local function GetClosestEnemyInFOV()
     local screenCenter = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
     local bestTargetPos, bestDist = nil, math.huge
@@ -636,7 +630,6 @@ local function GetClosestEnemyInFOV()
                         local screenPos2D = Vector2.new(screenPos.X, screenPos.Y)
                         local distToCenter = (screenPos2D - screenCenter).Magnitude
 
-                        -- STRICT CLAMP: Target must strictly reside INSIDE the FOV radius
                         if distToCenter <= SkillConfig.AimFovSize and distToCenter < bestDist then
                             bestDist = distToCenter
                             bestTargetPos = worldPos
@@ -658,7 +651,6 @@ UserInputService.InputBegan:Connect(function(input)
     end
 end)
 
--- MAIN RENDER STEP FOR ESP & FOV GRAPHICS
 RunService.RenderStepped:Connect(function()
     local screenCenter = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
 
@@ -672,8 +664,7 @@ RunService.RenderStepped:Connect(function()
             local screenPos, onScreen = Camera:WorldToViewportPoint(targetPos)
             if onScreen then
                 local target2D = Vector2.new(screenPos.X, screenPos.Y)
-                local dir = (target2D - screenCenter)
-                local dist = dir.Magnitude
+                local dist = (target2D - screenCenter).Magnitude
 
                 if dist <= SkillConfig.AimFovSize then
                     AimbotLine.From = screenCenter
@@ -842,7 +833,7 @@ RunService.RenderStepped:Connect(function()
         else
             for _, obj in pairs(esp) do
                 if type(obj) == "table" then
-                    for _, bone in pairs(obj) do bone.Visible = false log  end
+                    for _, bone in pairs(obj) do bone.Visible = false end
                 else
                     obj.Visible = false
                 end
