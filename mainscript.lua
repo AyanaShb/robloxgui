@@ -1,6 +1,6 @@
--- v1.0.43-full-features-updated --
+-- v1.0.44-fully-optimized-raycast-fix --
 -- =====================================================================
--- ULTIMATE ANDROID D3D MENU: VISUAL, PLAYER, WORLD & SKILL (AIMBOT) TABS --
+-- ULTIMATE ANDROID D3D MENU: RAYCAST OCCLUSION & LIGHTING RESTORE FIX --
 -- =====================================================================
 
 local Players = game:GetService("Players")
@@ -12,7 +12,7 @@ local Camera = Workspace.CurrentCamera
 local LocalPlayer = Players.LocalPlayer
 
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "D3D_Ultimate_Android_V2"
+ScreenGui.Name = "D3D_Ultimate_Android_V3"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
@@ -32,6 +32,16 @@ if not ScreenGui.Parent then
         ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
     end)
 end
+
+-- STORE ORIGINAL LIGHTING VALUES FOR SAFE RESTORATION
+local OriginalLighting = {
+    ClockTime = Lighting.ClockTime,
+    Brightness = Lighting.Brightness,
+    Ambient = Lighting.Ambient,
+    OutdoorAmbient = Lighting.OutdoorAmbient,
+    GlobalShadows = Lighting.GlobalShadows,
+    FogEnd = Lighting.FogEnd
+}
 
 -- CONFIGURATIONS
 local VisualsConfig = {
@@ -66,14 +76,13 @@ local WorldConfig = {
 
 local SkillConfig = {
     Aimbot = false,
-    AimTargetPart = "Head", -- "Head" or "Chest"
+    AimTargetPart = "Head",
     AimDistance = 500,
     AimFovSize = 140
 }
 
 local ESPCache = {}
 
--- DRAWINGS FOR AIMBOT & FOV
 local FOVCircle = Drawing.new("Circle")
 FOVCircle.Visible = false
 FOVCircle.Filled = false
@@ -86,7 +95,6 @@ AimbotLine.Visible = false
 AimbotLine.Thickness = 1.5
 AimbotLine.Color = Color3.fromRGB(0, 255, 128)
 
--- FLOATING BUTTON UI
 local FloatButton = Instance.new("TextButton")
 FloatButton.Size = UDim2.new(0, 52, 0, 52)
 FloatButton.Position = UDim2.new(0, 20, 0, 100)
@@ -109,7 +117,6 @@ FloatGradient.Color = ColorSequence.new({
     ColorSequenceKeypoint.new(1, Color3.fromRGB(0, 240, 255))
 })
 
--- MAIN FRAME UI
 local MainFrame = Instance.new("Frame")
 MainFrame.Size = UDim2.new(0, 440, 0, 360)
 MainFrame.Position = UDim2.new(0.5, -220, 0.5, -180)
@@ -140,7 +147,7 @@ end)
 local TitleLabel = Instance.new("TextLabel")
 TitleLabel.Size = UDim2.new(1, 0, 0, 36)
 TitleLabel.BackgroundTransparency = 1
-TitleLabel.Text = "× D3D MENU: FULL FEATURES v2 ×"
+TitleLabel.Text = "× D3D MENU: PATCHED & OPTIMIZED ×"
 TitleLabel.TextColor3 = Color3.fromRGB(240, 240, 255)
 TitleLabel.TextSize = 11.5
 TitleLabel.Font = Enum.Font.GothamBold
@@ -202,7 +209,6 @@ for i, tabName in ipairs(tabs) do
     end)
 end
 
--- HELPER UI FUNCTIONS
 local function CreateToggle(parent, text, callback)
     local frame = Instance.new("Frame")
     frame.Size = UDim2.new(1, 0, 0, 36)
@@ -375,7 +381,7 @@ local function CreateChoice(parent, text, choices, defaultIndex, callback)
     frame.Parent = parent
 end
 
--- ESP SYSTEM WITH TEAMMATE FILTER (DEADMATCH READY)
+-- ROBUST ENEMY & CHARACTER DETECTION (FIXING UNDETECTED PLAYERS)
 local function IsEnemy(player)
     if player == LocalPlayer then return false end
     if player.Team and LocalPlayer.Team then
@@ -383,6 +389,33 @@ local function IsEnemy(player)
     end
     return true
 end
+
+-- RAYCAST CHECKER TO IGNORE PLAYERS BEHIND WALLS/OBJECTS
+local function IsVisibleThroughWalls(targetPart)
+    local char = LocalPlayer.Character
+    local head = char and char:FindFirstChild("Head")
+    if not head or not targetPart then return true end
+
+    local raycastParams = RaycastParams.new()
+    raycastParams.FilterType = Enum.RaycastFilterType.Exclude
+    raycastParams.FilterDescendantsInstances = {char, Camera}
+    raycastParams.IgnoreWater = true
+
+    local origin = head.Position
+    local direction = targetPart.Position - origin
+    local result = Workspace:Raycast(origin, direction, raycastParams)
+
+    if result then
+        local hitPart = result.Instance
+        if hitPart and hitPart:IsDescendantOf(targetPart.Parent) then
+            return true
+        end
+        return false
+    end
+    return true
+end
+
+local ESPCache = {}
 
 local function RemovePlayerESP(player)
     if ESPCache[player] then
@@ -445,26 +478,13 @@ local function CreatePlayerESP(player)
         bone.Transparency = 0.8
     end
 
-    espData.Name.Size = 13
-    espData.Name.Center = true
-    espData.Name.Outline = true
-    espData.Name.OutlineColor = Color3.fromRGB(0, 0, 0)
-    espData.Name.Color = VisualsConfig.NameColor
-    espData.Name.Font = Drawing.Fonts.UI
-
-    espData.Distance.Size = 13
-    espData.Distance.Center = true
-    espData.Distance.Outline = true
-    espData.Distance.OutlineColor = Color3.fromRGB(0, 0, 0)
-    espData.Distance.Color = VisualsConfig.DistanceColor
-    espData.Distance.Font = Drawing.Fonts.UI
-
-    espData.Gender.Size = 13
-    espData.Gender.Center = true
-    espData.Gender.Outline = true
-    espData.Gender.OutlineColor = Color3.fromRGB(0, 0, 0)
-    espData.Gender.Color = VisualsConfig.GenderColor
-    espData.Gender.Font = Drawing.Fonts.UI
+    for _, textObj in ipairs({espData.Name, espData.Distance, espData.Gender}) do
+        textObj.Size = 13
+        textObj.Center = true
+        textObj.Outline = true
+        textObj.OutlineColor = Color3.fromRGB(0, 0, 0)
+        textObj.Font = Drawing.Fonts.UI
+    end
 
     ESPCache[player] = espData
 end
@@ -473,7 +493,7 @@ local function SetupPlayer(player)
     if player == LocalPlayer then return end
     CreatePlayerESP(player)
     player.CharacterAdded:Connect(function()
-        task.wait(0.5)
+        task.wait(0.3)
         CreatePlayerESP(player)
     end)
 end
@@ -484,8 +504,6 @@ end
 
 Players.PlayerAdded:Connect(SetupPlayer)
 Players.PlayerRemoving:Connect(RemovePlayerESP)
-
--- POPULATE TABS
 
 -- TAB 1: VISUAL
 CreateToggle(TabContentFrames["Visual"], "Skeleton ESP (Enemies Only)", function(v) VisualsConfig.ESP_Skeleton = v end)
@@ -505,34 +523,52 @@ CreateToggle(TabContentFrames["Visual"], "ESP Health (Vertical Bar)", function(v
 CreateColorPicker(TabContentFrames["Visual"], "Health Bar Color", function(c) VisualsConfig.HealthColor = c end)
 
 -- TAB 2: PLAYER
-CreateToggle(TabContentFrames["Player"], "Speed Run (Custom WalkAnimation)", function(v) PlayerConfig.SpeedRun = v end)
+CreateToggle(TabContentFrames["Player"], "Speed Run", function(v) PlayerConfig.SpeedRun = v end)
 CreateSlider(TabContentFrames["Player"], "Speed Run Max", 16, 100, 24, function(val) PlayerConfig.SpeedValue = val end)
-
 CreateToggle(TabContentFrames["Player"], "Fly Hack (Hold Jump & Slow Fall)", function(v) PlayerConfig.FlyHack = v end)
-CreateToggle(TabContentFrames["Player"], "Multi Jump (Infinite Tap Heights)", function(v) PlayerConfig.MultiJump = v end)
-CreateToggle(TabContentFrames["Player"], "Anti Aim (Auto-Evasion / No-Hitbox)", function(v) PlayerConfig.AntiAim = v end)
+CreateToggle(TabContentFrames["Player"], "Multi Jump", function(v) PlayerConfig.MultiJump = v end)
+CreateToggle(TabContentFrames["Player"], "Anti Aim (Auto-Evasion)", function(v) PlayerConfig.AntiAim = v end)
 
--- TAB 3: WORLD
+-- TAB 3: WORLD (WITH SAFE RESET TO ORIGINAL LIGHTING)
 CreateToggle(TabContentFrames["World"], "Night Mode", function(v)
     WorldConfig.NightMode = v
-    if v then WorldConfig.Daylight = false end
+    if v then
+        WorldConfig.Daylight = false
+    else
+        Lighting.ClockTime = OriginalLighting.ClockTime
+        Lighting.Brightness = OriginalLighting.Brightness
+        Lighting.Ambient = OriginalLighting.Ambient
+        Lighting.OutdoorAmbient = OriginalLighting.OutdoorAmbient
+        Lighting.GlobalShadows = OriginalLighting.GlobalShadows
+        Lighting.FogEnd = OriginalLighting.FogEnd
+    end
 end)
-CreateToggle(TabContentFrames["World"], "Daylight (Indoor/Outdoor Custom)", function(v)
+
+CreateToggle(TabContentFrames["World"], "Daylight (Indoor/Outdoor)", function(v)
     WorldConfig.Daylight = v
-    if v then WorldConfig.NightMode = false end
+    if v then
+        WorldConfig.NightMode = false
+    else
+        Lighting.ClockTime = OriginalLighting.ClockTime
+        Lighting.Brightness = OriginalLighting.Brightness
+        Lighting.Ambient = OriginalLighting.Ambient
+        Lighting.OutdoorAmbient = OriginalLighting.OutdoorAmbient
+        Lighting.GlobalShadows = OriginalLighting.GlobalShadows
+        Lighting.FogEnd = OriginalLighting.FogEnd
+    end
 end)
+
 CreateSlider(TabContentFrames["World"], "Daylight Brightness", 1, 10, 3, function(val) WorldConfig.DaylightBrightness = val end)
 CreateSlider(TabContentFrames["World"], "Daylight Time (Clock)", 0, 24, 14, function(val) WorldConfig.DaylightClock = val end)
 
 -- TAB 4: SKILL
-CreateToggle(TabContentFrames["Skill"], "Aimbot (Instant Snap 1-Bullet/Shot)", function(v) SkillConfig.Aimbot = v end)
+CreateToggle(TabContentFrames["Skill"], "Aimbot (Instant Snap 1-Bullet)", function(v) SkillConfig.Aimbot = v end)
 CreateChoice(TabContentFrames["Skill"], "Aim Target Part", {"Head", "Chest"}, 1, function(choice) SkillConfig.AimTargetPart = choice end)
 CreateSlider(TabContentFrames["Skill"], "Aim Distance Scan", 100, 2000, 500, function(val) SkillConfig.AimDistance = val end)
 CreateSlider(TabContentFrames["Skill"], "Aim FOV Size", 50, 400, 140, function(val) SkillConfig.AimFovSize = val end)
 
 
--- PLAYER MOD FEATURES LOGIC (SPEED RUN, FLY, MULTI JUMP, ANTI AIM)
-local lastJumpTick = 0
+-- PLAYER MOD ENGINE
 UserInputService.JumpRequest:Connect(function()
     local char = LocalPlayer.Character
     local hum = char and char:FindFirstChildOfClass("Humanoid")
@@ -541,18 +577,16 @@ UserInputService.JumpRequest:Connect(function()
     end
 end)
 
-RunService.RenderStepped:Connect(function(dt)
+RunService.RenderStepped:Connect(function()
     local char = LocalPlayer.Character
     local hrp = char and char:FindFirstChild("HumanoidRootPart")
     local hum = char and char:FindFirstChildOfClass("Humanoid")
 
     if char and hrp and hum then
-        -- Speed Run + Custom Walk Animation Check
         if PlayerConfig.SpeedRun then
             hum.WalkSpeed = PlayerConfig.SpeedValue
         end
 
-        -- Fly Hack (Hold Jump & Slow Fall Min Gravity)
         if PlayerConfig.FlyHack then
             if UserInputService:IsKeyDown(Enum.KeyCode.Space) or UserInputService.TouchEnabled then
                 hrp.Velocity = Vector3.new(hrp.Velocity.X, 45, hrp.Velocity.Z)
@@ -561,14 +595,13 @@ RunService.RenderStepped:Connect(function(dt)
             end
         end
 
-        -- Anti Aim: Auto Evasion/Jitter hitbox position slightly when enemies aim
         if PlayerConfig.AntiAim then
             local movingOffset = Vector3.new(math.random(-2, 2), 0, math.random(-2, 2))
             hrp.CFrame = hrp.CFrame + movingOffset
         end
     end
 
-    -- World Illumination Engine
+    -- WORLD LIGHTING UPDATER
     if WorldConfig.NightMode then
         Lighting.ClockTime = 0
         Lighting.Brightness = 0.1
@@ -582,8 +615,7 @@ RunService.RenderStepped:Connect(function(dt)
     end
 end)
 
-
--- SKILL: ADVANCED AIMBOT ENGINE (1-BULLET SNAP, NO OVERSHOOT, STRICT FOV LINE, ENEMY FILTER)
+-- SKILL: AIMBOT ENGINE WITH WALL-OCCLUSION CHECK
 local function GetClosestEnemyInFOV()
     local screenCenter = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
     local bestTargetPos, bestDist = nil, math.huge
@@ -601,7 +633,7 @@ local function GetClosestEnemyInFOV()
                 local worldPos = targetPart.Position
                 local distance = (hrp.Position - worldPos).Magnitude
 
-                if distance <= SkillConfig.AimDistance then
+                if distance <= SkillConfig.AimDistance and IsVisibleThroughWalls(targetPart) then
                     local screenPos, onScreen = Camera:WorldToViewportPoint(worldPos)
                     if onScreen then
                         local screenPos2D = Vector2.new(screenPos.X, screenPos.Y)
@@ -619,7 +651,6 @@ local function GetClosestEnemyInFOV()
     return bestTargetPos
 end
 
--- 1-Bullet Instant Trigger & Aim Snapping
 UserInputService.InputBegan:Connect(function(input)
     if SkillConfig.Aimbot and (input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch) then
         local targetPos = GetClosestEnemyInFOV()
@@ -629,12 +660,10 @@ UserInputService.InputBegan:Connect(function(input)
     end
 end)
 
-
--- MAIN RENDER LOOP: ESP RENDERER & AIMBOT GRAPHICS
+-- MAIN RENDER STEP FOR ESP & FOV GRAPHICS
 RunService.RenderStepped:Connect(function()
     local screenCenter = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
 
-    -- Render Aimbot FOV & Precise Edge-Constrained Aim Line
     if SkillConfig.Aimbot then
         FOVCircle.Position = screenCenter
         FOVCircle.Radius = SkillConfig.AimFovSize
@@ -648,7 +677,6 @@ RunService.RenderStepped:Connect(function()
                 local dir = (target2D - screenCenter)
                 local dist = dir.Magnitude
 
-                -- Keep line strictly bounded inside FOV circle perimeter
                 if dist > SkillConfig.AimFovSize then
                     dir = dir.Unit * SkillConfig.AimFovSize
                     target2D = screenCenter + dir
@@ -669,7 +697,6 @@ RunService.RenderStepped:Connect(function()
         AimbotLine.Visible = false
     end
 
-    -- Render Enemies ESP
     for player, esp in pairs(ESPCache) do
         local char = player.Character
         local hrp = char and char:FindFirstChild("HumanoidRootPart")
@@ -681,7 +708,6 @@ RunService.RenderStepped:Connect(function()
             if onScreen then
                 local distance = (Camera.CFrame.Position - hrp.Position).Magnitude
 
-                -- Skeleton ESP
                 if VisualsConfig.ESP_Skeleton then
                     local parts = {
                         Head = char:FindFirstChild("Head"),
@@ -752,7 +778,6 @@ RunService.RenderStepped:Connect(function()
                     for _, bone in pairs(esp.Skeleton) do bone.Visible = false end
                 end
 
-                -- ESP Line
                 if VisualsConfig.ESP_Line then
                     esp.Line.From = Vector2.new(Camera.ViewportSize.X / 2, 0)
                     esp.Line.To = Vector2.new(vector.X, vector.Y)
@@ -762,7 +787,6 @@ RunService.RenderStepped:Connect(function()
                     esp.Line.Visible = false
                 end
 
-                -- ESP Name
                 if VisualsConfig.ESP_Name then
                     esp.Name.Text = player.Name
                     esp.Name.Position = Vector2.new(vector.X, vector.Y - 38)
@@ -772,7 +796,6 @@ RunService.RenderStepped:Connect(function()
                     esp.Name.Visible = false
                 end
 
-                -- ESP Distance
                 if VisualsConfig.ESP_Distance then
                     esp.Distance.Text = string.format("[%dM]", math.floor(distance))
                     esp.Distance.Position = Vector2.new(vector.X, vector.Y + 22)
@@ -782,7 +805,6 @@ RunService.RenderStepped:Connect(function()
                     esp.Distance.Visible = false
                 end
 
-                -- ESP Gender
                 if VisualsConfig.ESP_Gender then
                     esp.Gender.Text = (player.UserId % 2 == 0) and "[Cewe]" or "[Cowo]"
                     esp.Gender.Position = Vector2.new(vector.X, vector.Y + 36)
@@ -792,7 +814,6 @@ RunService.RenderStepped:Connect(function()
                     esp.Gender.Visible = false
                 end
 
-                -- ESP Health (Vertical Bar nicely positioned right beside user hitbox)
                 if VisualsConfig.ESP_Health then
                     local healthPct = math.clamp(hum.Health / hum.MaxHealth, 0, 1)
                     local barHeight = 40
