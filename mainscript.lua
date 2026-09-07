@@ -1,6 +1,6 @@
--- v1.0.46-android-ui-fix --
+-- v1.0.47-restored-ui-fix --
 -- =====================================================================
--- ULTIMATE ANDROID D3D MENU: FIXED UI & FOV STRICT CLAMPING --
+-- ULTIMATE ANDROID D3D MENU: RESTORED WORKING UI & STRICT FOV --
 -- =====================================================================
 
 local Players = game:GetService("Players")
@@ -12,23 +12,23 @@ local Camera = Workspace.CurrentCamera
 local LocalPlayer = Players.LocalPlayer
 
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "D3D_Ultimate_Android_V5"
+ScreenGui.Name = "D3D_Ultimate_Android_V6"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
--- SUPER SAFE GUI PARENTING FOR ANDROID EXECUTORS
+-- DIKEMBALIKAN KE STRUKTUR AMAN SEPERTI VERSI AWAL YANG BERHASIL MUNCUL
 pcall(function()
-    if gethui then
-        ScreenGui.Parent = gethui()
-    elseif syn and syn.protect_gui then
+    if syn and syn.protect_gui then
         syn.protect_gui(ScreenGui)
         ScreenGui.Parent = game.CoreGui
+    elseif gethui then
+        ScreenGui.Parent = gethui()
     else
         ScreenGui.Parent = game:GetService("CoreGui")
     end
 end)
 
-if not ScreenGui.Parent or ScreenGui.Parent == nil then
+if not ScreenGui.Parent then
     pcall(function()
         ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
     end)
@@ -94,7 +94,6 @@ AimbotLine.Visible = false
 AimbotLine.Thickness = 1.5
 AimbotLine.Color = Color3.fromRGB(0, 255, 128)
 
--- FLOATING BUTTON (DIJAMIN MUNCUL DI POJOK KIRI ATAS)
 local FloatButton = Instance.new("TextButton")
 FloatButton.Size = UDim2.new(0, 52, 0, 52)
 FloatButton.Position = UDim2.new(0, 20, 0, 100)
@@ -117,10 +116,9 @@ FloatGradient.Color = ColorSequence.new({
     ColorSequenceKeypoint.new(1, Color3.fromRGB(0, 240, 255))
 })
 
--- MAIN MENU FRAME
 local MainFrame = Instance.new("Frame")
-MainFrame.Size = UDim2.new(0, 420, 0, 350)
-MainFrame.Position = UDim2.new(0.5, -210, 0.5, -175)
+MainFrame.Size = UDim2.new(0, 440, 0, 360)
+MainFrame.Position = UDim2.new(0.5, -220, 0.5, -180)
 MainFrame.BackgroundColor3 = Color3.fromRGB(6, 6, 9)
 MainFrame.BackgroundTransparency = 0.05
 MainFrame.BorderSizePixel = 0
@@ -149,9 +147,9 @@ end)
 local TitleLabel = Instance.new("TextLabel")
 TitleLabel.Size = UDim2.new(1, 0, 0, 36)
 TitleLabel.BackgroundTransparency = 1
-TitleLabel.Text = "× D3D MENU: ANDROID STABLE FIX ×"
+TitleLabel.Text = "× D3D MENU: RESTORED WORKING UI ×"
 TitleLabel.TextColor3 = Color3.fromRGB(240, 240, 255)
-TitleLabel.TextSize = 11
+TitleLabel.TextSize = 11.5
 TitleLabel.Font = Enum.Font.GothamBold
 TitleLabel.Parent = MainFrame
 
@@ -503,7 +501,6 @@ end
 Players.PlayerAdded:Connect(SetupPlayer)
 Players.PlayerRemoving:Connect(RemovePlayerESP)
 
--- TABS SETUP
 CreateToggle(TabContentFrames["Visual"], "Skeleton ESP (Enemies Only)", function(v) VisualsConfig.ESP_Skeleton = v end)
 CreateColorPicker(TabContentFrames["Visual"], "Skeleton Color", function(c) 
     VisualsConfig.SkeletonColor = c 
