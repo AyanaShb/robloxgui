@@ -1,6 +1,6 @@
--- v1.0.47-restored-ui-fix --
+-- v2.0-ultimate-android-fixed --
 -- =====================================================================
--- ULTIMATE ANDROID D3D MENU: RESTORED WORKING UI & STRICT FOV --
+-- ULTIMATE ANDROID D3D MENU: FULL REBUILD & BUG FIXES --
 -- =====================================================================
 
 local Players = game:GetService("Players")
@@ -12,11 +12,10 @@ local Camera = Workspace.CurrentCamera
 local LocalPlayer = Players.LocalPlayer
 
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "D3D_Ultimate_Android_V6"
+ScreenGui.Name = "D3D_Ultimate_Android_V2"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
--- DIKEMBALIKAN KE STRUKTUR AMAN SEPERTI VERSI AWAL YANG BERHASIL MUNCUL
 pcall(function()
     if syn and syn.protect_gui then
         syn.protect_gui(ScreenGui)
@@ -60,7 +59,7 @@ local VisualsConfig = {
 
 local PlayerConfig = {
     SpeedRun = false,
-    SpeedValue = 24,
+    SpeedValue = 16, -- Default normal, tidak auto trigger
     FlyHack = false,
     MultiJump = false,
     AntiAim = false
@@ -76,7 +75,7 @@ local WorldConfig = {
 local SkillConfig = {
     Aimbot = false,
     AimTargetPart = "Head",
-    AimDistance = 500,
+    AimDistance = 1000,
     AimFovSize = 140
 }
 
@@ -147,7 +146,7 @@ end)
 local TitleLabel = Instance.new("TextLabel")
 TitleLabel.Size = UDim2.new(1, 0, 0, 36)
 TitleLabel.BackgroundTransparency = 1
-TitleLabel.Text = "× D3D MENU: RESTORED WORKING UI ×"
+TitleLabel.Text = "× D3D MENU: ULTIMATE REBUILD v2.0 ×"
 TitleLabel.TextColor3 = Color3.fromRGB(240, 240, 255)
 TitleLabel.TextSize = 11.5
 TitleLabel.Font = Enum.Font.GothamBold
@@ -209,7 +208,7 @@ for i, tabName in ipairs(tabs) do
     end)
 end
 
-local function CreateToggle(parent, text, callback)
+local function CreateToggle(parent, text, defaultVal, callback)
     local frame = Instance.new("Frame")
     frame.Size = UDim2.new(1, 0, 0, 36)
     frame.BackgroundColor3 = Color3.fromRGB(12, 12, 18)
@@ -229,17 +228,17 @@ local function CreateToggle(parent, text, callback)
     local toggleBtn = Instance.new("TextButton", frame)
     toggleBtn.Size = UDim2.new(0, 42, 0, 20)
     toggleBtn.Position = UDim2.new(1, -50, 0.5, -10)
-    toggleBtn.BackgroundColor3 = Color3.fromRGB(25, 25, 36)
+    toggleBtn.BackgroundColor3 = defaultVal and Color3.fromRGB(0, 230, 130) or Color3.fromRGB(25, 25, 36)
     toggleBtn.Text = ""
     Instance.new("UICorner", toggleBtn).CornerRadius = UDim.new(1, 0)
 
     local circle = Instance.new("Frame", toggleBtn)
     circle.Size = UDim2.new(0, 16, 0, 16)
-    circle.Position = UDim2.new(0, 2, 0.5, -8)
+    circle.Position = defaultVal and UDim2.new(1, -18, 0.5, -8) or UDim2.new(0, 2, 0.5, -8)
     circle.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
     Instance.new("UICorner", circle).CornerRadius = UDim.new(1, 0)
 
-    local active = false
+    local active = defaultVal
     toggleBtn.MouseButton1Click:Connect(function()
         active = not active
         toggleBtn.BackgroundColor3 = active and Color3.fromRGB(0, 230, 130) or Color3.fromRGB(25, 25, 36)
@@ -250,7 +249,7 @@ local function CreateToggle(parent, text, callback)
     frame.Parent = parent
 end
 
-local function CreateColorPicker(parent, text, callback)
+local function CreateColorPicker(parent, text, defaultColor, callback)
     local frame = Instance.new("Frame")
     frame.Size = UDim2.new(1, 0, 0, 48)
     frame.BackgroundColor3 = Color3.fromRGB(12, 12, 18)
@@ -270,7 +269,7 @@ local function CreateColorPicker(parent, text, callback)
     local pickerCircle = Instance.new("TextButton", frame)
     pickerCircle.Size = UDim2.new(0, 32, 0, 32)
     pickerCircle.Position = UDim2.new(1, -44, 0.5, -16)
-    pickerCircle.BackgroundColor3 = Color3.fromRGB(0, 240, 255)
+    pickerCircle.BackgroundColor3 = defaultColor
     pickerCircle.Text = ""
     Instance.new("UICorner", pickerCircle).CornerRadius = UDim.new(1, 0)
 
@@ -278,7 +277,7 @@ local function CreateColorPicker(parent, text, callback)
     stroke.Thickness = 2
     stroke.Color = Color3.fromRGB(255, 255, 255)
 
-    local colors = {Color3.fromRGB(0, 240, 255), Color3.fromRGB(255, 0, 128), Color3.fromRGB(0, 230, 130), Color3.fromRGB(255, 200, 0), Color3.fromRGB(255, 255, 255), Color3.fromRGB(255, 80, 80)}
+    local colors = {defaultColor, Color3.fromRGB(0, 240, 255), Color3.fromRGB(255, 0, 128), Color3.fromRGB(0, 230, 130), Color3.fromRGB(255, 200, 0), Color3.fromRGB(255, 255, 255)}
     local colorIndex = 1
 
     pickerCircle.MouseButton1Click:Connect(function()
@@ -381,10 +380,15 @@ local function CreateChoice(parent, text, choices, defaultIndex, callback)
     frame.Parent = parent
 end
 
+-- UNIVERSAL ENEMY DETECTOR (MENGATASI PLAYER TIDAK KEDETEK)
 local function IsEnemy(player)
     if player == LocalPlayer then return false end
+    if not player.Character then return false end
+    local hum = player.Character:FindFirstChildOfClass("Humanoid")
+    if not hum or hum.Health <= 0 then return false end
+
     if player.Team and LocalPlayer.Team then
-        return player.Team ~= LocalPlayer.Team
+        if player.Team == LocalPlayer.Team then return false end
     end
     return true
 end
@@ -439,20 +443,11 @@ local function CreatePlayerESP(player)
         HealthBar = Drawing.new("Line"),
         Skeleton = {
             Head_Neck = Drawing.new("Line"),
-            Neck_UpperTorso = Drawing.new("Line"),
-            UpperTorso_LowerTorso = Drawing.new("Line"),
-            LeftUpperArm_LeftLowerArm = Drawing.new("Line"),
-            LeftLowerArm_LeftHand = Drawing.new("Line"),
-            RightUpperArm_RightLowerArm = Drawing.new("Line"),
-            RightLowerArm_RightHand = Drawing.new("Line"),
-            UpperTorso_LeftUpperArm = Drawing.new("Line"),
-            UpperTorso_RightUpperArm = Drawing.new("Line"),
-            LowerTorso_LeftUpperLeg = Drawing.new("Line"),
-            LeftUpperLeg_LeftLowerLeg = Drawing.new("Line"),
-            LeftLowerLeg_LeftFoot = Drawing.new("Line"),
-            LowerTorso_RightUpperLeg = Drawing.new("Line"),
-            RightUpperLeg_RightLowerLeg = Drawing.new("Line"),
-            RightLowerLeg_RightFoot = Drawing.new("Line")
+            Neck_Torso = Drawing.new("Line"),
+            LeftArm = Drawing.new("Line"),
+            RightArm = Drawing.new("Line"),
+            LeftLeg = Drawing.new("Line"),
+            RightLeg = Drawing.new("Line")
         }
     }
 
@@ -489,7 +484,7 @@ local function SetupPlayer(player)
     if player == LocalPlayer then return end
     CreatePlayerESP(player)
     player.CharacterAdded:Connect(function()
-        task.wait(0.3)
+        task.wait(0.5)
         CreatePlayerESP(player)
     end)
 end
@@ -501,29 +496,30 @@ end
 Players.PlayerAdded:Connect(SetupPlayer)
 Players.PlayerRemoving:Connect(RemovePlayerESP)
 
-CreateToggle(TabContentFrames["Visual"], "Skeleton ESP (Enemies Only)", function(v) VisualsConfig.ESP_Skeleton = v end)
-CreateColorPicker(TabContentFrames["Visual"], "Skeleton Color", function(c) 
+-- GUI SETUP TABS
+CreateToggle(TabContentFrames["Visual"], "Skeleton ESP (Universal Rig)", false, function(v) VisualsConfig.ESP_Skeleton = v end)
+CreateColorPicker(TabContentFrames["Visual"], "Skeleton Color", Color3.fromRGB(0, 240, 255), function(c) 
     VisualsConfig.SkeletonColor = c 
     for _, esp in pairs(ESPCache) do for _, bone in pairs(esp.Skeleton) do bone.Color = c end end
 end)
-CreateToggle(TabContentFrames["Visual"], "ESP Line", function(v) VisualsConfig.ESP_Line = v end)
-CreateColorPicker(TabContentFrames["Visual"], "Line Color", function(c) VisualsConfig.LineColor = c end)
-CreateToggle(TabContentFrames["Visual"], "ESP Name", function(v) VisualsConfig.ESP_Name = v end)
-CreateColorPicker(TabContentFrames["Visual"], "Name Color", function(c) VisualsConfig.NameColor = c end)
-CreateToggle(TabContentFrames["Visual"], "ESP Distance", function(v) VisualsConfig.ESP_Distance = v end)
-CreateColorPicker(TabContentFrames["Visual"], "Distance Color", function(c) VisualsConfig.DistanceColor = c end)
-CreateToggle(TabContentFrames["Visual"], "ESP Gender [Cowo/Cewe]", function(v) VisualsConfig.ESP_Gender = v end)
-CreateColorPicker(TabContentFrames["Visual"], "Gender Color", function(c) VisualsConfig.GenderColor = c end)
-CreateToggle(TabContentFrames["Visual"], "ESP Health (Vertical Bar)", function(v) VisualsConfig.ESP_Health = v end)
-CreateColorPicker(TabContentFrames["Visual"], "Health Bar Color", function(c) VisualsConfig.HealthColor = c end)
+CreateToggle(TabContentFrames["Visual"], "ESP Line", false, function(v) VisualsConfig.ESP_Line = v end)
+CreateColorPicker(TabContentFrames["Visual"], "Line Color", Color3.fromRGB(0, 240, 255), function(c) VisualsConfig.LineColor = c end)
+CreateToggle(TabContentFrames["Visual"], "ESP Name", false, function(v) VisualsConfig.ESP_Name = v end)
+CreateColorPicker(TabContentFrames["Visual"], "Name Color", Color3.fromRGB(255, 255, 255), function(c) VisualsConfig.NameColor = c end)
+CreateToggle(TabContentFrames["Visual"], "ESP Distance", false, function(v) VisualsConfig.ESP_Distance = v end)
+CreateColorPicker(TabContentFrames["Visual"], "Distance Color", Color3.fromRGB(255, 255, 255), function(c) VisualsConfig.DistanceColor = c end)
+CreateToggle(TabContentFrames["Visual"], "ESP Gender [Cowo/Cewe]", false, function(v) VisualsConfig.ESP_Gender = v end)
+CreateColorPicker(TabContentFrames["Visual"], "Gender Color", Color3.fromRGB(255, 255, 255), function(c) VisualsConfig.GenderColor = c end)
+CreateToggle(TabContentFrames["Visual"], "ESP Health (Vertical Bar)", false, function(v) VisualsConfig.ESP_Health = v end)
+CreateColorPicker(TabContentFrames["Visual"], "Health Bar Color", Color3.fromRGB(0, 255, 128), function(c) VisualsConfig.HealthColor = c end)
 
-CreateToggle(TabContentFrames["Player"], "Speed Run", function(v) PlayerConfig.SpeedRun = v end)
+CreateToggle(TabContentFrames["Player"], "Speed Run", false, function(v) PlayerConfig.SpeedRun = v end)
 CreateSlider(TabContentFrames["Player"], "Speed Run Max", 16, 100, 24, function(val) PlayerConfig.SpeedValue = val end)
-CreateToggle(TabContentFrames["Player"], "Fly Hack (Hold Jump & Slow Fall)", function(v) PlayerConfig.FlyHack = v end)
-CreateToggle(TabContentFrames["Player"], "Multi Jump", function(v) PlayerConfig.MultiJump = v end)
-CreateToggle(TabContentFrames["Player"], "Anti Aim (Auto-Evasion)", function(v) PlayerConfig.AntiAim = v end)
+CreateToggle(TabContentFrames["Player"], "Fly Hack (Mobile Optimized)", false, function(v) PlayerConfig.FlyHack = v end)
+CreateToggle(TabContentFrames["Player"], "Multi Jump", false, function(v) PlayerConfig.MultiJump = v end)
+CreateToggle(TabContentFrames["Player"], "Anti Aim (Auto-Evasion)", false, function(v) PlayerConfig.AntiAim = v end)
 
-CreateToggle(TabContentFrames["World"], "Night Mode", function(v)
+CreateToggle(TabContentFrames["World"], "Night Mode", false, function(v)
     WorldConfig.NightMode = v
     if v then
         WorldConfig.Daylight = false
@@ -537,7 +533,7 @@ CreateToggle(TabContentFrames["World"], "Night Mode", function(v)
     end
 end)
 
-CreateToggle(TabContentFrames["World"], "Daylight (Indoor/Outdoor)", function(v)
+CreateToggle(TabContentFrames["World"], "Daylight (Indoor/Outdoor)", false, function(v)
     WorldConfig.Daylight = v
     if v then
         WorldConfig.NightMode = false
@@ -554,11 +550,12 @@ end)
 CreateSlider(TabContentFrames["World"], "Daylight Brightness", 1, 10, 3, function(val) WorldConfig.DaylightBrightness = val end)
 CreateSlider(TabContentFrames["World"], "Daylight Time (Clock)", 0, 24, 14, function(val) WorldConfig.DaylightClock = val end)
 
-CreateToggle(TabContentFrames["Skill"], "Aimbot (Strict FOV Lock)", function(v) SkillConfig.Aimbot = v end)
+CreateToggle(TabContentFrames["Skill"], "Aimbot (Strict FOV Lock)", false, function(v) SkillConfig.Aimbot = v end)
 CreateChoice(TabContentFrames["Skill"], "Aim Target Part", {"Head", "Chest"}, 1, function(choice) SkillConfig.AimTargetPart = choice end)
-CreateSlider(TabContentFrames["Skill"], "Aim Distance Scan", 100, 2000, 500, function(val) SkillConfig.AimDistance = val end)
+CreateSlider(TabContentFrames["Skill"], "Aim Distance Scan", 100, 2000, 1000, function(val) SkillConfig.AimDistance = val end)
 CreateSlider(TabContentFrames["Skill"], "Aim FOV Size", 50, 400, 140, function(val) SkillConfig.AimFovSize = val end)
 
+-- FIX MULTI JUMP
 UserInputService.JumpRequest:Connect(function()
     local char = LocalPlayer.Character
     local hum = char and char:FindFirstChildOfClass("Humanoid")
@@ -567,6 +564,7 @@ UserInputService.JumpRequest:Connect(function()
     end
 end)
 
+-- LOGIC UTAMA (RUN TIMELINE)
 RunService.RenderStepped:Connect(function()
     local char = LocalPlayer.Character
     local hrp = char and char:FindFirstChild("HumanoidRootPart")
@@ -575,18 +573,38 @@ RunService.RenderStepped:Connect(function()
     if char and hrp and hum then
         if PlayerConfig.SpeedRun then
             hum.WalkSpeed = PlayerConfig.SpeedValue
+        else
+            hum.WalkSpeed = 16 -- Kembalikan normal jika dimatikan
         end
 
         if PlayerConfig.FlyHack then
-            if UserInputService:IsKeyDown(Enum.KeyCode.Space) or UserInputService.TouchEnabled then
-                hrp.Velocity = Vector3.new(hrp.Velocity.X, 45, hrp.Velocity.Z)
-            else
-                hrp.Velocity = Vector3.new(hrp.Velocity.X, -2, hrp.Velocity.Z)
+            local bv = hrp:FindFirstChild("D3DFlyVelocity")
+            if not bv then
+                bv = Instance.new("BodyVelocity")
+                bv.Name = "D3DFlyVelocity"
+                bv.MaxForce = Vector3.new(400000, 400000, 400000)
+                bv.Velocity = Vector3.new(0, 0, 0)
+                bv.Parent = hrp
             end
+            
+            local camCF = Camera.CFrame
+            local moveDir = Vector3.new(0, 0, 0)
+            if UserInputService:IsKeyDown(Enum.KeyCode.W) or UserInputService.TouchEnabled then
+                moveDir = moveDir + (camCF.LookVector * 50)
+            end
+            if UserInputService:IsKeyDown(Enum.KeyCode.Space) then
+                moveDir = moveDir + Vector3.new(0, 45, 0)
+            elseif UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) then
+                moveDir = moveDir - Vector3.new(0, 45, 0)
+            end
+            bv.Velocity = moveDir
+        else
+            local bv = hrp:FindFirstChild("D3DFlyVelocity")
+            if bv then bv:Destroy() end
         end
 
         if PlayerConfig.AntiAim then
-            local movingOffset = Vector3.new(math.random(-2, 2), 0, math.random(-2, 2))
+            local movingOffset = Vector3.new(math.random(-3, 3), 0, math.random(-3, 3))
             hrp.CFrame = hrp.CFrame + movingOffset
         end
     end
@@ -693,24 +711,14 @@ RunService.RenderStepped:Connect(function()
             if onScreen then
                 local distance = (Camera.CFrame.Position - hrp.Position).Magnitude
 
+                -- SKELETON UNIVERSAL (FIX MAP BLOX & CUSTOM RIG)
                 if VisualsConfig.ESP_Skeleton then
-                    local parts = {
-                        Head = char:FindFirstChild("Head"),
-                        UpperTorso = char:FindFirstChild("UpperTorso") or char:FindFirstChild("Torso"),
-                        LowerTorso = char:FindFirstChild("LowerTorso") or char:FindFirstChild("Torso"),
-                        LeftUpperArm = char:FindFirstChild("LeftUpperArm") or char:FindFirstChild("Left Arm"),
-                        LeftLowerArm = char:FindFirstChild("LeftLowerArm") or char:FindFirstChild("Left Arm"),
-                        LeftHand = char:FindFirstChild("LeftHand") or char:FindFirstChild("Left Arm"),
-                        RightUpperArm = char:FindFirstChild("RightUpperArm") or char:FindFirstChild("Right Arm"),
-                        RightLowerArm = char:FindFirstChild("RightLowerArm") or char:FindFirstChild("Right Arm"),
-                        RightHand = char:FindFirstChild("RightHand") or char:FindFirstChild("Right Arm"),
-                        LeftUpperLeg = char:FindFirstChild("LeftUpperLeg") or char:FindFirstChild("Left Leg"),
-                        LeftLowerLeg = char:FindFirstChild("LeftLowerLeg") or char:FindFirstChild("Left Leg"),
-                        LeftFoot = char:FindFirstChild("LeftFoot") or char:FindFirstChild("Left Leg"),
-                        RightUpperLeg = char:FindFirstChild("RightUpperLeg") or char:FindFirstChild("Right Leg"),
-                        RightLowerLeg = char:FindFirstChild("RightLowerLeg") or char:FindFirstChild("Right Leg"),
-                        RightFoot = char:FindFirstChild("RightFoot") or char:FindFirstChild("Right Leg")
-                    }
+                    local head = char:FindFirstChild("Head")
+                    local torso = char:FindFirstChild("UpperTorso") or char:FindFirstChild("Torso")
+                    local lArm = char:FindFirstChild("LeftUpperArm") or char:FindFirstChild("Left Arm")
+                    local rArm = char:FindFirstChild("RightUpperArm") or char:FindFirstChild("Right Arm")
+                    local lLeg = char:FindFirstChild("LeftUpperLeg") or char:FindFirstChild("Left Leg")
+                    local rLeg = char:FindFirstChild("RightUpperLeg") or char:FindFirstChild("Right Leg")
 
                     local function getPos(part)
                         if not part then return nil end
@@ -719,21 +727,12 @@ RunService.RenderStepped:Connect(function()
                         return nil
                     end
 
-                    local headPos = getPos(parts.Head)
-                    local upperTorsoPos = getPos(parts.UpperTorso)
-                    local lowerTorsoPos = getPos(parts.LowerTorso)
-                    local lUpperArm = getPos(parts.LeftUpperArm)
-                    local lLowerArm = getPos(parts.LeftLowerArm)
-                    local lHand = getPos(parts.LeftHand)
-                    local rUpperArm = getPos(parts.RightUpperArm)
-                    local rLowerArm = getPos(parts.RightLowerArm)
-                    local rHand = getPos(parts.RightHand)
-                    local lUpperLeg = getPos(parts.LeftUpperLeg)
-                    local lLowerLeg = getPos(parts.LeftLowerLeg)
-                    local lFoot = getPos(parts.LeftFoot)
-                    local rUpperLeg = getPos(parts.RightUpperLeg)
-                    local rLowerLeg = getPos(parts.RightLowerLeg)
-                    local rFoot = getPos(parts.RightFoot)
+                    local hPos = getPos(head)
+                    local tPos = getPos(torso)
+                    local laPos = getPos(lArm)
+                    local raPos = getPos(rArm)
+                    local llPos = getPos(lLeg)
+                    local rlPos = getPos(rLeg)
 
                     local function drawBone(boneObj, p1, p2)
                         if p1 and p2 then
@@ -745,20 +744,12 @@ RunService.RenderStepped:Connect(function()
                         end
                     end
 
-                    drawBone(esp.Skeleton.Head_Neck, headPos, upperTorsoPos)
-                    drawBone(esp.Skeleton.Neck_UpperTorso, upperTorsoPos, lowerTorsoPos)
-                    drawBone(esp.Skeleton.UpperTorso_LeftUpperArm, upperTorsoPos, lUpperArm)
-                    drawBone(esp.Skeleton.LeftUpperArm_LeftLowerArm, lUpperArm, lLowerArm)
-                    drawBone(esp.Skeleton.LeftLowerArm_LeftHand, lLowerArm, lHand)
-                    drawBone(esp.Skeleton.UpperTorso_RightUpperArm, upperTorsoPos, rUpperArm)
-                    drawBone(esp.Skeleton.RightUpperArm_RightLowerArm, rUpperArm, rLowerArm)
-                    drawBone(esp.Skeleton.RightLowerArm_RightHand, rLowerArm, rHand)
-                    drawBone(esp.Skeleton.LowerTorso_LeftUpperLeg, lowerTorsoPos, lUpperLeg)
-                    drawBone(esp.Skeleton.LeftUpperLeg_LeftLowerLeg, lUpperLeg, lLowerLeg)
-                    drawBone(esp.Skeleton.LeftLowerLeg_LeftFoot, lLowerLeg, lFoot)
-                    drawBone(esp.Skeleton.LowerTorso_RightUpperLeg, lowerTorsoPos, rUpperLeg)
-                    drawBone(esp.Skeleton.RightUpperLeg_RightLowerLeg, rUpperLeg, rLowerLeg)
-                    drawBone(esp.Skeleton.RightLowerLeg_RightFoot, rLowerLeg, rFoot)
+                    drawBone(esp.Skeleton.Head_Neck, hPos, tPos)
+                    drawBone(esp.Skeleton.Neck_Torso, tPos, Vector2.new(tPos and tPos.X or 0, tPos and tPos.Y + 15 or 0))
+                    drawBone(esp.Skeleton.LeftArm, tPos, laPos)
+                    drawBone(esp.Skeleton.RightArm, tPos, raPos)
+                    drawBone(esp.Skeleton.LeftLeg, tPos, llPos)
+                    drawBone(esp.Skeleton.RightLeg, tPos, rlPos)
                 else
                     for _, bone in pairs(esp.Skeleton) do bone.Visible = false end
                 end
