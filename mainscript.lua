@@ -1,4 +1,4 @@
--- v3.10.0 --
+-- v3.9.1 --
 
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
@@ -7,7 +7,6 @@ local Workspace = game:GetService("Workspace")
 local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ScriptContext = game:GetService("ScriptContext")
-local HttpService = game:GetService("HttpService")
 local Camera = Workspace.CurrentCamera
 local LocalPlayer = Players.LocalPlayer
 
@@ -86,59 +85,8 @@ pcall(function()
     end
 end)
 
--- ==========================================
--- CHAT BYPASS CONFIGURATION & HOOK
--- ==========================================
-task.spawn(function()
-    pcall(function()
-        local TextChatService = game:GetService("TextChatService")
-        if TextChatService.ChatVersion == Enum.ChatVersion.TextChatService then
-            local channels = TextChatService:FindFirstChild("TextChannels")
-            if channels then
-                for _, channel in ipairs(channels:GetChildren()) do
-                    if channel:IsA("TextChannel") then
-                        local oldSend = channel.DisplaySystemMessage
-                        -- Hooking TextChannel if needed
-                    end
-                end
-            end
-        else
-            local ReplicatedEvents = ReplicatedStorage:FindFirstChild("DefaultChatSystemChatEvents")
-            if ReplicatedEvents then
-                local sayMsgRequest = ReplicatedEvents:FindFirstChild("SayMessageRequest")
-                if sayMsgRequest and firetouchinterest then
-                    -- Standard chat bypass hook
-                end
-            end
-        end
-        
-        -- Metatable and string obfuscation hook for chat filters
-        local mt = getrawmetatable(game)
-        if mt and mt.__namecall then
-            local oldNamecall = mt.__namecall
-            setreadonly(mt, false)
-            mt.__namecall = newcclosure(function(self, ...)
-                local method = getnamecallmethod()
-                local args = {...}
-                if method == "FireServer" and self.Name == "SayMessageRequest" then
-                    if type(args[1]) == "string" then
-                        -- Inject invisible zero-width characters to bypass filter matching
-                        local bypassed = ""
-                        for i = 1, #args[1] do
-                            bypassed = bypassed .. args[1]:sub(i, i) .. "\xE2\x80\x8B"
-                        end
-                        args[1] = bypassed
-                    end
-                end
-                return oldNamecall(self, unpack(args))
-            end)
-            setreadonly(mt, true)
-        end
-    end)
-end)
-
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "D3D_Ultimate_Android_V3_10"
+ScreenGui.Name = "D3D_Ultimate_Android_V3_9"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
@@ -219,7 +167,6 @@ local VisualsConfig = {
     ESP_Name = false,
     ESP_Distance = false,
     ESP_Gender = false,
-    ESP_Status = false,
     ESP_Health = false,
     Chams = false,
     EnemyChams = false,
@@ -228,7 +175,6 @@ local VisualsConfig = {
     NameColor = Color3.fromRGB(255, 255, 255),
     DistanceColor = Color3.fromRGB(255, 255, 255),
     GenderColor = Color3.fromRGB(255, 255, 255),
-    StatusColor = Color3.fromRGB(255, 255, 255),
     HealthColor = Color3.fromRGB(0, 255, 128),
     ChamsColor = Color3.fromRGB(255, 0, 128),
     EnemyChamsColor = Color3.fromRGB(255, 0, 0)
@@ -238,8 +184,7 @@ local WorldConfig = {
     NightMode = false,
     Daylight = false,
     DaylightBrightness = 3,
-    DaylightClock = 14,
-    WallHack = false
+    DaylightClock = 14
 }
 
 -- Hack & Aimbot Configurations
@@ -342,7 +287,7 @@ end)
 local TitleLabel = Instance.new("TextLabel")
 TitleLabel.Size = UDim2.new(1, 0, 0, 36)
 TitleLabel.BackgroundTransparency = 1
-TitleLabel.Text = "× D3D MENU: PLAYER & BOT v3.10 ×"
+TitleLabel.Text = "× D3D MENU: PLAYER & BOT v3.9.1 ×"
 TitleLabel.TextColor3 = Color3.fromRGB(240, 240, 255)
 TitleLabel.TextSize = 11.5
 TitleLabel.Font = Enum.Font.GothamBold
@@ -581,30 +526,7 @@ local function CreateSlider(parent, text, min, max, default, callback)
     frame.Parent = parent
 end
 
-local function CreateButton(parent, text, callback)
-    local frame = Instance.new("Frame")
-    frame.Size = UDim2.new(1, 0, 0, 42)
-    frame.BackgroundColor3 = Color3.fromRGB(12, 12, 18)
-    frame.BorderSizePixel = 0
-    Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 8)
-
-    local btn = Instance.new("TextButton", frame)
-    btn.Size = UDim2.new(1, -24, 1, 0)
-    btn.Position = UDim2.new(0, 12, 0, 0)
-    btn.BackgroundTransparency = 1
-    btn.Text = text
-    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    btn.TextSize = 11
-    btn.Font = Enum.Font.GothamBold
-
-    btn.MouseButton1Click:Connect(function()
-        if callback then callback() end
-    end)
-
-    frame.Parent = parent
-end
-
--- Deteksi Pemain Asli dan Bot (NPC) Secara Rekursif
+-- Deteksi Pemain Asli dan Bot (NPC) Secara Rekursif (Mendukung Folder Folder Bot)
 local function IsValidCharacter(char)
     if not char or not char:IsA("Model") then return false end
     if char == LocalPlayer.Character then return false end
@@ -677,12 +599,15 @@ end
 
 local function GetAllTargetableEntities()
     local list = {}
+    
+    -- 1. Ambil semua Pemain Asli
     for _, p in ipairs(Players:GetPlayers()) do
         if p ~= LocalPlayer and p.Character and IsValidCharacter(p.Character) then
             table.insert(list, p)
         end
     end
     
+    -- 2. Ambil Bot/NPC dari Workspace utama DAN menyusuri semua folder di dalamnya
     local function scanFolder(parentObj)
         for _, obj in ipairs(parentObj:GetChildren()) do
             if obj:IsA("Model") and obj ~= LocalPlayer.Character and IsValidCharacter(obj) then
@@ -757,7 +682,6 @@ local function HideESPObject(esp)
         if esp.Name then esp.Name.Visible = false end
         if esp.Distance then esp.Distance.Visible = false end
         if esp.Gender then esp.Gender.Visible = false end
-        if esp.Status then esp.Status.Visible = false end
         if esp.HealthBarBg then esp.HealthBarBg.Visible = false end
         if esp.HealthBar then esp.HealthBar.Visible = false end
         if esp.HeadCircle then esp.HeadCircle.Visible = false end
@@ -798,7 +722,6 @@ local function CreateEntityESP(key)
         Name = Drawing.new("Text"),
         Distance = Drawing.new("Text"),
         Gender = Drawing.new("Text"),
-        Status = Drawing.new("Text"),
         HealthBarBg = Drawing.new("Line"),
         HealthBar = Drawing.new("Line"),
         HeadCircle = Drawing.new("Circle"),
@@ -840,7 +763,7 @@ local function CreateEntityESP(key)
         bone.Visible = false
     end
 
-    for _, textObj in ipairs({espData.Name, espData.Distance, espData.Gender, espData.Status}) do
+    for _, textObj in ipairs({espData.Name, espData.Distance, espData.Gender}) do
         textObj.Size = 13
         textObj.Center = true
         textObj.Outline = true
@@ -888,16 +811,11 @@ CreateToggle(TabContentFrames["Visual"], "ESP Distance", false, function(v)
     if not v then for _, esp in pairs(ESPCache) do if esp.Distance then esp.Distance.Visible = false end end end
 end)
 CreateColorPicker(TabContentFrames["Visual"], "Distance Color", Color3.fromRGB(255, 255, 255), function(c) VisualsConfig.DistanceColor = c end)
-CreateToggle(TabContentFrames["Visual"], "ESP Gender", false, function(v) 
+CreateToggle(TabContentFrames["Visual"], "ESP Gender/Type [Bot/Player]", false, function(v) 
     VisualsConfig.ESP_Gender = v 
     if not v then for _, esp in pairs(ESPCache) do if esp.Gender then esp.Gender.Visible = false end end end
 end)
 CreateColorPicker(TabContentFrames["Visual"], "Gender Color", Color3.fromRGB(255, 255, 255), function(c) VisualsConfig.GenderColor = c end)
-CreateToggle(TabContentFrames["Visual"], "ESP Status [Bot/Player]", false, function(v) 
-    VisualsConfig.ESP_Status = v 
-    if not v then for _, esp in pairs(ESPCache) do if esp.Status then esp.Status.Visible = false end end end
-end)
-CreateColorPicker(TabContentFrames["Visual"], "Status Color", Color3.fromRGB(255, 255, 255), function(c) VisualsConfig.StatusColor = c end)
 CreateToggle(TabContentFrames["Visual"], "ESP Health (Vertical Bar)", false, function(v) 
     VisualsConfig.ESP_Health = v 
     if not v then for _, esp in pairs(ESPCache) do if esp.HealthBarBg then esp.HealthBarBg.Visible = false end if esp.HealthBar then esp.HealthBar.Visible = false end end end
@@ -957,11 +875,6 @@ end)
 CreateSlider(TabContentFrames["World"], "Daylight Brightness", 1, 10, 3, function(val) WorldConfig.DaylightBrightness = val end)
 CreateSlider(TabContentFrames["World"], "Daylight Time (Clock)", 0, 24, 14, function(val) WorldConfig.DaylightClock = val end)
 
-CreateToggle(TabContentFrames["World"], "Wall Hack (Noclip)", false, function(v)
-    WorldConfig.WallHack = v
-    ShowPopupNotification(v and "Wall Hack Diaktifkan" or "Wall Hack Dimatikan")
-end)
-
 -- Skill Tab Populating
 CreateToggle(TabContentFrames["Skill"], "Peringatan Admin (Popup Warning)", false, function(v) 
     HackConfig.AntiAdminAktif = v 
@@ -986,57 +899,23 @@ CreateToggle(TabContentFrames["Skill"], "Gun Mods (Infinite Ammo & RPM)", false,
 end)
 CreateSlider(TabContentFrames["Skill"], "RPM Fire Rate", 400, 2500, 800, function(val) HackConfig.CustomFireRate = val end)
 
--- Configuration Tab Populating (Save, Load, Delete Settings)
-local CONFIG_FILE_NAME = "D3D_Ultimate_Config.json"
-
-CreateButton(TabContentFrames["Configuration"], "Save Settings", function()
-    pcall(function()
-        if writefile then
-            local data = {
-                HackConfig = HackConfig,
-                WorldConfig = WorldConfig,
-                VisualsConfig = {
-                    ESP_Skeleton = VisualsConfig.ESP_Skeleton,
-                    ESP_Line = VisualsConfig.ESP_Line,
-                    ESP_Name = VisualsConfig.ESP_Name,
-                    ESP_Distance = VisualsConfig.ESP_Distance,
-                    ESP_Gender = VisualsConfig.ESP_Gender,
-                    ESP_Status = VisualsConfig.ESP_Status,
-                    ESP_Health = VisualsConfig.ESP_Health,
-                    Chams = VisualsConfig.Chams,
-                    EnemyChams = VisualsConfig.EnemyChams
-                }
-            }
-            writefile(CONFIG_FILE_NAME, HttpService:JSONEncode(data))
-            ShowPopupNotification("Settings Berhasil Disimpan!")
-        else
-            ShowPopupNotification("Executor Tidak Mendukung Save File!")
-        end
-    end)
-end)
-
-CreateButton(TabContentFrames["Configuration"], "Load Settings", function()
-    pcall(function()
-        if readfile and isfile and isfile(CONFIG_FILE_NAME) then
-            local decoded = HttpService:JSONDecode(readfile(CONFIG_FILE_NAME))
-            if decoded.HackConfig then HackConfig = decoded.HackConfig end
-            if decoded.WorldConfig then WorldConfig = decoded.WorldConfig end
-            ShowPopupNotification("Settings Berhasil Dimuat!")
-        else
-            ShowPopupNotification("File Settings Tidak Ditemukan!")
-        end
-    end)
-end)
-
-CreateButton(TabContentFrames["Configuration"], "Delete Settings", function()
-    pcall(function()
-        if delfile and isfile and isfile(CONFIG_FILE_NAME) then
-            delfile(CONFIG_FILE_NAME)
-            ShowPopupNotification("Settings Berhasil Dihapus!")
-        else
-            ShowPopupNotification("Tidak Ada File Settings Untuk Dihapus!")
-        end
-    end)
+-- Configuration Tab Populating
+CreateToggle(TabContentFrames["Configuration"], "Ubah Tema Neon Ungu/Cyan", true, function(v)
+    if v then
+        MainGradient.Color = ColorSequence.new({
+            ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 0, 128)),
+            ColorSequenceKeypoint.new(0.5, Color3.fromRGB(0, 240, 255)),
+            ColorSequenceKeypoint.new(1, Color3.fromRGB(160, 0, 255))
+        })
+        ShowPopupNotification("Tema Diubah ke Neon Ungu/Cyan")
+    else
+        MainGradient.Color = ColorSequence.new({
+            ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)),
+            ColorSequenceKeypoint.new(0.5, Color3.fromRGB(100, 100, 100)),
+            ColorSequenceKeypoint.new(1, Color3.fromRGB(20, 20, 20))
+        })
+        ShowPopupNotification("Tema Diubah ke Monokrom")
+    end
 end)
 
 -- Admin Check Logic
@@ -1051,7 +930,7 @@ Players.PlayerAdded:Connect(function(p)
     if HackConfig.AntiAdminAktif and CheckIfAdmin(p) then
         TitleLabel.Text = "⚠️ ADMIN TERDETEKSI: " .. p.Name
         ShowPopupNotification("⚠️ ADMIN TERDETEKSI: " .. p.Name)
-        task.delay(5, function() TitleLabel.Text = "× D3D MENU: PLAYER & BOT v3.10 ×" end)
+        task.delay(5, function() TitleLabel.Text = "× D3D MENU: PLAYER & BOT v3.9.1 ×" end)
     end
 end)
 
@@ -1072,15 +951,6 @@ RunService.RenderStepped:Connect(function()
     if FOVFrame then
         FOVFrame.Size = UDim2.new(0, HackConfig.FOVRadius * 2, 0, HackConfig.FOVRadius * 2)
         FOVFrame.Visible = HackConfig.ShowFOV and (HackConfig.AimbotAktif and HackConfig.AimbotMode == "POV Kamera (FOV)")
-    end
-
-    -- Wall Hack / Noclip implementation
-    if WorldConfig.WallHack and LocalPlayer.Character then
-        for _, part in pairs(LocalPlayer.Character:GetDescendants()) do
-            if part:IsA("BasePart") then
-                part.CanCollide = false
-            end
-        end
     end
 
     -- Aimbot Tracking Loop
@@ -1133,7 +1003,7 @@ RunService.RenderStepped:Connect(function()
         LockedTarget = nil
     end
 
-    -- PLAYER & BOT ESP LOOP
+    -- PLAYER & BOT ESP LOOP: Membersihkan cache jika karakter keluar / mati
     local activeEntities = GetAllTargetableEntities()
     
     for key, _ in pairs(ESPCache) do
@@ -1288,28 +1158,18 @@ RunService.RenderStepped:Connect(function()
                     end
 
                     if VisualsConfig.ESP_Gender then
-                        -- Optional logic for custom gender display
-                        esp.Gender.Text = "[Male/Female]"
-                        esp.Gender.Position = Vector2.new(vector.X, vector.Y + 36)
-                        esp.Gender.Color = VisualsConfig.GenderColor
-                        esp.Gender.Visible = true
-                    else
-                        esp.Gender.Visible = false
-                    end
-
-                    if VisualsConfig.ESP_Status then
                         local typeTag = "[Player]"
                         if typeof(entity) == "Instance" and entity:IsA("Player") then
                             typeTag = "[Player]"
                         else
                             typeTag = "[Bot]"
                         end
-                        esp.Status.Text = typeTag
-                        esp.Status.Position = Vector2.new(vector.X, vector.Y + 50)
-                        esp.Status.Color = VisualsConfig.StatusColor
-                        esp.Status.Visible = true
+                        esp.Gender.Text = typeTag
+                        esp.Gender.Position = Vector2.new(vector.X, vector.Y + 36)
+                        esp.Gender.Color = VisualsConfig.GenderColor
+                        esp.Gender.Visible = true
                     else
-                        esp.Status.Visible = false
+                        esp.Gender.Visible = false
                     end
 
                     if VisualsConfig.ESP_Health and hum then
