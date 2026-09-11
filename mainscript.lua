@@ -6,8 +6,8 @@ local Lighting = game:GetService("Lighting")
 local Workspace = game:GetService("Workspace")
 local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local HttpService = game:GetService("HttpService")
 local ScriptContext = game:GetService("ScriptContext")
+local HttpService = game:GetService("HttpService")
 local Camera = Workspace.CurrentCamera
 local LocalPlayer = Players.LocalPlayer
 
@@ -143,7 +143,7 @@ local WorldConfig = {
     DaylightClock = 14
 }
 
--- Hack States
+-- Hack & Aimbot Configurations
 local HackConfig = {
     AntiAdminAktif = false,
     AimbotAktif = false,
@@ -165,6 +165,7 @@ local HackConfig = {
 local ESPCache = {}
 local ChamsCache = {}
 local EnemyChamsCache = {}
+local LockedTarget = nil
 
 -- FOV Circle GUI
 local FOVGui, FOVFrame
@@ -344,6 +345,48 @@ local function CreateToggle(parent, text, defaultVal, callback)
     frame.Parent = parent
 end
 
+local function CreateDropdown(parent, text, options, defaultOption, callback)
+    local frame = Instance.new("Frame")
+    frame.Size = UDim2.new(1, 0, 0, 48)
+    frame.BackgroundColor3 = Color3.fromRGB(12, 12, 18)
+    frame.BorderSizePixel = 0
+    Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 8)
+
+    local label = Instance.new("TextLabel", frame)
+    label.Size = UDim2.new(0.5, 0, 1, 0)
+    label.Position = UDim2.new(0, 12, 0, 0)
+    label.BackgroundTransparency = 1
+    label.Text = text
+    label.TextColor3 = Color3.fromRGB(220, 220, 235)
+    label.TextSize = 10.5
+    label.Font = Enum.Font.GothamMedium
+    label.TextXAlignment = Enum.TextXAlignment.Left
+
+    local dropBtn = Instance.new("TextButton", frame)
+    dropBtn.Size = UDim2.new(0, 140, 0, 32)
+    dropBtn.Position = UDim2.new(1, -152, 0.5, -16)
+    dropBtn.BackgroundColor3 = Color3.fromRGB(25, 25, 36)
+    dropBtn.Text = defaultOption
+    dropBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    dropBtn.TextSize = 10
+    dropBtn.Font = Enum.Font.GothamBold
+    Instance.new("UICorner", dropBtn).CornerRadius = UDim.new(0, 6)
+
+    local currentIndex = 1
+    for i, opt in ipairs(options) do
+        if opt == defaultOption then currentIndex = i break end
+    end
+
+    dropBtn.MouseButton1Click:Connect(function()
+        currentIndex = (currentIndex % #options) + 1
+        local selected = options[currentIndex]
+        dropBtn.Text = selected
+        if callback then callback(selected) end
+    end)
+
+    frame.Parent = parent
+end
+
 local function CreateColorPicker(parent, text, defaultColor, callback)
     local frame = Instance.new("Frame")
     frame.Size = UDim2.new(1, 0, 0, 48)
@@ -448,6 +491,81 @@ local function IsEnemy(player)
         if player.Team == LocalPlayer.Team then return false end
     end
     return true
+end
+
+local function IsVisible(targetPart)
+    if not targetPart then return false end
+    local rayParams = RaycastParams.new()
+    rayParams.FilterDescendantsInstances = {LocalPlayer.Character, Camera}
+    rayParams.FilterType = Enum.RaycastFilterType.Exclude
+    local rayResult = Workspace:Raycast(Camera.CFrame.Position, (targetPart.Position - Camera.CFrame.Position).Unit * 5000, rayParams)
+    return rayResult and rayResult.Instance:IsDescendantOf(targetPart.Parent) or false
+end
+
+local function GetDynamicTargetPart(char)
+    if not char then return nil end
+    local head = char:FindFirstChild("Head")
+    local neck = char:FindFirstChild("UpperTorso") or char:FindFirstChild("Torso")
+    local body = char:FindFirstChild("HumanoidRootPart") or neck
+
+    if HackConfig.AimTargetMode == "Head" then
+        if head and IsVisible(head) then return head end
+        if body and IsVisible(body) then return body end
+        return head or body
+    elseif HackConfig.AimTargetMode == "Neck" then
+        if neck and IsVisible(neck) then return neck end
+        if head and IsVisible(head) then return head end
+        return neck or head
+    elseif HackConfig.AimTargetMode == "Body" then
+        if body and IsVisible(body) then return body end
+        if head and IsVisible(head) then return head end
+        return body or head
+    end
+    return char:FindFirstChild("HumanoidRootPart")
+end
+
+local function GetNewTarget3D()
+    local closest, shortestDist = nil, math.huge
+    for _, player in ipairs(Players:GetPlayers()) do
+        if IsEnemy(player) and player.Character then
+            local hum = player.Character:FindFirstChildOfClass("Humanoid")
+            if hum and hum.Health > 0 and not player.Character:FindFirstChildOfClass("ForceField") then
+                local targetPart = GetDynamicTargetPart(player.Character)
+                if targetPart and IsVisible(targetPart) then
+                    local dist = (Camera.CFrame.Position - targetPart.Position).Magnitude
+                    if dist < shortestDist then
+                        shortestDist = dist
+                        closest = player.Character
+                    end
+                end
+            end
+        end
+    end
+    return closest
+end
+
+local function GetClosestEnemy2D()
+    local closest, shortestDist = nil, HackConfig.FOVRadius
+    local center = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
+    for _, player in ipairs(Players:GetPlayers()) do
+        if IsEnemy(player) and player.Character then
+            local hum = player.Character:FindFirstChildOfClass("Humanoid")
+            if hum and hum.Health > 0 and not player.Character:FindFirstChildOfClass("ForceField") then
+                local targetPart = GetDynamicTargetPart(player.Character)
+                if targetPart and IsVisible(targetPart) then
+                    local pos, onScreen = Camera:WorldToViewportPoint(targetPart.Position)
+                    if onScreen then
+                        local dist = (center - Vector2.new(pos.X, pos.Y)).Magnitude
+                        if dist < shortestDist then
+                            shortestDist = dist
+                            closest = player.Character
+                        end
+                    end
+                end
+            end
+        end
+    end
+    return closest
 end
 
 local function RemovePlayerESP(player)
@@ -606,9 +724,11 @@ CreateSlider(TabContentFrames["World"], "Daylight Time (Clock)", 0, 24, 14, func
 -- Skill Tab Populating (Main Features + Gun Mods combined)
 CreateToggle(TabContentFrames["Skill"], "Peringatan Admin (Popup Warning)", false, function(v) HackConfig.AntiAdminAktif = v end)
 CreateToggle(TabContentFrames["Skill"], "Aktifkan Auto Aim (Kunci Layar)", false, function(v) HackConfig.AimbotAktif = v end)
+CreateDropdown(TabContentFrames["Skill"], "Mode Aimbot", {"POV Kamera (FOV)", "360° (Brutal)"}, "POV Kamera (FOV)", function(opt) HackConfig.AimbotMode = opt end)
+CreateDropdown(TabContentFrames["Skill"], "Target Bagian Tubuh", {"Head", "Neck", "Body"}, "Head", function(opt) HackConfig.AimTargetMode = opt end)
+CreateSlider(TabContentFrames["Skill"], "Kelengketan Aim POV (Smoothness)", 1, 100, 15, function(val) HackConfig.AimbotSmoothness = val end)
 CreateToggle(TabContentFrames["Skill"], "Tampilkan Lingkaran FOV", false, function(v) HackConfig.ShowFOV = v end)
 CreateSlider(TabContentFrames["Skill"], "Lebar Lingkaran FOV", 10, 600, 150, function(val) HackConfig.FOVRadius = val end)
-CreateSlider(TabContentFrames["Skill"], "Kelengketan Aim POV (Smoothness)", 1, 100, 15, function(val) HackConfig.AimbotSmoothness = val end)
 CreateToggle(TabContentFrames["Skill"], "Gun Mods (Infinite Ammo & RPM)", false, function(v) HackConfig.GunModsAktif = v end)
 CreateSlider(TabContentFrames["Skill"], "RPM Fire Rate", 400, 2500, 800, function(val) HackConfig.CustomFireRate = val end)
 
@@ -618,6 +738,8 @@ local function SaveSettings()
     local settings = {
         AntiAdmin = HackConfig.AntiAdminAktif,
         Aimbot = HackConfig.AimbotAktif,
+        AimbotMode = HackConfig.AimbotMode,
+        AimTargetMode = HackConfig.AimTargetMode,
         ShowFOV = HackConfig.ShowFOV,
         FOVRadius = HackConfig.FOVRadius,
         Smoothness = HackConfig.AimbotSmoothness,
@@ -645,6 +767,8 @@ local function LoadSettings()
             local settings = HttpService:JSONDecode(json)
             if settings.AntiAdmin ~= nil then HackConfig.AntiAdminAktif = settings.AntiAdmin end
             if settings.Aimbot ~= nil then HackConfig.AimbotAktif = settings.Aimbot end
+            if settings.AimbotMode ~= nil then HackConfig.AimbotMode = settings.AimbotMode end
+            if settings.AimTargetMode ~= nil then HackConfig.AimTargetMode = settings.AimTargetMode end
             if settings.ShowFOV ~= nil then HackConfig.ShowFOV = settings.ShowFOV end
             if settings.FOVRadius ~= nil then HackConfig.FOVRadius = settings.FOVRadius end
             if settings.Smoothness ~= nil then HackConfig.AimbotSmoothness = settings.Smoothness end
@@ -720,7 +844,7 @@ Players.PlayerAdded:Connect(function(p)
     if HackConfig.AntiAdminAktif and CheckIfAdmin(p) then SendAdminWarning(p) end
 end)
 
--- Render Stepped World, Physics, Chams & Aimbot Loop
+-- Render Stepped World, Physics, Chams & Full Aimbot Loop
 RunService.RenderStepped:Connect(function()
     if WorldConfig.NightMode then
         Lighting.ClockTime = 0
@@ -736,34 +860,58 @@ RunService.RenderStepped:Connect(function()
 
     if FOVFrame then
         FOVFrame.Size = UDim2.new(0, HackConfig.FOVRadius * 2, 0, HackConfig.FOVRadius * 2)
-        FOVFrame.Visible = HackConfig.ShowFOV and HackConfig.AimbotAktif
+        FOVFrame.Visible = HackConfig.ShowFOV and (HackConfig.AimbotAktif and HackConfig.AimbotMode == "POV Kamera (FOV)")
     end
 
-    -- Aimbot & Target Tracking Logic
+    -- 100% Identical Aimbot & Target Tracking Logic
     if HackConfig.AimbotAktif then
-        local closest, shortestDist = nil, HackConfig.FOVRadius
-        local center = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
-        for _, player in ipairs(Players:GetPlayers()) do
-            if IsEnemy(player) and player.Character then
-                local char = player.Character
-                local part = char:FindFirstChild(HackConfig.AimTargetMode) or char:FindFirstChild("HumanoidRootPart")
-                local hum = char:FindFirstChildOfClass("Humanoid")
-                if part and hum and hum.Health > 0 then
-                    local pos, onScreen = Camera:WorldToViewportPoint(part.Position)
-                    if onScreen then
+        local targetValid = false
+        local partToAim = nil
+
+        if LockedTarget and LockedTarget.Parent then
+            local hum = LockedTarget:FindFirstChildOfClass("Humanoid")
+            local plr = Players:GetPlayerFromCharacter(LockedTarget)
+            if hum and hum.Health > 0 and (not plr or IsEnemy(plr)) and not LockedTarget:FindFirstChildOfClass("ForceField") then
+                partToAim = GetDynamicTargetPart(LockedTarget)
+                if partToAim and IsVisible(partToAim) then
+                    if HackConfig.AimbotMode == "POV Kamera (FOV)" then
+                        local pos, onScreen = Camera:WorldToViewportPoint(partToAim.Position)
+                        local center = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
                         local dist = (center - Vector2.new(pos.X, pos.Y)).Magnitude
-                        if dist <= shortestDist then
-                            shortestDist = dist
-                            closest = part
+                        if onScreen and dist <= HackConfig.FOVRadius then
+                            targetValid = true
                         end
+                    else
+                        targetValid = true
                     end
                 end
             end
         end
-        if closest then
-            local smooth = math.clamp(HackConfig.AimbotSmoothness / 100, 0.01, 1)
-            Camera.CFrame = Camera.CFrame:Lerp(CFrame.lookAt(Camera.CFrame.Position, closest.Position), smooth)
+
+        if not targetValid then
+            if HackConfig.AimbotMode == "360° (Brutal)" then
+                LockedTarget = GetNewTarget3D()
+            elseif HackConfig.AimbotMode == "POV Kamera (FOV)" then
+                local closestEnemy = GetClosestEnemy2D()
+                LockedTarget = closestEnemy
+            end
+            if LockedTarget then
+                partToAim = GetDynamicTargetPart(LockedTarget)
+            end
         end
+
+        if LockedTarget and partToAim then
+            if HackConfig.AimbotMode == "360° (Brutal)" then
+                Camera.CFrame = CFrame.lookAt(Camera.CFrame.Position, partToAim.Position)
+            else
+                local smoothFactor = HackConfig.AimbotSmoothness / 100
+                Camera.CFrame = Camera.CFrame:Lerp(CFrame.lookAt(Camera.CFrame.Position, partToAim.Position), smoothFactor)
+            end
+        else
+            LockedTarget = nil
+        end
+    else
+        LockedTarget = nil
     end
 
     -- Enemy Chams Loop
