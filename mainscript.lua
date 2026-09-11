@@ -1,4 +1,4 @@
--- v3.1 --
+-- v3.3 --
 
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
@@ -87,7 +87,7 @@ pcall(function()
 end)
 
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "D3D_Ultimate_Android_V3_1"
+ScreenGui.Name = "D3D_Ultimate_Android_V3_3"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
@@ -287,7 +287,7 @@ end)
 local TitleLabel = Instance.new("TextLabel")
 TitleLabel.Size = UDim2.new(1, 0, 0, 36)
 TitleLabel.BackgroundTransparency = 1
-TitleLabel.Text = "× D3D MENU: ULTRA REBUILD v3.1 ×"
+TitleLabel.Text = "× D3D MENU: ULTRA REBUILD v3.3 ×"
 TitleLabel.TextColor3 = Color3.fromRGB(240, 240, 255)
 TitleLabel.TextSize = 11.5
 TitleLabel.Font = Enum.Font.GothamBold
@@ -529,8 +529,6 @@ end
 local function IsEnemy(player)
     if player == LocalPlayer then return false end
     if not player.Character then return false end
-    local hum = player.Character:FindFirstChildOfClass("Humanoid")
-    if not hum or hum.Health <= 0 then return false end
     if HackConfig.FFAModeAktif then return true end
     if player.Team and LocalPlayer.Team then
         if player.Team == LocalPlayer.Team then return false end
@@ -551,37 +549,28 @@ local function GetDynamicTargetPart(char)
     if not char then return nil end
     local head = char:FindFirstChild("Head")
     local neck = char:FindFirstChild("UpperTorso") or char:FindFirstChild("Torso")
-    local body = char:FindFirstChild("HumanoidRootPart") or neck
+    local body = char:FindFirstChild("HumanoidRootPart") or neck or head
 
     if HackConfig.AimTargetMode == "Head" then
-        if head and IsVisible(head) then return head end
-        if body and IsVisible(body) then return body end
         return head or body
     elseif HackConfig.AimTargetMode == "Neck" then
-        if neck and IsVisible(neck) then return neck end
-        if head and IsVisible(head) then return head end
-        return neck or head
+        return neck or head or body
     elseif HackConfig.AimTargetMode == "Body" then
-        if body and IsVisible(body) then return body end
-        if head and IsVisible(head) then return head end
         return body or head
     end
-    return char:FindFirstChild("HumanoidRootPart")
+    return body
 end
 
 local function GetNewTarget3D()
     local closest, shortestDist = nil, math.huge
     for _, player in ipairs(Players:GetPlayers()) do
         if IsEnemy(player) and player.Character then
-            local hum = player.Character:FindFirstChildOfClass("Humanoid")
-            if hum and hum.Health > 0 and not player.Character:FindFirstChildOfClass("ForceField") then
-                local targetPart = GetDynamicTargetPart(player.Character)
-                if targetPart and IsVisible(targetPart) then
-                    local dist = (Camera.CFrame.Position - targetPart.Position).Magnitude
-                    if dist < shortestDist then
-                        shortestDist = dist
-                        closest = player.Character
-                    end
+            local targetPart = GetDynamicTargetPart(player.Character)
+            if targetPart and not player.Character:FindFirstChildOfClass("ForceField") then
+                local dist = (Camera.CFrame.Position - targetPart.Position).Magnitude
+                if dist < shortestDist then
+                    shortestDist = dist
+                    closest = player.Character
                 end
             end
         end
@@ -594,23 +583,38 @@ local function GetClosestEnemy2D()
     local center = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
     for _, player in ipairs(Players:GetPlayers()) do
         if IsEnemy(player) and player.Character then
-            local hum = player.Character:FindFirstChildOfClass("Humanoid")
-            if hum and hum.Health > 0 and not player.Character:FindFirstChildOfClass("ForceField") then
-                local targetPart = GetDynamicTargetPart(player.Character)
-                if targetPart and IsVisible(targetPart) then
-                    local pos, onScreen = Camera:WorldToViewportPoint(targetPart.Position)
-                    if onScreen then
-                        local dist = (center - Vector2.new(pos.X, pos.Y)).Magnitude
-                        if dist < shortestDist then
-                            shortestDist = dist
-                            closest = player.Character
-                        end
+            local targetPart = GetDynamicTargetPart(player.Character)
+            if targetPart and not player.Character:FindFirstChildOfClass("ForceField") then
+                local pos, onScreen = Camera:WorldToViewportPoint(targetPart.Position)
+                if onScreen then
+                    local dist = (center - Vector2.new(pos.X, pos.Y)).Magnitude
+                    if dist < shortestDist then
+                        shortestDist = dist
+                        closest = player.Character
                     end
                 end
             end
         end
     end
     return closest
+end
+
+local function HideESPObject(esp)
+    if not esp then return end
+    pcall(function()
+        if esp.Line then esp.Line.Visible = false end
+        if esp.Name then esp.Name.Visible = false end
+        if esp.Distance then esp.Distance.Visible = false end
+        if esp.Gender then esp.Gender.Visible = false end
+        if esp.HealthBarBg then esp.HealthBarBg.Visible = false end
+        if esp.HealthBar then esp.HealthBar.Visible = false end
+        if esp.HeadCircle then esp.HeadCircle.Visible = false end
+        if esp.Skeleton then
+            for _, bone in pairs(esp.Skeleton) do
+                if bone then bone.Visible = false end
+            end
+        end
+    end)
 end
 
 local function RemovePlayerESP(player)
@@ -658,25 +662,30 @@ local function CreatePlayerESP(player)
     espData.Line.Thickness = 1.5
     espData.Line.Color = VisualsConfig.LineColor
     espData.Line.Transparency = 0.7
+    espData.Line.Visible = false
 
     espData.HealthBarBg.Thickness = 3
     espData.HealthBarBg.Color = Color3.fromRGB(40, 40, 40)
     espData.HealthBarBg.Transparency = 0.8
+    espData.HealthBarBg.Visible = false
 
     espData.HealthBar.Thickness = 1.5
     espData.HealthBar.Color = VisualsConfig.HealthColor
     espData.HealthBar.Transparency = 1
+    espData.HealthBar.Visible = false
 
     espData.HeadCircle.Thickness = 1.5
     espData.HeadCircle.NumSides = 12
     espData.HeadCircle.Filled = false
     espData.HeadCircle.Color = VisualsConfig.SkeletonColor
     espData.HeadCircle.Transparency = 0.8
+    espData.HeadCircle.Visible = false
 
     for _, bone in pairs(espData.Skeleton) do
         bone.Thickness = 1.5
         bone.Color = VisualsConfig.SkeletonColor
         bone.Transparency = 0.8
+        bone.Visible = false
     end
 
     for _, textObj in ipairs({espData.Name, espData.Distance, espData.Gender}) do
@@ -685,6 +694,7 @@ local function CreatePlayerESP(player)
         textObj.Outline = true
         textObj.OutlineColor = Color3.fromRGB(0, 0, 0)
         textObj.Font = Drawing.Fonts.UI
+        textObj.Visible = false
     end
 
     ESPCache[player] = espData
@@ -694,7 +704,7 @@ local function SetupPlayer(player)
     if player == LocalPlayer then return end
     CreatePlayerESP(player)
     player.CharacterAdded:Connect(function()
-        task.wait(0.5)
+        task.wait(0.3)
         CreatePlayerESP(player)
     end)
 end
@@ -707,7 +717,15 @@ Players.PlayerAdded:Connect(SetupPlayer)
 Players.PlayerRemoving:Connect(RemovePlayerESP)
 
 -- Visual Tab Populating
-CreateToggle(TabContentFrames["Visual"], "Skeleton ESP (Ultra Stable)", false, function(v) VisualsConfig.ESP_Skeleton = v end)
+CreateToggle(TabContentFrames["Visual"], "Skeleton ESP (Universal Rig)", false, function(v) 
+    VisualsConfig.ESP_Skeleton = v 
+    if not v then
+        for _, esp in pairs(ESPCache) do
+            if esp.HeadCircle then esp.HeadCircle.Visible = false end
+            if esp.Skeleton then for _, b in pairs(esp.Skeleton) do b.Visible = false end end
+        end
+    end
+end)
 CreateColorPicker(TabContentFrames["Visual"], "Skeleton Color", Color3.fromRGB(0, 240, 255), function(c) 
     VisualsConfig.SkeletonColor = c 
     for _, esp in pairs(ESPCache) do 
@@ -719,32 +737,56 @@ CreateToggle(TabContentFrames["Visual"], "Chams / Wall Glow", false, function(v)
 CreateColorPicker(TabContentFrames["Visual"], "Chams Glow Color", Color3.fromRGB(255, 0, 128), function(c) VisualsConfig.ChamsColor = c end)
 CreateToggle(TabContentFrames["Visual"], "Enemy Chams", false, function(v) VisualsConfig.EnemyChams = v end)
 CreateColorPicker(TabContentFrames["Visual"], "Enemy Chams Color", Color3.fromRGB(255, 0, 0), function(c) VisualsConfig.EnemyChamsColor = c end)
-CreateToggle(TabContentFrames["Visual"], "ESP Line", false, function(v) VisualsConfig.ESP_Line = v end)
+CreateToggle(TabContentFrames["Visual"], "ESP Line", false, function(v) 
+    VisualsConfig.ESP_Line = v 
+    if not v then
+        for _, esp in pairs(ESPCache) do
+            if esp.Line then esp.Line.Visible = false end
+        end
+    end
+end)
 CreateColorPicker(TabContentFrames["Visual"], "Line Color", Color3.fromRGB(0, 240, 255), function(c) VisualsConfig.LineColor = c end)
-CreateToggle(TabContentFrames["Visual"], "ESP Name", false, function(v) VisualsConfig.ESP_Name = v end)
+CreateToggle(TabContentFrames["Visual"], "ESP Name", false, function(v) 
+    VisualsConfig.ESP_Name = v 
+    if not v then for _, esp in pairs(ESPCache) do if esp.Name then esp.Name.Visible = false end end end
+end)
 CreateColorPicker(TabContentFrames["Visual"], "Name Color", Color3.fromRGB(255, 255, 255), function(c) VisualsConfig.NameColor = c end)
-CreateToggle(TabContentFrames["Visual"], "ESP Distance", false, function(v) VisualsConfig.ESP_Distance = v end)
+CreateToggle(TabContentFrames["Visual"], "ESP Distance", false, function(v) 
+    VisualsConfig.ESP_Distance = v 
+    if not v then for _, esp in pairs(ESPCache) do if esp.Distance then esp.Distance.Visible = false end end end
+end)
 CreateColorPicker(TabContentFrames["Visual"], "Distance Color", Color3.fromRGB(255, 255, 255), function(c) VisualsConfig.DistanceColor = c end)
-CreateToggle(TabContentFrames["Visual"], "ESP Gender [Cowo/Cewe]", false, function(v) VisualsConfig.ESP_Gender = v end)
+CreateToggle(TabContentFrames["Visual"], "ESP Gender [Cowo/Cewe]", false, function(v) 
+    VisualsConfig.ESP_Gender = v 
+    if not v then for _, esp in pairs(ESPCache) do if esp.Gender then esp.Gender.Visible = false end end end
+end)
 CreateColorPicker(TabContentFrames["Visual"], "Gender Color", Color3.fromRGB(255, 255, 255), function(c) VisualsConfig.GenderColor = c end)
-CreateToggle(TabContentFrames["Visual"], "ESP Health (Vertical Bar)", false, function(v) VisualsConfig.ESP_Health = v end)
+CreateToggle(TabContentFrames["Visual"], "ESP Health (Vertical Bar)", false, function(v) 
+    VisualsConfig.ESP_Health = v 
+    if not v then for _, esp in pairs(ESPCache) do if esp.HealthBarBg then esp.HealthBarBg.Visible = false end if esp.HealthBar then esp.HealthBar.Visible = false end end end
+end)
 CreateColorPicker(TabContentFrames["Visual"], "Health Bar Color", Color3.fromRGB(0, 255, 128), function(c) VisualsConfig.HealthColor = c end)
 
 -- Player Tab Populating
-CreateToggle(TabContentFrames["Player"], "No Fall Damage", false, function(v) HackConfig.AntiFallDamageAktif = v end)
+CreateToggle(TabContentFrames["Player"], "No Fall Damage", false, function(v) 
+    HackConfig.AntiFallDamageAktif = v 
+    ShowPopupNotification(v and "No Fall Damage Diaktifkan" or "No Fall Damage Dimatikan")
+end)
 CreateToggle(TabContentFrames["Player"], "Kecepatan Lari", false, function(v) 
     HackConfig.SpeedAktif = v
-    if not v and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
+    if not v and LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
         LocalPlayer.Character.Humanoid.WalkSpeed = 16
     end
+    ShowPopupNotification(v and "Kecepatan Lari Diaktifkan" or "Kecepatan Lari Dimatikan")
 end)
 CreateSlider(TabContentFrames["Player"], "Set Speed", 16, 250, 50, function(val) HackConfig.CustomSpeed = val end)
 CreateToggle(TabContentFrames["Player"], "Lompat Tinggi", false, function(v) 
     HackConfig.JumpAktif = v
-    if not v and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
+    if not v and LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
         LocalPlayer.Character.Humanoid.UseJumpPower = true
         LocalPlayer.Character.Humanoid.JumpPower = 50
     end
+    ShowPopupNotification(v and "Lompat Tinggi Diaktifkan" or "Lompat Tinggi Dimatikan")
 end)
 CreateSlider(TabContentFrames["Player"], "Set Power", 50, 250, 100, function(val) HackConfig.CustomJump = val end)
 
@@ -759,6 +801,7 @@ CreateToggle(TabContentFrames["World"], "Night Mode", false, function(v)
         Lighting.GlobalShadows = OriginalLighting.GlobalShadows
         Lighting.FogEnd = OriginalLighting.FogEnd
     end
+    ShowPopupNotification(v and "Night Mode Diaktifkan" or "Night Mode Dimatikan")
 end)
 
 CreateToggle(TabContentFrames["World"], "Daylight (Indoor/Outdoor)", false, function(v)
@@ -771,23 +814,33 @@ CreateToggle(TabContentFrames["World"], "Daylight (Indoor/Outdoor)", false, func
         Lighting.GlobalShadows = OriginalLighting.GlobalShadows
         Lighting.FogEnd = OriginalLighting.FogEnd
     end
+    ShowPopupNotification(v and "Daylight Diaktifkan" or "Daylight Dimatikan")
 end)
 
 CreateSlider(TabContentFrames["World"], "Daylight Brightness", 1, 10, 3, function(val) WorldConfig.DaylightBrightness = val end)
 CreateSlider(TabContentFrames["World"], "Daylight Time (Clock)", 0, 24, 14, function(val) WorldConfig.DaylightClock = val end)
 
--- Skill Tab Populating (Main Features + Gun Mods combined)
-CreateToggle(TabContentFrames["Skill"], "Peringatan Admin (Popup Warning)", false, function(v) HackConfig.AntiAdminAktif = v end)
-CreateToggle(TabContentFrames["Skill"], "Aktifkan Auto Aim (Kunci Layar)", false, function(v) HackConfig.AimbotAktif = v end)
+-- Skill Tab Populating
+CreateToggle(TabContentFrames["Skill"], "Peringatan Admin (Popup Warning)", false, function(v) 
+    HackConfig.AntiAdminAktif = v 
+    ShowPopupNotification(v and "Peringatan Admin Diaktifkan" or "Peringatan Admin Dimatikan")
+end)
+CreateToggle(TabContentFrames["Skill"], "Aktifkan Auto Aim (Kunci Layar)", false, function(v) 
+    HackConfig.AimbotAktif = v 
+    ShowPopupNotification(v and "Auto Aim Diaktifkan" or "Auto Aim Dimatikan")
+end)
 CreateDropdown(TabContentFrames["Skill"], "Mode Aimbot", {"POV Kamera (FOV)", "360° (Brutal)"}, "POV Kamera (FOV)", function(opt) HackConfig.AimbotMode = opt end)
 CreateDropdown(TabContentFrames["Skill"], "Target Bagian Tubuh", {"Head", "Neck", "Body"}, "Head", function(opt) HackConfig.AimTargetMode = opt end)
 CreateSlider(TabContentFrames["Skill"], "Kelengketan Aim POV (Smoothness)", 1, 100, 15, function(val) HackConfig.AimbotSmoothness = val end)
 CreateToggle(TabContentFrames["Skill"], "Tampilkan Lingkaran FOV", false, function(v) HackConfig.ShowFOV = v end)
 CreateSlider(TabContentFrames["Skill"], "Lebar Lingkaran FOV", 10, 600, 150, function(val) HackConfig.FOVRadius = val end)
-CreateToggle(TabContentFrames["Skill"], "Gun Mods (Infinite Ammo & RPM)", false, function(v) HackConfig.GunModsAktif = v end)
+CreateToggle(TabContentFrames["Skill"], "Gun Mods (Infinite Ammo & RPM)", false, function(v) 
+    HackConfig.GunModsAktif = v 
+    ShowPopupNotification(v and "Gun Mods Diaktifkan" or "Gun Mods Dimatikan")
+end)
 CreateSlider(TabContentFrames["Skill"], "RPM Fire Rate", 400, 2500, 800, function(val) HackConfig.CustomFireRate = val end)
 
--- Configuration Tab Populating (Fixed Custom UI & Popups added to all buttons)
+-- Configuration Tab Populating
 local ConfigFileName = "LiteHack_Config.json"
 local function SaveSettings()
     local settings = {
@@ -896,7 +949,7 @@ local function SendAdminWarning(p)
     pcall(function()
         TitleLabel.Text = "⚠️ ADMIN TERDETEKSI: " .. p.Name
         ShowPopupNotification("⚠️ ADMIN TERDETEKSI: " .. p.Name)
-        task.delay(5, function() TitleLabel.Text = "× D3D MENU: ULTRA REBUILD v3.1 ×" end)
+        task.delay(5, function() TitleLabel.Text = "× D3D MENU: ULTRA REBUILD v3.3 ×" end)
     end)
 end
 
@@ -923,17 +976,16 @@ RunService.RenderStepped:Connect(function()
         FOVFrame.Visible = HackConfig.ShowFOV and (HackConfig.AimbotAktif and HackConfig.AimbotMode == "POV Kamera (FOV)")
     end
 
-    -- 100% Identical Aimbot & Target Tracking Logic
+    -- Aimbot Tracking Loop
     if HackConfig.AimbotAktif then
         local targetValid = false
         local partToAim = nil
 
         if LockedTarget and LockedTarget.Parent then
-            local hum = LockedTarget:FindFirstChildOfClass("Humanoid")
             local plr = Players:GetPlayerFromCharacter(LockedTarget)
-            if hum and hum.Health > 0 and (not plr or IsEnemy(plr)) and not LockedTarget:FindFirstChildOfClass("ForceField") then
+            if (not plr or IsEnemy(plr)) and not LockedTarget:FindFirstChildOfClass("ForceField") then
                 partToAim = GetDynamicTargetPart(LockedTarget)
-                if partToAim and IsVisible(partToAim) then
+                if partToAim then
                     if HackConfig.AimbotMode == "POV Kamera (FOV)" then
                         local pos, onScreen = Camera:WorldToViewportPoint(partToAim.Position)
                         local center = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
@@ -1002,11 +1054,17 @@ RunService.RenderStepped:Connect(function()
         end
     end
 
+    -- Universal ESP Loop with Auto-Fallback Parts (R15, R6 & Custom Rig Support)
     for player, esp in pairs(ESPCache) do
         local char = player.Character
-        local hrp = char and char:FindFirstChild("HumanoidRootPart")
+        local isEnemy = IsEnemy(player)
+        
+        -- Fallback detection: Mencari bagian tubuh utama apa pun agar player tidak lolos deteksi rig kustom
+        local primaryPart = char and (char:FindFirstChild("HumanoidRootPart") or char:FindFirstChild("Torso") or char:FindFirstChild("UpperTorso") or char:FindFirstChild("Head") or char:FindFirstChildOfClass("BasePart"))
         local hum = char and char:FindFirstChildOfClass("Humanoid")
-        local active = IsEnemy(player) and char and hrp and hum and hum.Health > 0
+        
+        -- Validasi fleksibel: Tidak wajib ada Humanoid jika char dan part utama valid
+        local active = isEnemy and char and primaryPart and (not hum or hum.Health > 0)
 
         if active and VisualsConfig.Chams then
             if not ChamsCache[player] then
@@ -1030,18 +1088,18 @@ RunService.RenderStepped:Connect(function()
         end
 
         if active then
-            local vector, onScreen = Camera:WorldToViewportPoint(hrp.Position)
+            local vector, onScreen = Camera:WorldToViewportPoint(primaryPart.Position)
             if onScreen then
-                local distance = (Camera.CFrame.Position - hrp.Position).Magnitude
+                local distance = (Camera.CFrame.Position - primaryPart.Position).Magnitude
 
                 if VisualsConfig.ESP_Skeleton then
                     local head = char:FindFirstChild("Head")
-                    local upperTorso = char:FindFirstChild("UpperTorso") or char:FindFirstChild("Torso")
+                    local upperTorso = char:FindFirstChild("UpperTorso") or char:FindFirstChild("Torso") or primaryPart
                     local lowerTorso = char:FindFirstChild("LowerTorso") or upperTorso
-                    local lArm = char:FindFirstChild("LeftUpperArm") or char:FindFirstChild("Left Arm") or char:FindFirstChild("LeftHand")
-                    local rArm = char:FindFirstChild("RightUpperArm") or char:FindFirstChild("Right Arm") or char:FindFirstChild("RightHand")
-                    local lLeg = char:FindFirstChild("LeftUpperLeg") or char:FindFirstChild("Left Leg") or char:FindFirstChild("LeftFoot")
-                    local rLeg = char:FindFirstChild("RightUpperLeg") or char:FindFirstChild("Right Leg") or char:FindFirstChild("RightFoot")
+                    local lArm = char:FindFirstChild("LeftUpperArm") or char:FindFirstChild("Left Arm") or char:FindFirstChild("LeftHand") or primaryPart
+                    local rArm = char:FindFirstChild("RightUpperArm") or char:FindFirstChild("Right Arm") or char:FindFirstChild("RightHand") or primaryPart
+                    local lLeg = char:FindFirstChild("LeftUpperLeg") or char:FindFirstChild("Left Leg") or char:FindFirstChild("LeftFoot") or primaryPart
+                    local rLeg = char:FindFirstChild("RightUpperLeg") or char:FindFirstChild("Right Leg") or char:FindFirstChild("RightFoot") or primaryPart
 
                     local function getPos(part)
                         if not part then return nil end
@@ -1068,7 +1126,6 @@ RunService.RenderStepped:Connect(function()
                         end
                     end
 
-                    -- Draw Head Circle and Spine/Limbs
                     if hPos then
                         esp.HeadCircle.Position = hPos
                         local headSize = head and (Camera:WorldToViewportPoint((head.Position + Vector3.new(0, 1, 0))).Y - Camera:WorldToViewportPoint(head.Position).Y) or 10
@@ -1079,7 +1136,7 @@ RunService.RenderStepped:Connect(function()
                         esp.HeadCircle.Visible = false
                     end
 
-                    drawBone(esp.Skeleton.Spine, hPos, utPos)
+                    drawBone(esp.Skeleton.Spine, hPos or utPos, utPos)
                     drawBone(esp.Skeleton.LeftArm, utPos, laPos)
                     drawBone(esp.Skeleton.RightArm, utPos, raPos)
                     drawBone(esp.Skeleton.LeftLeg, ltPos, llPos)
@@ -1125,7 +1182,7 @@ RunService.RenderStepped:Connect(function()
                     esp.Gender.Visible = false
                 end
 
-                if VisualsConfig.ESP_Health then
+                if VisualsConfig.ESP_Health and hum then
                     local healthPct = math.clamp(hum.Health / hum.MaxHealth, 0, 1)
                     local barHeight = 40
                     local barX = vector.X + 24
@@ -1145,24 +1202,10 @@ RunService.RenderStepped:Connect(function()
                     esp.HealthBar.Visible = false
                 end
             else
-                esp.HeadCircle.Visible = false
-                for _, obj in pairs(esp) do
-                    if type(obj) == "table" then
-                        for _, bone in pairs(bone) do bone.Visible = false end
-                    else
-                        if obj ~= esp.HeadCircle then obj.Visible = false end
-                    end
-                end
+                HideESPObject(esp)
             end
         else
-            esp.HeadCircle.Visible = false
-            for _, obj in pairs(esp) do
-                if type(obj) == "table" then
-                    for _, bone in pairs(bone) do bone.Visible = false end
-                else
-                    if obj ~= esp.HeadCircle then obj.Visible = false end
-                end
-            end
+            HideESPObject(esp)
         end
     end
 end)
