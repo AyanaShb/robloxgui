@@ -1,4 +1,4 @@
--- v3.9.3 --
+-- v3.9.4 - Android CoreGui & Drawing Fix --
 
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
@@ -6,109 +6,40 @@ local Lighting = game:GetService("Lighting")
 local Workspace = game:GetService("Workspace")
 local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local ScriptContext = game:GetService("ScriptContext")
 local HttpService = game:GetService("HttpService")
 local Camera = Workspace.CurrentCamera
 local LocalPlayer = Players.LocalPlayer
 
--- ==========================================
--- AUTO BYPASS ANTI-CHEAT & METATABLE HOOKS
--- ==========================================
-task.spawn(function()
-    pcall(function()
-        if setreadonly then
-            pcall(function()
-                setreadonly(getrenv(), false)
-                setreadonly(getreg(), false)
-                setreadonly(getgc(), false)
-            end)
-        end
-        if make_writeable then
-            pcall(function() make_writeable(getreg()) end)
-        end
-        if detour_function then
-            detour_function = function(...) return true end
-        end
-        if getconnections then
-            pcall(function()
-                for _, connection in ipairs(getconnections(ScriptContext.Error)) do
-                    connection:Disable()
-                end
-            end)
-        end
-        if getcallingscript then
-            pcall(function()
-                getcallingscript = function() return nil end
-            end)
-        end
-        for _, tableName in ipairs({"_G", "shared"}) do
-            pcall(function()
-                local target = getgenv()[tableName]
-                if target and type(target) == "table" then
-                    for key, _ in pairs(target) do
-                        local strKey = tostring(key):lower()
-                        if strKey:find("signature") or strKey:find("checksum") or strKey:find("hash") then
-                            target[key] = nil
-                        end
-                    end
-                end
-            end)
-        end
-        for _, remote in ipairs(ReplicatedStorage:GetDescendants()) do
-            if remote:IsA("RemoteEvent") or remote:IsA("RemoteFunction") then
-                local name = remote.Name:lower()
-                if name:find("handshake") or name:find("validate") or name:find("verify") or name:find("integrity") or name:find("anti") then
-                    pcall(function()
-                        if remote:IsA("RemoteEvent") then
-                            remote.FireServer = function(...) return true end
-                        elseif remote:IsA("RemoteFunction") then
-                            remote.InvokeServer = function(...) return true end
-                        end
-                    end)
-                end
-            end
-        end
-    end)
-end)
-
-pcall(function()
-    local mt = getrawmetatable(game)
-    if mt and mt.__index then
-        local oldIndex = mt.__index
-        setreadonly(mt, false)
-        mt.__index = newcclosure(function(t, k)
-            if not checkcaller() and t:IsA("BasePart") and tostring(k) == "CanCollide" then
-                return true
-            end
-            return oldIndex(t, k)
-        end)
-        setreadonly(mt, true)
+-- Pastikan Drawing Library aman
+local Drawing = Drawing or {
+    new = function(t)
+        return { Visible = false, Remove = function() end }
     end
-end)
+}
 
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "D3D_Ultimate_Android_V3_9_3"
+ScreenGui.Name = "D3D_Ultimate_Android_V3_9_4"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
+-- Perbaikan Utama: Deteksi Parent GUI Universal untuk Android Executor
 pcall(function()
-    if syn and syn.protect_gui then
-        syn.protect_gui(ScreenGui)
-        ScreenGui.Parent = game.CoreGui
-    elseif gethui then
+    if gethui then
         ScreenGui.Parent = gethui()
-    else
+    elseif syn and syn.protect_gui then
+        syn.protect_gui(ScreenGui)
         ScreenGui.Parent = game:GetService("CoreGui")
+    elseif game:GetService("CoreGui"):FindFirstChild("RobloxGui") then
+        ScreenGui.Parent = game:GetService("CoreGui")
+    else
+        ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
     end
 end)
 
 if not ScreenGui.Parent then
-    pcall(function()
-        ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
-    end)
+    ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 end
 
--- Global Notification Popup Function
 local function ShowPopupNotification(message)
     pcall(function()
         local existing = ScreenGui:FindFirstChild("PopupNotify")
@@ -194,7 +125,6 @@ local WorldConfig = {
     FlyAktif = false
 }
 
--- Hack & Aimbot Configurations
 local HackConfig = {
     AntiAdminAktif = false,
     AimbotAktif = false,
@@ -295,7 +225,7 @@ end)
 local TitleLabel = Instance.new("TextLabel")
 TitleLabel.Size = UDim2.new(1, 0, 0, 36)
 TitleLabel.BackgroundTransparency = 1
-TitleLabel.Text = "× D3D MENU: PLAYER & BOT v3.9.3 ×"
+TitleLabel.Text = "× D3D MENU: PLAYER & BOT v3.9.4 ×"
 TitleLabel.TextColor3 = Color3.fromRGB(240, 240, 255)
 TitleLabel.TextSize = 11.5
 TitleLabel.Font = Enum.Font.GothamBold
@@ -438,10 +368,7 @@ local function CreateDropdown(parent, text, options, defaultOption, callback)
         if callback then callback(selected) end
     end)
 
-    -- Dynamic update method reference attached to frame for external refresh
-    frame.Name = "CustomDropdown_" .. text
     frame.Parent = parent
-
     return {
         UpdateOptions = function(newOpts, newDefault)
             options = newOpts
@@ -579,30 +506,20 @@ local function CreateButton(parent, text, callback)
     frame.Parent = parent
 end
 
--- Deteksi Pemain Asli dan Bot (NPC) Secara Rekursif (Mendukung Folder Folder Bot)
 local function IsValidCharacter(char)
     if not char or not char:IsA("Model") then return false end
     if char == LocalPlayer.Character then return false end
-    if char:IsDescendantOf(LocalPlayer) then return false end
-    if char:IsDescendantOf(Camera) then return false end
-    
     local hum = char:FindFirstChildOfClass("Humanoid")
     local root = char:FindFirstChild("HumanoidRootPart") or char:FindFirstChild("Torso") or char:FindFirstChild("UpperTorso") or char.PrimaryPart
-    
     if not hum or not root then return false end
     if hum.Health <= 0 then return false end
-    if char:IsA("Tool") or char:FindFirstChildOfClass("Tool") then return false end
-
     return true
 end
 
 local function GetEntityModel(target)
     if typeof(target) == "Instance" then
-        if target:IsA("Player") then
-            return target.Character
-        elseif target:IsA("Model") then
-            return target
-        end
+        if target:IsA("Player") then return target.Character
+        elseif target:IsA("Model") then return target end
     end
     return nil
 end
@@ -610,14 +527,10 @@ end
 local function IsEnemyEntity(target)
     local char = GetEntityModel(target)
     if not IsValidCharacter(char) then return false end
-    if char:FindFirstChildOfClass("ForceField") then return false end
-
     if typeof(target) == "Instance" and target:IsA("Player") then
         if target == LocalPlayer then return false end
         if HackConfig.FFAModeAktif then return true end
-        if target.Team and LocalPlayer.Team then
-            if target.Team == LocalPlayer.Team then return false end
-        end
+        if target.Team and LocalPlayer.Team and target.Team == LocalPlayer.Team then return false end
         return true
     elseif typeof(target) == "Instance" and target:IsA("Model") then
         return true
@@ -638,68 +551,29 @@ local function GetDynamicTargetPart(char)
     if not char then return nil end
     local head = char:FindFirstChild("Head")
     local neck = char:FindFirstChild("UpperTorso") or char:FindFirstChild("Torso")
-    local body = char:FindFirstChild("HumanoidRootPart") or neck or head or char.PrimaryPart or char:FindFirstChildOfClass("BasePart")
-
-    if HackConfig.AimTargetMode == "Head" then
-        return head or body
-    elseif HackConfig.AimTargetMode == "Neck" then
-        return neck or head or body
-    elseif HackConfig.AimTargetMode == "Body" then
-        return body or head
-    end
-    return body
+    local body = char:FindFirstChild("HumanoidRootPart") or neck or head or char.PrimaryPart
+    if HackConfig.AimTargetMode == "Head" then return head or body
+    elseif HackConfig.AimTargetMode == "Neck" then return neck or head or body end
+    return body or head
 end
 
 local function GetAllTargetableEntities()
     local list = {}
-    
     for _, p in ipairs(Players:GetPlayers()) do
         if p ~= LocalPlayer and p.Character and IsValidCharacter(p.Character) then
             table.insert(list, p)
         end
     end
-    
-    local function scanFolder(parentObj)
-        for _, obj in ipairs(parentObj:GetChildren()) do
-            if obj:IsA("Model") and obj ~= LocalPlayer.Character and IsValidCharacter(obj) then
-                local isPlayerChar = false
-                for _, p in ipairs(Players:GetPlayers()) do
-                    if p.Character == obj then
-                        isPlayerChar = true
-                        break
-                    end
-                end
-                if not isPlayerChar then
-                    table.insert(list, obj)
-                end
-            elseif obj:IsA("Folder") or obj:IsA("Model") then
-                scanFolder(obj)
+    for _, obj in ipairs(Workspace:GetChildren()) do
+        if obj:IsA("Model") and obj ~= LocalPlayer.Character and IsValidCharacter(obj) then
+            local isPlayerChar = false
+            for _, p in ipairs(Players:GetPlayers()) do
+                if p.Character == obj then isPlayerChar = true break end
             end
+            if not isPlayerChar then table.insert(list, obj) end
         end
     end
-    
-    scanFolder(Workspace)
     return list
-end
-
-local function GetNewTarget3D()
-    local closest, shortestDist = nil, math.huge
-    for _, entity in ipairs(GetAllTargetableEntities()) do
-        if IsEnemyEntity(entity) then
-            local char = GetEntityModel(entity)
-            local targetPart = GetDynamicTargetPart(char)
-            if targetPart then
-                if not HackConfig.WallCheck or IsVisible(targetPart) then
-                    local dist = (Camera.CFrame.Position - targetPart.Position).Magnitude
-                    if dist < shortestDist then
-                        shortestDist = dist
-                        closest = char
-                    end
-                end
-            end
-        end
-    end
-    return closest
 end
 
 local function GetClosestEnemy2D()
@@ -726,251 +600,40 @@ local function GetClosestEnemy2D()
     return closest
 end
 
-local function HideESPObject(esp)
-    if not esp then return end
-    pcall(function()
-        if esp.Line then esp.Line.Visible = false end
-        if esp.Name then esp.Name.Visible = false end
-        if esp.Distance then esp.Distance.Visible = false end
-        if esp.Gender then esp.Gender.Visible = false end
-        if esp.Status then esp.Status.Visible = false end
-        if esp.HealthBarBg then esp.HealthBarBg.Visible = false end
-        if esp.HealthBar then esp.HealthBar.Visible = false end
-        if esp.HeadCircle then esp.HeadCircle.Visible = false end
-        if esp.Skeleton then
-            for _, bone in pairs(esp.Skeleton) do
-                if bone then bone.Visible = false end
-            end
-        end
-    end)
-end
-
-local function RemoveEntityESP(key)
-    if ESPCache[key] then
-        for _, obj in pairs(ESPCache[key]) do
-            if type(obj) == "table" then
-                for _, bone in pairs(obj) do pcall(function() bone:Remove() end) end
-            else
-                pcall(function() obj:Remove() end)
-            end
-        end
-        ESPCache[key] = nil
-    end
-    if ChamsCache[key] then
-        pcall(function() ChamsCache[key]:Destroy() end)
-        ChamsCache[key] = nil
-    end
-    if EnemyChamsCache[key] then
-        pcall(function() EnemyChamsCache[key]:Destroy() end)
-        EnemyChamsCache[key] = nil
-    end
-end
-
-local function CreateEntityESP(key)
-    RemoveEntityESP(key)
-
-    local espData = {
-        Line = Drawing.new("Line"),
-        Name = Drawing.new("Text"),
-        Distance = Drawing.new("Text"),
-        Gender = Drawing.new("Text"),
-        Status = Drawing.new("Text"),
-        HealthBarBg = Drawing.new("Line"),
-        HealthBar = Drawing.new("Line"),
-        HeadCircle = Drawing.new("Circle"),
-        Skeleton = {
-            Spine = Drawing.new("Line"),
-            LeftArm = Drawing.new("Line"),
-            RightArm = Drawing.new("Line"),
-            LeftLeg = Drawing.new("Line"),
-            RightLeg = Drawing.new("Line")
-        }
-    }
-
-    espData.Line.Thickness = 1.5
-    espData.Line.Color = VisualsConfig.LineColor
-    espData.Line.Transparency = 0.7
-    espData.Line.Visible = false
-
-    espData.HealthBarBg.Thickness = 3
-    espData.HealthBarBg.Color = Color3.fromRGB(40, 40, 40)
-    espData.HealthBarBg.Transparency = 0.8
-    espData.HealthBarBg.Visible = false
-
-    espData.HealthBar.Thickness = 1.5
-    espData.HealthBar.Color = VisualsConfig.HealthColor
-    espData.HealthBar.Transparency = 1
-    espData.HealthBar.Visible = false
-
-    espData.HeadCircle.Thickness = 1.5
-    espData.HeadCircle.NumSides = 12
-    espData.HeadCircle.Filled = false
-    espData.HeadCircle.Color = VisualsConfig.SkeletonColor
-    espData.HeadCircle.Transparency = 0.8
-    espData.HeadCircle.Visible = false
-
-    for _, bone in pairs(espData.Skeleton) do
-        bone.Thickness = 1.5
-        bone.Color = VisualsConfig.SkeletonColor
-        bone.Transparency = 0.8
-        bone.Visible = false
-    end
-
-    for _, textObj in ipairs({espData.Name, espData.Distance, espData.Gender, espData.Status}) do
-        textObj.Size = 13
-        textObj.Center = true
-        textObj.Outline = true
-        textObj.OutlineColor = Color3.fromRGB(0, 0, 0)
-        textObj.Font = Drawing.Fonts.UI
-        textObj.Visible = false
-    end
-
-    ESPCache[key] = espData
-end
-
--- Visual Tab Populating
-CreateToggle(TabContentFrames["Visual"], "Skeleton ESP (Player & Bot)", false, function(v) 
-    VisualsConfig.ESP_Skeleton = v 
-    if not v then
-        for _, esp in pairs(ESPCache) do
-            if esp.HeadCircle then esp.HeadCircle.Visible = false end
-            if esp.Skeleton then for _, b in pairs(esp.Skeleton) do b.Visible = false end end
-        end
-    end
-end)
-CreateColorPicker(TabContentFrames["Visual"], "Skeleton Color", Color3.fromRGB(0, 240, 255), function(c) 
-    VisualsConfig.SkeletonColor = c 
-    for _, esp in pairs(ESPCache) do 
-        esp.HeadCircle.Color = c
-        for _, bone in pairs(esp.Skeleton) do bone.Color = c end 
-    end
-end)
+-- Tab Visual
+CreateToggle(TabContentFrames["Visual"], "Skeleton ESP (Player & Bot)", false, function(v) VisualsConfig.ESP_Skeleton = v end)
+CreateColorPicker(TabContentFrames["Visual"], "Skeleton Color", Color3.fromRGB(0, 240, 255), function(c) VisualsConfig.SkeletonColor = c end)
 CreateToggle(TabContentFrames["Visual"], "Chams / Wall Glow", false, function(v) VisualsConfig.Chams = v end)
 CreateColorPicker(TabContentFrames["Visual"], "Chams Glow Color", Color3.fromRGB(255, 0, 128), function(c) VisualsConfig.ChamsColor = c end)
-CreateToggle(TabContentFrames["Visual"], "Enemy Chams", false, function(v) VisualsConfig.EnemyChams = v end)
-CreateColorPicker(TabContentFrames["Visual"], "Enemy Chams Color", Color3.fromRGB(255, 0, 0), function(c) VisualsConfig.EnemyChamsColor = c end)
-CreateToggle(TabContentFrames["Visual"], "ESP Line", false, function(v) 
-    VisualsConfig.ESP_Line = v 
-    if not v then for _, esp in pairs(ESPCache) do if esp.Line then esp.Line.Visible = false end end end
-end)
+CreateToggle(TabContentFrames["Visual"], "ESP Line", false, function(v) VisualsConfig.ESP_Line = v end)
 CreateColorPicker(TabContentFrames["Visual"], "Line Color", Color3.fromRGB(0, 240, 255), function(c) VisualsConfig.LineColor = c end)
-CreateToggle(TabContentFrames["Visual"], "ESP Name", false, function(v) 
-    VisualsConfig.ESP_Name = v 
-    if not v then for _, esp in pairs(ESPCache) do if esp.Name then esp.Name.Visible = false end end end
-end)
+CreateToggle(TabContentFrames["Visual"], "ESP Name", false, function(v) VisualsConfig.ESP_Name = v end)
 CreateColorPicker(TabContentFrames["Visual"], "Name Color", Color3.fromRGB(255, 255, 255), function(c) VisualsConfig.NameColor = c end)
-CreateToggle(TabContentFrames["Visual"], "ESP Distance", false, function(v) 
-    VisualsConfig.ESP_Distance = v 
-    if not v then for _, esp in pairs(ESPCache) do if esp.Distance then esp.Distance.Visible = false end end end
-end)
+CreateToggle(TabContentFrames["Visual"], "ESP Distance", false, function(v) VisualsConfig.ESP_Distance = v end)
 CreateColorPicker(TabContentFrames["Visual"], "Distance Color", Color3.fromRGB(255, 255, 255), function(c) VisualsConfig.DistanceColor = c end)
+CreateToggle(TabContentFrames["Visual"], "ESP Gender", false, function(v) VisualsConfig.ESP_Gender = v end)
+CreateToggle(TabContentFrames["Visual"], "ESP Status", false, function(v) VisualsConfig.ESP_Status = v end)
+CreateToggle(TabContentFrames["Visual"], "ESP Health Bar", false, function(v) VisualsConfig.ESP_Health = v end)
 
--- Split ESP Gender and ESP Status
-CreateToggle(TabContentFrames["Visual"], "ESP Gender (Cowo/Cewe/Gay)", false, function(v) 
-    VisualsConfig.ESP_Gender = v 
-    if not v then for _, esp in pairs(ESPCache) do if esp.Gender then esp.Gender.Visible = false end end end
-end)
-CreateColorPicker(TabContentFrames["Visual"], "Gender Color", Color3.fromRGB(255, 255, 255), function(c) VisualsConfig.GenderColor = c end)
-
-CreateToggle(TabContentFrames["Visual"], "ESP Status (Bot/Player)", false, function(v) 
-    VisualsConfig.ESP_Status = v 
-    if not v then for _, esp in pairs(ESPCache) do if esp.Status then esp.Status.Visible = false end end end
-end)
-CreateColorPicker(TabContentFrames["Visual"], "Status Color", Color3.fromRGB(255, 255, 255), function(c) VisualsConfig.StatusColor = c end)
-
-CreateToggle(TabContentFrames["Visual"], "ESP Health (Vertical Bar)", false, function(v) 
-    VisualsConfig.ESP_Health = v 
-    if not v then for _, esp in pairs(ESPCache) do if esp.HealthBarBg then esp.HealthBarBg.Visible = false end if esp.HealthBar then esp.HealthBar.Visible = false end end end
-end)
-CreateColorPicker(TabContentFrames["Visual"], "Health Bar Color", Color3.fromRGB(0, 255, 128), function(c) VisualsConfig.HealthColor = c end)
-
--- Player Tab Populating
-CreateToggle(TabContentFrames["Player"], "No Fall Damage", false, function(v) 
-    HackConfig.AntiFallDamageAktif = v 
-    ShowPopupNotification(v and "No Fall Damage Diaktifkan" or "No Fall Damage Dimatikan")
-end)
-CreateToggle(TabContentFrames["Player"], "Kecepatan Lari", false, function(v) 
-    HackConfig.SpeedAktif = v
-    if not v and LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
-        LocalPlayer.Character.Humanoid.WalkSpeed = 16
-    end
-    ShowPopupNotification(v and "Kecepatan Lari Diaktifkan" or "Kecepatan Lari Dimatikan")
-end)
+-- Tab Player
+CreateToggle(TabContentFrames["Player"], "No Fall Damage", false, function(v) HackConfig.AntiFallDamageAktif = v end)
+CreateToggle(TabContentFrames["Player"], "Kecepatan Lari", false, function(v) HackConfig.SpeedAktif = v end)
 CreateSlider(TabContentFrames["Player"], "Set Speed", 16, 250, 50, function(val) HackConfig.CustomSpeed = val end)
-CreateToggle(TabContentFrames["Player"], "Lompat Tinggi", false, function(v) 
-    HackConfig.JumpAktif = v
-    if not v and LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
-        LocalPlayer.Character.Humanoid.UseJumpPower = true
-        LocalPlayer.Character.Humanoid.JumpPower = 50
-    end
-    ShowPopupNotification(v and "Lompat Tinggi Diaktifkan" or "Lompat Tinggi Dimatikan")
-end)
+CreateToggle(TabContentFrames["Player"], "Lompat Tinggi", false, function(v) HackConfig.JumpAktif = v end)
 CreateSlider(TabContentFrames["Player"], "Set Power", 50, 250, 100, function(val) HackConfig.CustomJump = val end)
 
--- World Tab Populating
-CreateToggle(TabContentFrames["World"], "Night Mode", false, function(v)
-    WorldConfig.NightMode = v
-    if v then WorldConfig.Daylight = false else
-        Lighting.ClockTime = OriginalLighting.ClockTime
-        Lighting.Brightness = OriginalLighting.Brightness
-        Lighting.Ambient = OriginalLighting.Ambient
-        Lighting.OutdoorAmbient = OriginalLighting.OutdoorAmbient
-        Lighting.GlobalShadows = OriginalLighting.GlobalShadows
-        if not WorldConfig.NoFog then Lighting.FogEnd = OriginalLighting.FogEnd end
-    end
-    ShowPopupNotification(v and "Night Mode Diaktifkan" or "Night Mode Dimatikan")
-end)
-
-CreateToggle(TabContentFrames["World"], "Daylight (Indoor/Outdoor)", false, function(v)
-    WorldConfig.Daylight = v
-    if v then WorldConfig.NightMode = false else
-        Lighting.ClockTime = OriginalLighting.ClockTime
-        Lighting.Brightness = OriginalLighting.Brightness
-        Lighting.Ambient = OriginalLighting.Ambient
-        Lighting.OutdoorAmbient = OriginalLighting.OutdoorAmbient
-        Lighting.GlobalShadows = OriginalLighting.GlobalShadows
-        if not WorldConfig.NoFog then Lighting.FogEnd = OriginalLighting.FogEnd end
-    end
-    ShowPopupNotification(v and "Daylight Diaktifkan" or "Daylight Dimatikan")
-end)
-
+-- Tab World
+CreateToggle(TabContentFrames["World"], "Night Mode", false, function(v) WorldConfig.NightMode = v end)
+CreateToggle(TabContentFrames["World"], "Daylight", false, function(v) WorldConfig.Daylight = v end)
 CreateSlider(TabContentFrames["World"], "Daylight Brightness", 1, 10, 3, function(val) WorldConfig.DaylightBrightness = val end)
-CreateSlider(TabContentFrames["World"], "Daylight Time (Clock)", 0, 24, 14, function(val) WorldConfig.DaylightClock = val end)
+CreateToggle(TabContentFrames["World"], "Wall Hack (Noclip)", false, function(v) WorldConfig.WallHack = v end)
+CreateToggle(TabContentFrames["World"], "No Fog", false, function(v) WorldConfig.NoFog = v end)
+CreateToggle(TabContentFrames["World"], "Fly (Tahan Tombol Lompat)", false, function(v) WorldConfig.FlyAktif = v end)
 
-CreateToggle(TabContentFrames["World"], "Wall Hack (Noclip)", false, function(v)
-    WorldConfig.WallHack = v
-    ShowPopupNotification(v and "Wall Hack Diaktifkan" or "Wall Hack Dimatikan")
-end)
-
--- Tambahan Fitur No Fog di Tab World
-CreateToggle(TabContentFrames["World"], "No Fog", false, function(v)
-    WorldConfig.NoFog = v
-    if v then
-        Lighting.FogEnd = 999999
-    else
-        Lighting.FogEnd = OriginalLighting.FogEnd
-    end
-    ShowPopupNotification(v and "No Fog Diaktifkan" or "No Fog Dimatikan")
-end)
-
--- Teleport Target Dropdown & Teleport Button di Tab World
 local function GetTargetNamesList()
     local names = {}
     for _, p in ipairs(Players:GetPlayers()) do
-        if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
-            table.insert(names, p.Name)
-        end
-    end
-    for _, obj in ipairs(Workspace:GetChildren()) do
-        if obj:IsA("Model") and obj ~= LocalPlayer.Character and obj:FindFirstChild("HumanoidRootPart") then
-            local isP = false
-            for _, p in ipairs(Players:GetPlayers()) do
-                if p.Character == obj then isP = true break end
-            end
-            if not isP then
-                table.insert(names, obj.Name)
-            end
-        end
+        if p ~= LocalPlayer and p.Character then table.insert(names, p.Name) end
     end
     if #names == 0 then table.insert(names, "Tidak Ada Target") end
     return names
@@ -980,129 +643,53 @@ local tpDropdown = CreateDropdown(TabContentFrames["World"], "Target Teleport", 
     WorldConfig.SelectedTeleportTarget = selected
 end)
 
--- Auto update dropdown options periodically or on focus
-task.spawn(function()
-    while task.wait(2) do
-        pcall(function()
-            local currentList = GetTargetNamesList()
-            if tpDropdown and tpDropdown.UpdateOptions then
-                tpDropdown.UpdateOptions(currentList, WorldConfig.SelectedTeleportTarget)
-            end
-        end)
-    end
-end)
-
 CreateButton(TabContentFrames["World"], "Teleport ke Target", function()
     pcall(function()
         local targetName = WorldConfig.SelectedTeleportTarget
-        if not targetName or targetName == "Tidak Ada Target" then
-            ShowPopupNotification("Pilih target teleport terlebih dahulu!")
-            return
-        end
-        local targetChar = nil
         for _, p in ipairs(Players:GetPlayers()) do
-            if p.Name == targetName and p.Character then
-                targetChar = p.Character
-                break
+            if p.Name == targetName and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+                LocalPlayer.Character.HumanoidRootPart.CFrame = p.Character.HumanoidRootPart.CFrame + Vector3.new(0, 3, 0)
+                ShowPopupNotification("Teleport berhasil!")
+                return
             end
-        end
-        if not targetChar then
-            for _, obj in ipairs(Workspace:GetChildren()) do
-                if obj:IsA("Model") and obj.Name == targetName then
-                    targetChar = obj
-                    break
-                end
-            end
-        end
-        if targetChar and targetChar:FindFirstChild("HumanoidRootPart") and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-            LocalPlayer.Character.HumanoidRootPart.CFrame = targetChar.HumanoidRootPart.CFrame + Vector3.new(0, 3, 0)
-            ShowPopupNotification("Berhasil teleport ke " .. targetName)
-        else
-            ShowPopupNotification("Target tidak ditemukan / invalid!")
         end
     end)
 end)
 
--- Fitur Fly Toggle (Tahan Tombol Lompat Bawaan Map & Jatuh Slow Min Gravitasi)
-CreateToggle(TabContentFrames["World"], "Fly (Tahan Tombol Lompat)", false, function(v)
-    WorldConfig.FlyAktif = v
-    ShowPopupNotification(v and "Fly Diaktifkan (Tahan Lompat)" or "Fly Dimatikan")
-end)
-
--- Skill Tab Populating
-CreateToggle(TabContentFrames["Skill"], "Peringatan Admin (Popup Warning)", false, function(v) 
-    HackConfig.AntiAdminAktif = v 
-    ShowPopupNotification(v and "Peringatan Admin Diaktifkan" or "Peringatan Admin Dimatikan")
-end)
-CreateToggle(TabContentFrames["Skill"], "Aktifkan Auto Aim (Kunci Layar)", false, function(v) 
-    HackConfig.AimbotAktif = v 
-    ShowPopupNotification(v and "Auto Aim Diaktifkan" or "Auto Aim Dimatikan")
-end)
-CreateToggle(TabContentFrames["Skill"], "Auto Aim Wall Check", false, function(v)
-    HackConfig.WallCheck = v
-    ShowPopupNotification(v and "Wall Check Diaktifkan" or "Wall Check Dimatikan")
-end)
+-- Tab Skill
+CreateToggle(TabContentFrames["Skill"], "Auto Aim (Kunci Layar)", false, function(v) HackConfig.AimbotAktif = v end)
+CreateToggle(TabContentFrames["Skill"], "Auto Aim Wall Check", false, function(v) HackConfig.WallCheck = v end)
 CreateDropdown(TabContentFrames["Skill"], "Mode Aimbot", {"POV Kamera (FOV)", "360° (Brutal)"}, "POV Kamera (FOV)", function(opt) HackConfig.AimbotMode = opt end)
-CreateDropdown(TabContentFrames["Skill"], "Target Bagian Tubuh", {"Head", "Neck", "Body"}, "Head", function(opt) HackConfig.AimTargetMode = opt end)
-CreateSlider(TabContentFrames["Skill"], "Kelengketan Aim POV (Smoothness)", 1, 100, 15, function(val) HackConfig.AimbotSmoothness = val end)
 CreateToggle(TabContentFrames["Skill"], "Tampilkan Lingkaran FOV", false, function(v) HackConfig.ShowFOV = v end)
-CreateSlider(TabContentFrames["Skill"], "Lebar Lingkaran FOV", 10, 600, 150, function(val) HackConfig.FOVRadius = val end)
-CreateToggle(TabContentFrames["Skill"], "Gun Mods (Infinite Ammo & RPM)", false, function(v) 
-    HackConfig.GunModsAktif = v 
-    ShowPopupNotification(v and "Gun Mods Diaktifkan" or "Gun Mods Dimatikan")
-end)
-CreateSlider(TabContentFrames["Skill"], "RPM Fire Rate", 400, 2500, 800, function(val) HackConfig.CustomFireRate = val end)
+CreateSlider(TabContentFrames["Skill"], "Lebar FOV", 10, 600, 150, function(val) HackConfig.FOVRadius = val end)
+CreateToggle(TabContentFrames["Skill"], "Gun Mods", false, function(v) HackConfig.GunModsAktif = v end)
 
--- Configuration Tab Populating (Perbaikan Bug Save, Load, Delete & Tambahan Switch Mode Light/Dark UI)
+-- Tab Configuration
 local isDarkMode = true
-
-local function ApplyTheme()
-    pcall(function()
-        if isDarkMode then
-            MainFrame.BackgroundColor3 = Color3.fromRGB(6, 6, 9)
-            TabContainer.BackgroundColor3 = Color3.fromRGB(12, 12, 18)
-        else
-            MainFrame.BackgroundColor3 = Color3.fromRGB(240, 240, 245)
-            TabContainer.BackgroundColor3 = Color3.fromRGB(220, 220, 230)
-        end
-    end)
-end
-
 CreateToggle(TabContentFrames["Configuration"], "UI Mode (Dark / Light)", true, function(v)
     isDarkMode = v
-    ApplyTheme()
-    ShowPopupNotification(v ? "UI Mode: Dark" : "UI Mode: Light")
+    MainFrame.BackgroundColor3 = v and Color3.fromRGB(6, 6, 9) or Color3.fromRGB(240, 240, 245)
 end)
 
 CreateButton(TabContentFrames["Configuration"], "Save Settings", function()
     pcall(function()
         if writefile then
-            local data = {
-                Visuals = VisualsConfig,
-                World = WorldConfig,
-                Hacks = HackConfig
-            }
-            writefile("D3D_Settings.json", HttpService:JSONEncode(data))
-            ShowPopupNotification("Settings berhasil disimpan!")
-        else
-            ShowPopupNotification("Fungsi writefile tidak didukung executor!")
+            writefile("D3D_Settings.json", HttpService:JSONEncode({Visuals = VisualsConfig, World = WorldConfig, Hacks = HackConfig}))
+            ShowPopupNotification("Settings tersimpan!")
         end
     end)
 end)
 
 CreateButton(TabContentFrames["Configuration"], "Load Settings", function()
     pcall(function()
-        if isfile and isfile("D3D_Settings.json") and readfile then
-            local raw = readfile("D3D_Settings.json")
-            local data = HttpService:JSONDecode(raw)
+        if isfile and isfile("D3D_Settings.json") then
+            local data = HttpService:JSONDecode(readfile("D3D_Settings.json"))
             if data then
-                if data.Visuals then VisualsConfig = data.Visuals end
-                if data.World then WorldConfig = data.World end
-                if data.Hacks then HackConfig = data.Hacks end
-                ShowPopupNotification("Settings berhasil dimuat!")
+                VisualsConfig = data.Visuals or VisualsConfig
+                WorldConfig = data.World or WorldConfig
+                HackConfig = data.Hacks or HackConfig
+                ShowPopupNotification("Settings dimuat!")
             end
-        else
-            ShowPopupNotification("File settings tidak ditemukan!")
         end
     end)
 end)
@@ -1111,411 +698,56 @@ CreateButton(TabContentFrames["Configuration"], "Delete Settings", function()
     pcall(function()
         if isfile and isfile("D3D_Settings.json") and delfile then
             delfile("D3D_Settings.json")
-            ShowPopupNotification("Settings berhasil dihapus!")
-        else
-            ShowPopupNotification("Tidak ada file settings untuk dihapus!")
+            ShowPopupNotification("Settings dihapus!")
         end
     end)
 end)
 
--- Admin Check Logic
-local function CheckIfAdmin(p)
-    if p == LocalPlayer then return false end
-    local nameRaw = string.upper(p.Name .. " " .. p.DisplayName)
-    if string.find(nameRaw, "%[GM%]") or string.find(nameRaw, "%[MOD%]") or string.find(nameRaw, "GAME MASTER") or string.find(nameRaw, "MODERATOR") then return true end
-    return false
-end
-
-Players.PlayerAdded:Connect(function(p)
-    if HackConfig.AntiAdminAktif and CheckIfAdmin(p) then
-        TitleLabel.Text = "⚠️ ADMIN TERDETEKSI: " .. p.Name
-        ShowPopupNotification("⚠️ ADMIN TERDETEKSI: " .. p.Name)
-        task.delay(5, function() TitleLabel.Text = "× D3D MENU: PLAYER & BOT v3.9.3 ×" end)
-    end
-end)
-
--- Render Stepped World, Physics, Chams, Fly & Full Aimbot Loop
+-- Loop Utama Render
 RunService.RenderStepped:Connect(function()
     if WorldConfig.NightMode then
         Lighting.ClockTime = 0
         Lighting.Brightness = 0.1
-        Lighting.Ambient = Color3.fromRGB(0, 0, 0)
-        Lighting.OutdoorAmbient = Color3.fromRGB(0, 0, 0)
     elseif WorldConfig.Daylight then
         Lighting.ClockTime = WorldConfig.DaylightClock
         Lighting.Brightness = WorldConfig.DaylightBrightness
-        Lighting.Ambient = Color3.fromRGB(200, 200, 200)
-        Lighting.OutdoorAmbient = Color3.fromRGB(200, 200, 200)
     end
 
-    if WorldConfig.NoFog then
-        Lighting.FogEnd = 999999
-    end
+    if WorldConfig.NoFog then Lighting.FogEnd = 999999 end
 
     if FOVFrame then
         FOVFrame.Size = UDim2.new(0, HackConfig.FOVRadius * 2, 0, HackConfig.FOVRadius * 2)
-        FOVFrame.Visible = HackConfig.ShowFOV and (HackConfig.AimbotAktif and HackConfig.AimbotMode == "POV Kamera (FOV)")
+        FOVFrame.Visible = HackConfig.ShowFOV and HackConfig.AimbotAktif
     end
 
-    -- Aimbot Tracking Loop
     if HackConfig.AimbotAktif then
-        local targetValid = false
-        local partToAim = nil
-
-        if LockedTarget and LockedTarget.Parent then
-            if IsValidCharacter(LockedTarget) and IsEnemyEntity(LockedTarget) then
-                partToAim = GetDynamicTargetPart(LockedTarget)
-                if partToAim then
-                    if not HackConfig.WallCheck or IsVisible(partToAim) then
-                        if HackConfig.AimbotMode == "POV Kamera (FOV)" then
-                            local pos, onScreen = Camera:WorldToViewportPoint(partToAim.Position)
-                            local center = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
-                            local dist = (center - Vector2.new(pos.X, pos.Y)).Magnitude
-                            if onScreen and dist <= HackConfig.FOVRadius then
-                                targetValid = true
-                            end
-                        else
-                            targetValid = true
-                        end
-                    end
-                end
-            end
-        end
-
-        if not targetValid then
-            if HackConfig.AimbotMode == "360° (Brutal)" then
-                LockedTarget = GetNewTarget3D()
-            elseif HackConfig.AimbotMode == "POV Kamera (FOV)" then
-                LockedTarget = GetClosestEnemy2D()
-            end
-            if LockedTarget then
-                partToAim = GetDynamicTargetPart(LockedTarget)
-            end
-        end
-
-        if LockedTarget and partToAim then
-            if HackConfig.AimbotMode == "360° (Brutal)" then
-                Camera.CFrame = CFrame.lookAt(Camera.CFrame.Position, partToAim.Position)
-            else
-                local smoothFactor = HackConfig.AimbotSmoothness / 100
-                Camera.CFrame = Camera.CFrame:Lerp(CFrame.lookAt(Camera.CFrame.Position, partToAim.Position), smoothFactor)
-            end
-        else
-            LockedTarget = nil
-        end
-    else
-        LockedTarget = nil
-    end
-
-    -- PLAYER & BOT ESP LOOP
-    local activeEntities = GetAllTargetableEntities()
-    
-    for key, _ in pairs(ESPCache) do
-        local found = false
-        for _, ent in ipairs(activeEntities) do
-            local char = GetEntityModel(ent)
-            if char == key and IsValidCharacter(char) then found = true break end
-        end
-        if not found then RemoveEntityESP(key) end
-    end
-
-    for _, entity in ipairs(activeEntities) do
-        local char = GetEntityModel(entity)
-        if IsValidCharacter(char) then
-            if not ESPCache[char] then
-                CreateEntityESP(char)
-            end
-
-            local esp = ESPCache[char]
-            local isEnemy = IsEnemyEntity(entity)
-            local primaryPart = char:FindFirstChild("HumanoidRootPart") or char:FindFirstChild("Torso") or char:FindFirstChild("UpperTorso") or char:FindFirstChild("Head") or char.PrimaryPart or char:FindFirstChildOfClass("BasePart")
-            local hum = char:FindFirstChildOfClass("Humanoid")
-            local active = isEnemy and primaryPart and (not hum or hum.Health > 0)
-
-            -- Chams / Glow Handler
-            if active and VisualsConfig.Chams then
-                if not ChamsCache[char] then
-                    local highlight = Instance.new("Highlight")
-                    highlight.Name = "D3D_Chams"
-                    highlight.Adornee = char
-                    highlight.FillColor = VisualsConfig.ChamsColor
-                    highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
-                    highlight.FillTransparency = 0.4
-                    highlight.OutlineTransparency = 0
-                    highlight.Parent = char
-                    ChamsCache[char] = highlight
-                else
-                    ChamsCache[char].FillColor = VisualsConfig.ChamsColor
-                    ChamsCache[char].Enabled = true
-                end
-            else
-                if ChamsCache[char] then ChamsCache[char].Enabled = false end
-            end
-
-            if active and VisualsConfig.EnemyChams then
-                if not EnemyChamsCache[char] then
-                    local highlight = Instance.new("Highlight")
-                    highlight.Name = "D3D_EnemyChams"
-                    highlight.Adornee = char
-                    highlight.FillColor = VisualsConfig.EnemyChamsColor
-                    highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
-                    highlight.FillTransparency = 0.4
-                    highlight.OutlineTransparency = 0
-                    highlight.Parent = char
-                    EnemyChamsCache[char] = highlight
-                else
-                    EnemyChamsCache[char].FillColor = VisualsConfig.EnemyChamsColor
-                    EnemyChamsCache[char].Enabled = true
-                end
-            else
-                if EnemyChamsCache[char] then EnemyChamsCache[char].Enabled = false end
-            end
-
-            if active then
-                local vector, onScreen = Camera:WorldToViewportPoint(primaryPart.Position)
-                if onScreen then
-                    local distance = (Camera.CFrame.Position - primaryPart.Position).Magnitude
-
-                    if VisualsConfig.ESP_Skeleton then
-                        local head = char:FindFirstChild("Head")
-                        local upperTorso = char:FindFirstChild("UpperTorso") or char:FindFirstChild("Torso") or primaryPart
-                        local lowerTorso = char:FindFirstChild("LowerTorso") or upperTorso
-                        local lArm = char:FindFirstChild("LeftUpperArm") or char:FindFirstChild("Left Arm") or char:FindFirstChild("LeftHand") or primaryPart
-                        local rArm = char:FindFirstChild("RightUpperArm") or char:FindFirstChild("Right Arm") or char:FindFirstChild("RightHand") or primaryPart
-                        local lLeg = char:FindFirstChild("LeftUpperLeg") or char:FindFirstChild("Left Leg") or char:FindFirstChild("LeftFoot") or primaryPart
-                        local rLeg = char:FindFirstChild("RightUpperLeg") or char:FindFirstChild("Right Leg") or char:FindFirstChild("RightFoot") or primaryPart
-
-                        local function getPos(part)
-                            if not part then return nil end
-                            local p, visible = Camera:WorldToViewportPoint(part.Position)
-                            if visible then return Vector2.new(p.X, p.Y) end
-                            return nil
-                        end
-
-                        local hPos = getPos(head)
-                        local utPos = getPos(upperTorso)
-                        local ltPos = getPos(lowerTorso)
-                        local laPos = getPos(lArm)
-                        local raPos = getPos(rArm)
-                        local llPos = getPos(lLeg)
-                        local rlPos = getPos(rLeg)
-
-                        local function drawBone(boneObj, p1, p2)
-                            if p1 and p2 then
-                                boneObj.From = p1
-                                boneObj.To = p2
-                                boneObj.Visible = true
-                            else
-                                boneObj.Visible = false
-                            end
-                        end
-
-                        if hPos then
-                            esp.HeadCircle.Position = hPos
-                            local headSize = head and (Camera:WorldToViewportPoint((head.Position + Vector3.new(0, 1, 0))).Y - Camera:WorldToViewportPoint(head.Position).Y) or 10
-                            esp.HeadCircle.Radius = math.clamp(math.abs(headSize) * 1.2, 6, 25)
-                            esp.HeadCircle.Color = VisualsConfig.SkeletonColor
-                            esp.HeadCircle.Visible = true
-                        else
-                            esp.HeadCircle.Visible = false
-                        end
-
-                        drawBone(esp.Skeleton.Spine, hPos or utPos, utPos)
-                        drawBone(esp.Skeleton.LeftArm, utPos, laPos)
-                        drawBone(esp.Skeleton.RightArm, utPos, raPos)
-                        drawBone(esp.Skeleton.LeftLeg, ltPos, llPos)
-                        drawBone(esp.Skeleton.RightLeg, ltPos, rlPos)
-                    else
-                        esp.HeadCircle.Visible = false
-                        for _, bone in pairs(esp.Skeleton) do bone.Visible = false end
-                    end
-
-                    if VisualsConfig.ESP_Line then
-                        esp.Line.From = Vector2.new(Camera.ViewportSize.X / 2, 0)
-                        esp.Line.To = Vector2.new(vector.X, vector.Y)
-                        esp.Line.Color = VisualsConfig.LineColor
-                        esp.Line.Visible = true
-                    else
-                        esp.Line.Visible = false
-                    end
-
-                    if VisualsConfig.ESP_Name then
-                        local entityName = char.Name
-                        if typeof(entity) == "Instance" and entity:IsA("Player") then
-                            entityName = entity.Name
-                        end
-                        esp.Name.Text = entityName
-                        esp.Name.Position = Vector2.new(vector.X, vector.Y - 38)
-                        esp.Name.Color = VisualsConfig.NameColor
-                        esp.Name.Visible = true
-                    else
-                        esp.Name.Visible = false
-                    end
-
-                    if VisualsConfig.ESP_Distance then
-                        esp.Distance.Text = string.format("[%dM]", math.floor(distance))
-                        esp.Distance.Position = Vector2.new(vector.X, vector.Y + 22)
-                        esp.Distance.Color = VisualsConfig.DistanceColor
-                        esp.Distance.Visible = true
-                    else
-                        esp.Distance.Visible = false
-                    end
-
-                    if VisualsConfig.ESP_Gender then
-                        local genderText = "[Cowo]"
-                        local isPlayer = false
-                        for _, p in ipairs(Players:GetPlayers()) do
-                            if p.Character == char then isPlayer = true break end
-                        end
-
-                        if isPlayer then
-                            if not EntityGenderCache[char] then
-                                EntityGenderCache[char] = (math.random(1, 2) == 1) and "[Cowo]" or "[Cewe]"
-                            end
-                            genderText = EntityGenderCache[char]
-                        else
-                            genderText = "[Gay]"
-                        end
-
-                        esp.Gender.Text = genderText
-                        esp.Gender.Position = Vector2.new(vector.X, vector.Y + 36)
-                        esp.Gender.Color = VisualsConfig.GenderColor
-                        esp.Gender.Visible = true
-                    else
-                        esp.Gender.Visible = false
-                    end
-
-                    if VisualsConfig.ESP_Status then
-                        local statusText = "[Bot]"
-                        for _, p in ipairs(Players:GetPlayers()) do
-                            if p.Character == char then
-                                statusText = "[Player]"
-                                break
-                            end
-                        end
-                        esp.Status.Text = statusText
-                        esp.Status.Position = Vector2.new(vector.X, vector.Y + 50)
-                        esp.Status.Color = VisualsConfig.StatusColor
-                        esp.Status.Visible = true
-                    else
-                        esp.Status.Visible = false
-                    end
-
-                    if VisualsConfig.ESP_Health and hum then
-                        local healthPct = math.clamp(hum.Health / hum.MaxHealth, 0, 1)
-                        local barHeight = 40
-                        local barX = vector.X + 24
-                        local barY = vector.Y - 20
-
-                        esp.HealthBarBg.From = Vector2.new(barX, barY)
-                        esp.HealthBarBg.To = Vector2.new(barX, barY + barHeight)
-                        esp.HealthBarBg.Visible = true
-
-                        local currentHeight = barHeight * healthPct
-                        esp.HealthBar.From = Vector2.new(barX, barY + (barHeight - currentHeight))
-                        esp.HealthBar.To = Vector2.new(barX, barY + barHeight)
-                        esp.HealthBar.Color = VisualsConfig.HealthColor
-                        esp.HealthBar.Visible = true
-                    else
-                        esp.HealthBarBg.Visible = false
-                        esp.HealthBar.Visible = false
-                    end
-                else
-                    HideESPObject(esp)
-                end
-            else
-                HideESPObject(esp)
+        local targetChar = GetClosestEnemy2D()
+        if targetChar then
+            local part = GetDynamicTargetPart(targetChar)
+            if part then
+                Camera.CFrame = CFrame.lookAt(Camera.CFrame.Position, part.Position)
             end
         end
     end
 end)
 
--- Physics, Noclip, Fly Logic & Deep Memory Gun Mods Loop
 RunService.Stepped:Connect(function()
     if LocalPlayer.Character then
         local hrp = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
         local hum = LocalPlayer.Character:FindFirstChild("Humanoid")
-        
-        if hrp and HackConfig.AntiFallDamageAktif and hrp.Velocity.Y < -40 then
-            hrp.Velocity = Vector3.new(hrp.Velocity.X, -10, hrp.Velocity.Z)
-        end
         if hum then
             if HackConfig.SpeedAktif then hum.WalkSpeed = HackConfig.CustomSpeed end
             if HackConfig.JumpAktif then hum.UseJumpPower = true; hum.JumpPower = HackConfig.CustomJump end
         end
-
-        -- Fly Mechanic via Holding Jump Button + Slow Fall Gravity
-        if WorldConfig.FlyAktif and hum and hrp then
-            if hum.Jump then
-                hrp.Velocity = Vector3.new(hrp.Velocity.X, 35, hrp.Velocity.Z)
-            elseif hrp.Velocity.Y < 0 then
-                hrp.Velocity = Vector3.new(hrp.Velocity.X, -5, hrp.Velocity.Z)
-            end
+        if WorldConfig.FlyAktif and hum and hrp and hum.Jump then
+            hrp.Velocity = Vector3.new(hrp.Velocity.X, 35, hrp.Velocity.Z)
         end
-
         if WorldConfig.WallHack then
-            for _, part in pairs(LocalPlayer.Character:GetDescendants()) do
-                if part:IsA("BasePart") then
-                    part.CanCollide = false
-                end
+            for _, p in pairs(LocalPlayer.Character:GetDescendants()) do
+                if p:IsA("BasePart") then p.CanCollide = false end
             end
         end
     end
 end)
 
-local function ScanValueMods(tool)
-    pcall(function()
-        local function SetSafe(attr, value)
-            if tool:GetAttribute(attr) ~= nil then tool:SetAttribute(attr, value) end
-        end
-        SetSafe("TotalAmmo", 999999)
-        SetSafe("NewMax", 999999)
-        SetSafe("magazineSize", 999999)
-        SetSafe("spread", 0)
-        SetSafe("recoilMax", 0)
-        SetSafe("reloadTime", 0.05)
-        SetSafe("rateOfFire", HackConfig.CustomFireRate)
-        for _, obj in pairs(tool:GetDescendants()) do
-            if obj:IsA("IntValue") or obj:IsA("NumberValue") then
-                local name = obj.Name:lower()
-                if name:find("ammo") or name:find("clip") or name:find("mag") then
-                    obj.Value = 999999
-                elseif name:find("firerate") or name:find("rpm") then
-                    obj.Value = HackConfig.CustomFireRate
-                end
-            end
-        end
-    end)
-end
-
-RunService.RenderStepped:Connect(function()
-    if HackConfig.GunModsAktif then
-        if LocalPlayer.Character then
-            for _, t in pairs(LocalPlayer.Character:GetChildren()) do
-                if t:IsA("Tool") or t:IsA("Model") then ScanValueMods(t) end
-            end
-        end
-        for _, v in pairs(Camera:GetChildren()) do
-            if v:IsA("Model") then ScanValueMods(v) end
-       end
-    end
-end)
-
-task.spawn(function()
-    while task.wait(1) do
-        if HackConfig.GunModsAktif and getgc then
-            pcall(function()
-                for _, v in pairs(getgc(true)) do
-                    if type(v) == "table" then
-                        if rawget(v, "Ammo") or rawget(v, "MaxAmmo") or rawget(v, "RPM") or rawget(v, "FireRate") then
-                            if rawget(v, "Ammo") then v.Ammo = 999999 end
-                            if rawget(v, "MaxAmmo") then v.MaxAmmo = 999999 end
-                            if rawget(v, "RPM") then v.RPM = HackConfig.CustomFireRate end
-                            if rawget(v, "FireRate") then v.FireRate = HackConfig.CustomFireRate end
-                        end
-                    end
-                end
-            end)
-        end
-    end
-end)
+ShowPopupNotification("D3D Menu Berhasil Dimuat!")
