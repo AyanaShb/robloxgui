@@ -1,4 +1,4 @@
--- v3.5 --
+-- v3.6 --
 
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
@@ -87,7 +87,7 @@ pcall(function()
 end)
 
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "D3D_Ultimate_Android_V3_5"
+ScreenGui.Name = "D3D_Ultimate_Android_V3_6"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
@@ -288,7 +288,7 @@ end)
 local TitleLabel = Instance.new("TextLabel")
 TitleLabel.Size = UDim2.new(1, 0, 0, 36)
 TitleLabel.BackgroundTransparency = 1
-TitleLabel.Text = "× D3D MENU: OMNI BOT & PLAYER v3.5 ×"
+TitleLabel.Text = "× D3D MENU: OMNI BOT & PLAYER v3.6 ×"
 TitleLabel.TextColor3 = Color3.fromRGB(240, 240, 255)
 TitleLabel.TextSize = 11.5
 TitleLabel.Font = Enum.Font.GothamBold
@@ -527,7 +527,7 @@ local function CreateSlider(parent, text, min, max, default, callback)
     frame.Parent = parent
 end
 
--- Universal Target Validation (Handles both Players and Non-Player NPCs/Bots)
+-- Strictly Filtered Entity Model & Validation (Excludes LocalPlayer & Non-Humanoid Objects)
 local function GetEntityModel(entity)
     if typeof(entity) == "Instance" then
         if entity:IsA("Player") then
@@ -539,9 +539,31 @@ local function GetEntityModel(entity)
     return nil
 end
 
+local function IsValidCharacter(char)
+    if not char or not char:IsA("Model") then return false end
+    if char == LocalPlayer.Character then return false end
+    if char:IsDescendantOf(LocalPlayer) then return false end
+    if char:IsDescendantOf(Camera) then return false end
+    
+    local hum = char:FindFirstChildOfClass("Humanoid")
+    local root = char:FindFirstChild("HumanoidRootPart") or char:FindFirstChild("Torso") or char:FindFirstChild("UpperTorso") or char.PrimaryPart
+    
+    -- Wajib memiliki komponen manusia/bot yang valid (Humanoid atau Root Part) dan tidak boleh berupa weapon/prop/aksesori yang terpisah
+    if not hum and not root then return false end
+    if hum and hum.Health <= 0 then return false end
+
+    -- Abaikan jika model tersebut sebenarnya adalah tool/senjata milik player lain yang sedang dipegang atau terlempar di workspace
+    if char:FindFirstChildOfClass("Tool") or char:IsA("Tool") then return false end
+    if char.Parent and (char.Parent:IsA("Tool") or char.Parent.Name:lower():find("weapon") or char.Parent.Name:lower():find("gun")) and not char:FindFirstChildOfClass("Humanoid") then
+        return false
+    end
+
+    return true
+end
+
 local function IsEnemyEntity(entity)
     local char = GetEntityModel(entity)
-    if not char or char == LocalPlayer.Character then return false end
+    if not IsValidCharacter(char) then return false end
     if char:FindFirstChildOfClass("ForceField") then return false end
 
     if typeof(entity) == "Instance" and entity:IsA("Player") then
@@ -553,10 +575,6 @@ local function IsEnemyEntity(entity)
         return true
     else
         -- Non-player entity / Bot / Dummy check
-        local hum = char:FindFirstChildOfClass("Humanoid")
-        if hum and hum.Health <= 0 then return false end
-        -- Filter out local player accessories/models
-        if char:IsDescendantOf(LocalPlayer) then return false end
         return true
     end
 end
@@ -588,20 +606,25 @@ end
 
 local function GetAllTargetableEntities()
     local list = {}
-    -- Add Players
+    -- Add Players (selain LocalPlayer)
     for _, p in ipairs(Players:GetPlayers()) do
-        if p ~= LocalPlayer and p.Character then
+        if p ~= LocalPlayer and p.Character and IsValidCharacter(p.Character) then
             table.insert(list, p)
         end
     end
-    -- Add Workspace NPCs / Bots / Dummies
+    -- Add Workspace NPCs / Bots / Dummies (Harus memiliki Humanoid atau Root Part serta pastikan bukan folder/prop map/senjata)
     for _, obj in ipairs(Workspace:GetDescendants()) do
         if obj:IsA("Model") and not Players:GetPlayerFromCharacter(obj) then
-            local hasHum = obj:FindFirstChildOfClass("Humanoid")
-            local hasRoot = obj:FindFirstChild("HumanoidRootPart") or obj:FindFirstChild("Torso") or obj:FindFirstChild("UpperTorso") or obj.PrimaryPart
-            if hasHum or hasRoot then
-                -- Pastikan bukan bagian dari LocalPlayer atau map prop statis
-                if not obj:IsDescendantOf(LocalPlayer) and not obj:IsDescendantOf(Camera) then
+            if IsValidCharacter(obj) then
+                -- Pastikan tidak double-add jika sudah terdaftar
+                local alreadyAdded = false
+                for _, existing in ipairs(list) do
+                    if GetEntityModel(existing) == obj then
+                        alreadyAdded = true
+                        break
+                    end
+                end
+                if not alreadyAdded then
                     table.insert(list, obj)
                 end
             end
@@ -753,15 +776,6 @@ local function CreateEntityESP(key)
 
     ESPCache[key] = espData
 end
-
--- Initialize Player Tracking
-for _, p in ipairs(Players:GetPlayers()) do
-    if p ~= LocalPlayer then CreateEntityESP(p) end
-end
-Players.PlayerAdded:Connect(function(p)
-    if p ~= LocalPlayer then CreateEntityESP(p) end
-end)
-Players.PlayerRemoving:Connect(RemoveEntityESP)
 
 -- Visual Tab Populating
 CreateToggle(TabContentFrames["Visual"], "Skeleton ESP (Universal Rig)", false, function(v) 
@@ -996,7 +1010,7 @@ Players.PlayerAdded:Connect(function(p)
     if HackConfig.AntiAdminAktif and CheckIfAdmin(p) then
         TitleLabel.Text = "⚠️ ADMIN TERDETEKSI: " .. p.Name
         ShowPopupNotification("⚠️ ADMIN TERDETEKSI: " .. p.Name)
-        task.delay(5, function() TitleLabel.Text = "× D3D MENU: OMNI BOT & PLAYER v3.5 ×" end)
+        task.delay(5, function() TitleLabel.Text = "× D3D MENU: OMNI BOT & PLAYER v3.6 ×" end)
     end
 end)
 
@@ -1025,7 +1039,7 @@ RunService.RenderStepped:Connect(function()
         local partToAim = nil
 
         if LockedTarget and LockedTarget.Parent then
-            if IsEnemyEntity(LockedTarget) then
+            if IsValidCharacter(LockedTarget) and IsEnemyEntity(LockedTarget) then
                 partToAim = GetDynamicTargetPart(LockedTarget)
                 if partToAim then
                     if not HackConfig.WallCheck or IsVisible(partToAim) then
@@ -1069,22 +1083,22 @@ RunService.RenderStepped:Connect(function()
         LockedTarget = nil
     end
 
-    -- OMNI ESP LOOP: Memindai Seluruh Player DAN Bot / NPC Workspace Secara Real-Time
+    -- STRICT FILTERED ESP LOOP: Hanya memproses Karakter Player (Selain LocalPlayer) & Bot Valid Murni
     local activeEntities = GetAllTargetableEntities()
     
-    -- Cleanup cache entities yang sudah hilang dari game
+    -- Cleanup cache entities yang sudah hilang dari game atau tidak valid
     for key, _ in pairs(ESPCache) do
         local found = false
         for _, ent in ipairs(activeEntities) do
             local char = GetEntityModel(ent)
-            if char == key then found = true break end
+            if char == key and IsValidCharacter(char) then found = true break end
         end
         if not found then RemoveEntityESP(key) end
     end
 
     for _, entity in ipairs(activeEntities) do
         local char = GetEntityModel(entity)
-        if char then
+        if IsValidCharacter(char) then
             if not ESPCache[char] then
                 CreateEntityESP(char)
             end
