@@ -1,4 +1,4 @@
--- v3.3 --
+-- v3.4 --
 
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
@@ -87,7 +87,7 @@ pcall(function()
 end)
 
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "D3D_Ultimate_Android_V3_3"
+ScreenGui.Name = "D3D_Ultimate_Android_V3_4"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
@@ -195,6 +195,7 @@ local HackConfig = {
     AimbotMode = "POV Kamera (FOV)",
     AimTargetMode = "Head",
     AimbotSmoothness = 15,
+    WallCheck = false, -- Diaktifkan untuk menyaring target di balik tembok
     ShowFOV = false,
     FOVRadius = 150,
     FFAModeAktif = false,
@@ -287,7 +288,7 @@ end)
 local TitleLabel = Instance.new("TextLabel")
 TitleLabel.Size = UDim2.new(1, 0, 0, 36)
 TitleLabel.BackgroundTransparency = 1
-TitleLabel.Text = "× D3D MENU: ULTRA REBUILD v3.3 ×"
+TitleLabel.Text = "× D3D MENU: ULTRA REBUILD v3.4 ×"
 TitleLabel.TextColor3 = Color3.fromRGB(240, 240, 255)
 TitleLabel.TextSize = 11.5
 TitleLabel.Font = Enum.Font.GothamBold
@@ -567,10 +568,12 @@ local function GetNewTarget3D()
         if IsEnemy(player) and player.Character then
             local targetPart = GetDynamicTargetPart(player.Character)
             if targetPart and not player.Character:FindFirstChildOfClass("ForceField") then
-                local dist = (Camera.CFrame.Position - targetPart.Position).Magnitude
-                if dist < shortestDist then
-                    shortestDist = dist
-                    closest = player.Character
+                if not HackConfig.WallCheck or IsVisible(targetPart) then
+                    local dist = (Camera.CFrame.Position - targetPart.Position).Magnitude
+                    if dist < shortestDist then
+                        shortestDist = dist
+                        closest = player.Character
+                    end
                 end
             end
         end
@@ -585,12 +588,14 @@ local function GetClosestEnemy2D()
         if IsEnemy(player) and player.Character then
             local targetPart = GetDynamicTargetPart(player.Character)
             if targetPart and not player.Character:FindFirstChildOfClass("ForceField") then
-                local pos, onScreen = Camera:WorldToViewportPoint(targetPart.Position)
-                if onScreen then
-                    local dist = (center - Vector2.new(pos.X, pos.Y)).Magnitude
-                    if dist < shortestDist then
-                        shortestDist = dist
-                        closest = player.Character
+                if not HackConfig.WallCheck or IsVisible(targetPart) then
+                    local pos, onScreen = Camera:WorldToViewportPoint(targetPart.Position)
+                    if onScreen then
+                        local dist = (center - Vector2.new(pos.X, pos.Y)).Magnitude
+                        if dist < shortestDist then
+                            shortestDist = dist
+                            closest = player.Character
+                        end
                     end
                 end
             end
@@ -704,7 +709,7 @@ local function SetupPlayer(player)
     if player == LocalPlayer then return end
     CreatePlayerESP(player)
     player.CharacterAdded:Connect(function()
-        task.wait(0.3)
+        task.wait(0.2)
         CreatePlayerESP(player)
     end)
 end
@@ -829,6 +834,10 @@ CreateToggle(TabContentFrames["Skill"], "Aktifkan Auto Aim (Kunci Layar)", false
     HackConfig.AimbotAktif = v 
     ShowPopupNotification(v and "Auto Aim Diaktifkan" or "Auto Aim Dimatikan")
 end)
+CreateToggle(TabContentFrames["Skill"], "Auto Aim Wall Check", false, function(v)
+    HackConfig.WallCheck = v
+    ShowPopupNotification(v and "Wall Check Diaktifkan" or "Wall Check Dimatikan")
+end)
 CreateDropdown(TabContentFrames["Skill"], "Mode Aimbot", {"POV Kamera (FOV)", "360° (Brutal)"}, "POV Kamera (FOV)", function(opt) HackConfig.AimbotMode = opt end)
 CreateDropdown(TabContentFrames["Skill"], "Target Bagian Tubuh", {"Head", "Neck", "Body"}, "Head", function(opt) HackConfig.AimTargetMode = opt end)
 CreateSlider(TabContentFrames["Skill"], "Kelengketan Aim POV (Smoothness)", 1, 100, 15, function(val) HackConfig.AimbotSmoothness = val end)
@@ -846,6 +855,7 @@ local function SaveSettings()
     local settings = {
         AntiAdmin = HackConfig.AntiAdminAktif,
         Aimbot = HackConfig.AimbotAktif,
+        WallCheck = HackConfig.WallCheck,
         AimbotMode = HackConfig.AimbotMode,
         AimTargetMode = HackConfig.AimTargetMode,
         ShowFOV = HackConfig.ShowFOV,
@@ -875,6 +885,7 @@ local function LoadSettings()
             local settings = HttpService:JSONDecode(json)
             if settings.AntiAdmin ~= nil then HackConfig.AntiAdminAktif = settings.AntiAdmin end
             if settings.Aimbot ~= nil then HackConfig.AimbotAktif = settings.Aimbot end
+            if settings.WallCheck ~= nil then HackConfig.WallCheck = settings.WallCheck end
             if settings.AimbotMode ~= nil then HackConfig.AimbotMode = settings.AimbotMode end
             if settings.AimTargetMode ~= nil then HackConfig.AimTargetMode = settings.AimTargetMode end
             if settings.ShowFOV ~= nil then HackConfig.ShowFOV = settings.ShowFOV end
@@ -949,7 +960,7 @@ local function SendAdminWarning(p)
     pcall(function()
         TitleLabel.Text = "⚠️ ADMIN TERDETEKSI: " .. p.Name
         ShowPopupNotification("⚠️ ADMIN TERDETEKSI: " .. p.Name)
-        task.delay(5, function() TitleLabel.Text = "× D3D MENU: ULTRA REBUILD v3.3 ×" end)
+        task.delay(5, function() TitleLabel.Text = "× D3D MENU: ULTRA REBUILD v3.4 ×" end)
     end)
 end
 
@@ -976,7 +987,7 @@ RunService.RenderStepped:Connect(function()
         FOVFrame.Visible = HackConfig.ShowFOV and (HackConfig.AimbotAktif and HackConfig.AimbotMode == "POV Kamera (FOV)")
     end
 
-    -- Aimbot Tracking Loop
+    -- Aimbot Tracking Loop dengan Validasi WallCheck
     if HackConfig.AimbotAktif then
         local targetValid = false
         local partToAim = nil
@@ -986,15 +997,17 @@ RunService.RenderStepped:Connect(function()
             if (not plr or IsEnemy(plr)) and not LockedTarget:FindFirstChildOfClass("ForceField") then
                 partToAim = GetDynamicTargetPart(LockedTarget)
                 if partToAim then
-                    if HackConfig.AimbotMode == "POV Kamera (FOV)" then
-                        local pos, onScreen = Camera:WorldToViewportPoint(partToAim.Position)
-                        local center = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
-                        local dist = (center - Vector2.new(pos.X, pos.Y)).Magnitude
-                        if onScreen and dist <= HackConfig.FOVRadius then
+                    if not HackConfig.WallCheck or IsVisible(partToAim) then
+                        if HackConfig.AimbotMode == "POV Kamera (FOV)" then
+                            local pos, onScreen = Camera:WorldToViewportPoint(partToAim.Position)
+                            local center = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
+                            local dist = (center - Vector2.new(pos.X, pos.Y)).Magnitude
+                            if onScreen and dist <= HackConfig.FOVRadius then
+                                targetValid = true
+                            end
+                        else
                             targetValid = true
                         end
-                    else
-                        targetValid = true
                     end
                 end
             end
@@ -1054,16 +1067,16 @@ RunService.RenderStepped:Connect(function()
         end
     end
 
-    -- Universal ESP Loop with Auto-Fallback Parts (R15, R6 & Custom Rig Support)
+    -- Realtime Universal ESP Loop (Diperbarui agar tidak ada user yang lolos)
     for player, esp in pairs(ESPCache) do
         local char = player.Character
         local isEnemy = IsEnemy(player)
         
-        -- Fallback detection: Mencari bagian tubuh utama apa pun agar player tidak lolos deteksi rig kustom
+        -- Deteksi part tubuh real-time yang lebih luas mencakup semua tipe struktur model
         local primaryPart = char and (char:FindFirstChild("HumanoidRootPart") or char:FindFirstChild("Torso") or char:FindFirstChild("UpperTorso") or char:FindFirstChild("Head") or char:FindFirstChildOfClass("BasePart"))
         local hum = char and char:FindFirstChildOfClass("Humanoid")
         
-        -- Validasi fleksibel: Tidak wajib ada Humanoid jika char dan part utama valid
+        -- Memastikan ESP aktif secara real-time tanpa batasan string model atau penundaan cache
         local active = isEnemy and char and primaryPart and (not hum or hum.Health > 0)
 
         if active and VisualsConfig.Chams then
