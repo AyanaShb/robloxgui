@@ -1,4 +1,4 @@
--- v3.0 --
+-- v3.1 --
 
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
@@ -87,7 +87,7 @@ pcall(function()
 end)
 
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "D3D_Ultimate_Android_V3"
+ScreenGui.Name = "D3D_Ultimate_Android_V3_1"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
@@ -105,6 +105,51 @@ end)
 if not ScreenGui.Parent then
     pcall(function()
         ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+    end)
+end
+
+-- Global Notification Popup Function
+local function ShowPopupNotification(message)
+    pcall(function()
+        local existing = ScreenGui:FindFirstChild("PopupNotify")
+        if existing then existing:Destroy() end
+
+        local notif = Instance.new("Frame")
+        notif.Name = "PopupNotify"
+        notif.Size = UDim2.new(0, 260, 0, 42)
+        notif.Position = UDim2.new(0.5, -130, 0, 15)
+        notif.BackgroundColor3 = Color3.fromRGB(12, 12, 18)
+        notif.BackgroundTransparency = 0.1
+        notif.BorderSizePixel = 0
+        notif.ZIndex = 999
+        notif.Parent = ScreenGui
+
+        Instance.new("UICorner", notif).CornerRadius = UDim.new(0, 8)
+        local stroke = Instance.new("UIStroke", notif)
+        stroke.Thickness = 1.5
+        local grad = Instance.new("UIGradient", stroke)
+        grad.Color = ColorSequence.new({
+            ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 0, 128)),
+            ColorSequenceKeypoint.new(1, Color3.fromRGB(0, 240, 255))
+        })
+
+        local lbl = Instance.new("TextLabel", notif)
+        lbl.Size = UDim2.new(1, 0, 1, 0)
+        lbl.BackgroundTransparency = 1
+        lbl.Text = message
+        lbl.TextColor3 = Color3.fromRGB(255, 255, 255)
+        lbl.TextSize = 11
+        lbl.Font = Enum.Font.GothamBold
+        lbl.ZIndex = 1000
+
+        task.spawn(function()
+            notif.Position = UDim2.new(0.5, -130, 0, -50)
+            notif:TweenPosition(UDim2.new(0.5, -130, 0, 20), Enum.EasingDirection.Out, Enum.EasingStyle.Back, 0.3, true)
+            task.wait(2)
+            notif:TweenPosition(UDim2.new(0.5, -130, 0, -50), Enum.EasingDirection.In, Enum.EasingStyle.Quad, 0.2, true)
+            task.wait(0.2)
+            notif:Destroy()
+        end)
     end)
 end
 
@@ -242,7 +287,7 @@ end)
 local TitleLabel = Instance.new("TextLabel")
 TitleLabel.Size = UDim2.new(1, 0, 0, 36)
 TitleLabel.BackgroundTransparency = 1
-TitleLabel.Text = "× D3D MENU: ULTRA REBUILD v3.0 ×"
+TitleLabel.Text = "× D3D MENU: ULTRA REBUILD v3.1 ×"
 TitleLabel.TextColor3 = Color3.fromRGB(240, 240, 255)
 TitleLabel.TextSize = 11.5
 TitleLabel.Font = Enum.Font.GothamBold
@@ -600,6 +645,7 @@ local function CreatePlayerESP(player)
         Gender = Drawing.new("Text"),
         HealthBarBg = Drawing.new("Line"),
         HealthBar = Drawing.new("Line"),
+        HeadCircle = Drawing.new("Circle"),
         Skeleton = {
             Spine = Drawing.new("Line"),
             LeftArm = Drawing.new("Line"),
@@ -620,6 +666,12 @@ local function CreatePlayerESP(player)
     espData.HealthBar.Thickness = 1.5
     espData.HealthBar.Color = VisualsConfig.HealthColor
     espData.HealthBar.Transparency = 1
+
+    espData.HeadCircle.Thickness = 1.5
+    espData.HeadCircle.NumSides = 12
+    espData.HeadCircle.Filled = false
+    espData.HeadCircle.Color = VisualsConfig.SkeletonColor
+    espData.HeadCircle.Transparency = 0.8
 
     for _, bone in pairs(espData.Skeleton) do
         bone.Thickness = 1.5
@@ -658,7 +710,10 @@ Players.PlayerRemoving:Connect(RemovePlayerESP)
 CreateToggle(TabContentFrames["Visual"], "Skeleton ESP (Ultra Stable)", false, function(v) VisualsConfig.ESP_Skeleton = v end)
 CreateColorPicker(TabContentFrames["Visual"], "Skeleton Color", Color3.fromRGB(0, 240, 255), function(c) 
     VisualsConfig.SkeletonColor = c 
-    for _, esp in pairs(ESPCache) do for _, bone in pairs(esp.Skeleton) do bone.Color = c end end
+    for _, esp in pairs(ESPCache) do 
+        esp.HeadCircle.Color = c
+        for _, bone in pairs(esp.Skeleton) do bone.Color = c end 
+    end
 end)
 CreateToggle(TabContentFrames["Visual"], "Chams / Wall Glow", false, function(v) VisualsConfig.Chams = v end)
 CreateColorPicker(TabContentFrames["Visual"], "Chams Glow Color", Color3.fromRGB(255, 0, 128), function(c) VisualsConfig.ChamsColor = c end)
@@ -732,7 +787,7 @@ CreateSlider(TabContentFrames["Skill"], "Lebar Lingkaran FOV", 10, 600, 150, fun
 CreateToggle(TabContentFrames["Skill"], "Gun Mods (Infinite Ammo & RPM)", false, function(v) HackConfig.GunModsAktif = v end)
 CreateSlider(TabContentFrames["Skill"], "RPM Fire Rate", 400, 2500, 800, function(val) HackConfig.CustomFireRate = val end)
 
--- Configuration Tab Populating
+-- Configuration Tab Populating (Fixed Custom UI & Popups added to all buttons)
 local ConfigFileName = "LiteHack_Config.json"
 local function SaveSettings()
     local settings = {
@@ -792,12 +847,14 @@ CreateToggle(TabContentFrames["Configuration"], "Ubah Tema Neon Ungu/Cyan", true
             ColorSequenceKeypoint.new(0.5, Color3.fromRGB(0, 240, 255)),
             ColorSequenceKeypoint.new(1, Color3.fromRGB(160, 0, 255))
         })
+        ShowPopupNotification("Tema Diubah ke Neon Ungu/Cyan")
     else
         MainGradient.Color = ColorSequence.new({
             ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)),
             ColorSequenceKeypoint.new(0.5, Color3.fromRGB(100, 100, 100)),
             ColorSequenceKeypoint.new(1, Color3.fromRGB(20, 20, 20))
         })
+        ShowPopupNotification("Tema Diubah ke Monokrom")
     end
 end)
 
@@ -811,6 +868,7 @@ SaveBtn.TextSize = 11
 Instance.new("UICorner", SaveBtn).CornerRadius = UDim.new(0, 8)
 SaveBtn.MouseButton1Click:Connect(function()
     SaveSettings()
+    ShowPopupNotification("Konfigurasi Berhasil Disimpan!")
 end)
 
 local LoadBtn = Instance.new("TextButton", TabContentFrames["Configuration"])
@@ -823,6 +881,7 @@ LoadBtn.TextSize = 11
 Instance.new("UICorner", LoadBtn).CornerRadius = UDim.new(0, 8)
 LoadBtn.MouseButton1Click:Connect(function()
     LoadSettings()
+    ShowPopupNotification("Konfigurasi Berhasil Dimuat!")
 end)
 
 -- Admin Check Logic
@@ -836,7 +895,8 @@ end
 local function SendAdminWarning(p)
     pcall(function()
         TitleLabel.Text = "⚠️ ADMIN TERDETEKSI: " .. p.Name
-        task.delay(5, function() TitleLabel.Text = "× D3D MENU: ULTRA REBUILD v3.0 ×" end)
+        ShowPopupNotification("⚠️ ADMIN TERDETEKSI: " .. p.Name)
+        task.delay(5, function() TitleLabel.Text = "× D3D MENU: ULTRA REBUILD v3.1 ×" end)
     end)
 end
 
@@ -1008,12 +1068,24 @@ RunService.RenderStepped:Connect(function()
                         end
                     end
 
+                    -- Draw Head Circle and Spine/Limbs
+                    if hPos then
+                        esp.HeadCircle.Position = hPos
+                        local headSize = head and (Camera:WorldToViewportPoint((head.Position + Vector3.new(0, 1, 0))).Y - Camera:WorldToViewportPoint(head.Position).Y) or 10
+                        esp.HeadCircle.Radius = math.clamp(math.abs(headSize) * 1.2, 6, 25)
+                        esp.HeadCircle.Color = VisualsConfig.SkeletonColor
+                        esp.HeadCircle.Visible = true
+                    else
+                        esp.HeadCircle.Visible = false
+                    end
+
                     drawBone(esp.Skeleton.Spine, hPos, utPos)
                     drawBone(esp.Skeleton.LeftArm, utPos, laPos)
                     drawBone(esp.Skeleton.RightArm, utPos, raPos)
                     drawBone(esp.Skeleton.LeftLeg, ltPos, llPos)
                     drawBone(esp.Skeleton.RightLeg, ltPos, rlPos)
                 else
+                    esp.HeadCircle.Visible = false
                     for _, bone in pairs(esp.Skeleton) do bone.Visible = false end
                 end
 
@@ -1073,20 +1145,22 @@ RunService.RenderStepped:Connect(function()
                     esp.HealthBar.Visible = false
                 end
             else
+                esp.HeadCircle.Visible = false
                 for _, obj in pairs(esp) do
                     if type(obj) == "table" then
-                        for _, bone in pairs(obj) do bone.Visible = false end
+                        for _, bone in pairs(bone) do bone.Visible = false end
                     else
-                        obj.Visible = false
+                        if obj ~= esp.HeadCircle then obj.Visible = false end
                     end
                 end
             end
         else
+            esp.HeadCircle.Visible = false
             for _, obj in pairs(esp) do
                 if type(obj) == "table" then
-                    for _, bone in pairs(obj) do bone.Visible = false end
+                    for _, bone in pairs(bone) do bone.Visible = false end
                 else
-                    obj.Visible = false
+                    if obj ~= esp.HeadCircle then obj.Visible = false end
                 end
             end
         end
