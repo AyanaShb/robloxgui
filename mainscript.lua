@@ -1,4 +1,4 @@
--- v3.6 --
+-- v3.9 --
 
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
@@ -7,7 +7,6 @@ local Workspace = game:GetService("Workspace")
 local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ScriptContext = game:GetService("ScriptContext")
-local HttpService = game:GetService("HttpService")
 local Camera = Workspace.CurrentCamera
 local LocalPlayer = Players.LocalPlayer
 
@@ -87,7 +86,7 @@ pcall(function()
 end)
 
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "D3D_Ultimate_Android_V3_6"
+ScreenGui.Name = "D3D_Ultimate_Android_V3_9"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
@@ -288,7 +287,7 @@ end)
 local TitleLabel = Instance.new("TextLabel")
 TitleLabel.Size = UDim2.new(1, 0, 0, 36)
 TitleLabel.BackgroundTransparency = 1
-TitleLabel.Text = "× D3D MENU: OMNI BOT & PLAYER v3.6 ×"
+TitleLabel.Text = "× D3D MENU: PLAYER & BOT v3.9 ×"
 TitleLabel.TextColor3 = Color3.fromRGB(240, 240, 255)
 TitleLabel.TextSize = 11.5
 TitleLabel.Font = Enum.Font.GothamBold
@@ -527,18 +526,7 @@ local function CreateSlider(parent, text, min, max, default, callback)
     frame.Parent = parent
 end
 
--- Strictly Filtered Entity Model & Validation (Excludes LocalPlayer & Non-Humanoid Objects)
-local function GetEntityModel(entity)
-    if typeof(entity) == "Instance" then
-        if entity:IsA("Player") then
-            return entity.Character
-        elseif entity:IsA("Model") then
-            return entity
-        end
-    end
-    return nil
-end
-
+-- Deteksi Pemain Asli dan Bot (NPC), Mengabaikan Benda, Tool, Prop, dsb.
 local function IsValidCharacter(char)
     if not char or not char:IsA("Model") then return false end
     if char == LocalPlayer.Character then return false end
@@ -548,35 +536,44 @@ local function IsValidCharacter(char)
     local hum = char:FindFirstChildOfClass("Humanoid")
     local root = char:FindFirstChild("HumanoidRootPart") or char:FindFirstChild("Torso") or char:FindFirstChild("UpperTorso") or char.PrimaryPart
     
-    -- Wajib memiliki komponen manusia/bot yang valid (Humanoid atau Root Part) dan tidak boleh berupa weapon/prop/aksesori yang terpisah
-    if not hum and not root then return false end
-    if hum and hum.Health <= 0 then return false end
-
-    -- Abaikan jika model tersebut sebenarnya adalah tool/senjata milik player lain yang sedang dipegang atau terlempar di workspace
-    if char:FindFirstChildOfClass("Tool") or char:IsA("Tool") then return false end
-    if char.Parent and (char.Parent:IsA("Tool") or char.Parent.Name:lower():find("weapon") or char.Parent.Name:lower():find("gun")) and not char:FindFirstChildOfClass("Humanoid") then
-        return false
-    end
+    -- Wajib memiliki Humanoid dan Part Utama (Badan/Torso) agar sah sebagai Karakter/Bot Hidup
+    if not hum or not root then return false end
+    if hum.Health <= 0 then return false end
+    
+    -- Abaikan jika objek berupa Tool atau aksesori lepas
+    if char:IsA("Tool") or char:FindFirstChildOfClass("Tool") then return false end
 
     return true
 end
 
-local function IsEnemyEntity(entity)
-    local char = GetEntityModel(entity)
+local function GetEntityModel(target)
+    if typeof(target) == "Instance" then
+        if target:IsA("Player") then
+            return target.Character
+        elseif target:IsA("Model") then
+            return target
+        end
+    end
+    return nil
+end
+
+local function IsEnemyEntity(target)
+    local char = GetEntityModel(target)
     if not IsValidCharacter(char) then return false end
     if char:FindFirstChildOfClass("ForceField") then return false end
 
-    if typeof(entity) == "Instance" and entity:IsA("Player") then
-        if entity == LocalPlayer then return false end
+    if typeof(target) == "Instance" and target:IsA("Player") then
+        if target == LocalPlayer then return false end
         if HackConfig.FFAModeAktif then return true end
-        if entity.Team and LocalPlayer.Team then
-            if entity.Team == LocalPlayer.Team then return false end
+        if target.Team and LocalPlayer.Team then
+            if target.Team == LocalPlayer.Team then return false end
         end
         return true
-    else
-        -- Non-player entity / Bot / Dummy check
+    elseif typeof(target) == "Instance" and target:IsA("Model") then
+        -- Jika ini adalah Bot/NPC di dalam Workspace
         return true
     end
+    return false
 end
 
 local function IsVisible(targetPart)
@@ -606,30 +603,31 @@ end
 
 local function GetAllTargetableEntities()
     local list = {}
-    -- Add Players (selain LocalPlayer)
+    
+    -- 1. Ambil semua Pemain Asli
     for _, p in ipairs(Players:GetPlayers()) do
         if p ~= LocalPlayer and p.Character and IsValidCharacter(p.Character) then
             table.insert(list, p)
         end
     end
-    -- Add Workspace NPCs / Bots / Dummies (Harus memiliki Humanoid atau Root Part serta pastikan bukan folder/prop map/senjata)
-    for _, obj in ipairs(Workspace:GetDescendants()) do
-        if obj:IsA("Model") and not Players:GetPlayerFromCharacter(obj) then
-            if IsValidCharacter(obj) then
-                -- Pastikan tidak double-add jika sudah terdaftar
-                local alreadyAdded = false
-                for _, existing in ipairs(list) do
-                    if GetEntityModel(existing) == obj then
-                        alreadyAdded = true
-                        break
-                    end
+    
+    -- 2. Ambil semua Bot / NPC murni dari Workspace (mengabaikan benda, map, part mati)
+    for _, obj in ipairs(Workspace:GetChildren()) do
+        if obj:IsA("Model") and obj ~= LocalPlayer.Character and IsValidCharacter(obj) then
+            -- Pastikan bukan karakter pemain agar tidak duplikat
+            local isPlayerChar = false
+            for _, p in ipairs(Players:GetPlayers()) do
+                if p.Character == obj then
+                    isPlayerChar = true
+                    break
                 end
-                if not alreadyAdded then
-                    table.insert(list, obj)
-                end
+            end
+            if not isPlayerChar then
+                table.insert(list, obj)
             end
         end
     end
+    
     return list
 end
 
@@ -778,7 +776,7 @@ local function CreateEntityESP(key)
 end
 
 -- Visual Tab Populating
-CreateToggle(TabContentFrames["Visual"], "Skeleton ESP (Universal Rig)", false, function(v) 
+CreateToggle(TabContentFrames["Visual"], "Skeleton ESP (Player & Bot)", false, function(v) 
     VisualsConfig.ESP_Skeleton = v 
     if not v then
         for _, esp in pairs(ESPCache) do
@@ -813,7 +811,7 @@ CreateToggle(TabContentFrames["Visual"], "ESP Distance", false, function(v)
     if not v then for _, esp in pairs(ESPCache) do if esp.Distance then esp.Distance.Visible = false end end end
 end)
 CreateColorPicker(TabContentFrames["Visual"], "Distance Color", Color3.fromRGB(255, 255, 255), function(c) VisualsConfig.DistanceColor = c end)
-CreateToggle(TabContentFrames["Visual"], "ESP Gender [Cowo/Cewe]", false, function(v) 
+CreateToggle(TabContentFrames["Visual"], "ESP Gender/Type [Bot/Player]", false, function(v) 
     VisualsConfig.ESP_Gender = v 
     if not v then for _, esp in pairs(ESPCache) do if esp.Gender then esp.Gender.Visible = false end end end
 end)
@@ -902,58 +900,6 @@ end)
 CreateSlider(TabContentFrames["Skill"], "RPM Fire Rate", 400, 2500, 800, function(val) HackConfig.CustomFireRate = val end)
 
 -- Configuration Tab Populating
-local ConfigFileName = "LiteHack_Config.json"
-local function SaveSettings()
-    local settings = {
-        AntiAdmin = HackConfig.AntiAdminAktif,
-        Aimbot = HackConfig.AimbotAktif,
-        WallCheck = HackConfig.WallCheck,
-        AimbotMode = HackConfig.AimbotMode,
-        AimTargetMode = HackConfig.AimTargetMode,
-        ShowFOV = HackConfig.ShowFOV,
-        FOVRadius = HackConfig.FOVRadius,
-        Smoothness = HackConfig.AimbotSmoothness,
-        AntiFall = HackConfig.AntiFallDamageAktif,
-        SpeedAktif = HackConfig.SpeedAktif,
-        CustomSpeed = HackConfig.CustomSpeed,
-        JumpAktif = HackConfig.JumpAktif,
-        CustomJump = HackConfig.CustomJump,
-        GunModsAktif = HackConfig.GunModsAktif,
-        CustomFireRate = HackConfig.CustomFireRate
-    }
-    if writefile then
-        pcall(function() writefile(ConfigFileName, HttpService:JSONEncode(settings)) end)
-        return true
-    end
-    return false
-end
-
-local function LoadSettings()
-    if isfile and readfile and isfile(ConfigFileName) then
-        local success, json = pcall(function() return readfile(ConfigFileName) end)
-        if success and json then
-            local settings = HttpService:JSONDecode(json)
-            if settings.AntiAdmin ~= nil then HackConfig.AntiAdminAktif = settings.AntiAdmin end
-            if settings.Aimbot ~= nil then HackConfig.AimbotAktif = settings.Aimbot end
-            if settings.WallCheck ~= nil then HackConfig.WallCheck = settings.WallCheck end
-            if settings.AimbotMode ~= nil then HackConfig.AimbotMode = settings.AimbotMode end
-            if settings.AimTargetMode ~= nil then HackConfig.AimTargetMode = settings.AimTargetMode end
-            if settings.ShowFOV ~= nil then HackConfig.ShowFOV = settings.ShowFOV end
-            if settings.FOVRadius ~= nil then HackConfig.FOVRadius = settings.FOVRadius end
-            if settings.Smoothness ~= nil then HackConfig.AimbotSmoothness = settings.Smoothness end
-            if settings.AntiFall ~= nil then HackConfig.AntiFallDamageAktif = settings.AntiFall end
-            if settings.SpeedAktif ~= nil then HackConfig.SpeedAktif = settings.SpeedAktif end
-            if settings.CustomSpeed ~= nil then HackConfig.CustomSpeed = settings.CustomSpeed end
-            if settings.JumpAktif ~= nil then HackConfig.JumpAktif = settings.JumpAktif end
-            if settings.CustomJump ~= nil then HackConfig.CustomJump = settings.CustomJump end
-            if settings.GunModsAktif ~= nil then HackConfig.GunModsAktif = settings.GunModsAktif end
-            if settings.CustomFireRate ~= nil then HackConfig.CustomFireRate = settings.CustomFireRate end
-            return true
-        end
-    end
-    return false
-end
-
 CreateToggle(TabContentFrames["Configuration"], "Ubah Tema Neon Ungu/Cyan", true, function(v)
     if v then
         MainGradient.Color = ColorSequence.new({
@@ -972,32 +918,6 @@ CreateToggle(TabContentFrames["Configuration"], "Ubah Tema Neon Ungu/Cyan", true
     end
 end)
 
-local SaveBtn = Instance.new("TextButton", TabContentFrames["Configuration"])
-SaveBtn.Size = UDim2.new(1, 0, 0, 36)
-SaveBtn.BackgroundColor3 = Color3.fromRGB(0, 230, 130)
-SaveBtn.Text = "💾 Save Konfigurasi"
-SaveBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-SaveBtn.Font = Enum.Font.GothamBold
-SaveBtn.TextSize = 11
-Instance.new("UICorner", SaveBtn).CornerRadius = UDim.new(0, 8)
-SaveBtn.MouseButton1Click:Connect(function()
-    SaveSettings()
-    ShowPopupNotification("Konfigurasi Berhasil Disimpan!")
-end)
-
-local LoadBtn = Instance.new("TextButton", TabContentFrames["Configuration"])
-LoadBtn.Size = UDim2.new(1, 0, 0, 36)
-LoadBtn.BackgroundColor3 = Color3.fromRGB(0, 120, 255)
-LoadBtn.Text = "📂 Load Konfigurasi"
-LoadBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-LoadBtn.Font = Enum.Font.GothamBold
-LoadBtn.TextSize = 11
-Instance.new("UICorner", LoadBtn).CornerRadius = UDim.new(0, 8)
-LoadBtn.MouseButton1Click:Connect(function()
-    LoadSettings()
-    ShowPopupNotification("Konfigurasi Berhasil Dimuat!")
-end)
-
 -- Admin Check Logic
 local function CheckIfAdmin(p)
     if p == LocalPlayer then return false end
@@ -1010,7 +930,7 @@ Players.PlayerAdded:Connect(function(p)
     if HackConfig.AntiAdminAktif and CheckIfAdmin(p) then
         TitleLabel.Text = "⚠️ ADMIN TERDETEKSI: " .. p.Name
         ShowPopupNotification("⚠️ ADMIN TERDETEKSI: " .. p.Name)
-        task.delay(5, function() TitleLabel.Text = "× D3D MENU: OMNI BOT & PLAYER v3.6 ×" end)
+        task.delay(5, function() TitleLabel.Text = "× D3D MENU: PLAYER & BOT v3.9 ×" end)
     end
 end)
 
@@ -1083,10 +1003,9 @@ RunService.RenderStepped:Connect(function()
         LockedTarget = nil
     end
 
-    -- STRICT FILTERED ESP LOOP: Hanya memproses Karakter Player (Selain LocalPlayer) & Bot Valid Murni
+    -- PLAYER & BOT ESP LOOP: Membersihkan cache jika karakter keluar / mati
     local activeEntities = GetAllTargetableEntities()
     
-    -- Cleanup cache entities yang sudah hilang dari game atau tidak valid
     for key, _ in pairs(ESPCache) do
         local found = false
         for _, ent in ipairs(activeEntities) do
@@ -1239,11 +1158,13 @@ RunService.RenderStepped:Connect(function()
                     end
 
                     if VisualsConfig.ESP_Gender then
-                        local genderTag = "[BOT]"
+                        local typeTag = "[Player]"
                         if typeof(entity) == "Instance" and entity:IsA("Player") then
-                            genderTag = (entity.UserId % 2 == 0) and "[Cewe]" or "[Cowo]"
+                            typeTag = "[Player]"
+                        else
+                            typeTag = "[Bot]"
                         end
-                        esp.Gender.Text = genderTag
+                        esp.Gender.Text = typeTag
                         esp.Gender.Position = Vector2.new(vector.X, vector.Y + 36)
                         esp.Gender.Color = VisualsConfig.GenderColor
                         esp.Gender.Visible = true
@@ -1329,7 +1250,7 @@ RunService.RenderStepped:Connect(function()
         end
         for _, v in pairs(Camera:GetChildren()) do
             if v:IsA("Model") then ScanValueMods(v) end
-        end
+       end
     end
 end)
 
