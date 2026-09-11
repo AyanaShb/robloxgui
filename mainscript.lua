@@ -1,4 +1,4 @@
--- v3.9 --
+-- v3.9.1 --
 
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
@@ -287,7 +287,7 @@ end)
 local TitleLabel = Instance.new("TextLabel")
 TitleLabel.Size = UDim2.new(1, 0, 0, 36)
 TitleLabel.BackgroundTransparency = 1
-TitleLabel.Text = "× D3D MENU: PLAYER & BOT v3.9 ×"
+TitleLabel.Text = "× D3D MENU: PLAYER & BOT v3.9.1 ×"
 TitleLabel.TextColor3 = Color3.fromRGB(240, 240, 255)
 TitleLabel.TextSize = 11.5
 TitleLabel.Font = Enum.Font.GothamBold
@@ -526,7 +526,7 @@ local function CreateSlider(parent, text, min, max, default, callback)
     frame.Parent = parent
 end
 
--- Deteksi Pemain Asli dan Bot (NPC), Mengabaikan Benda, Tool, Prop, dsb.
+-- Deteksi Pemain Asli dan Bot (NPC) Secara Rekursif (Mendukung Folder Folder Bot)
 local function IsValidCharacter(char)
     if not char or not char:IsA("Model") then return false end
     if char == LocalPlayer.Character then return false end
@@ -536,11 +536,8 @@ local function IsValidCharacter(char)
     local hum = char:FindFirstChildOfClass("Humanoid")
     local root = char:FindFirstChild("HumanoidRootPart") or char:FindFirstChild("Torso") or char:FindFirstChild("UpperTorso") or char.PrimaryPart
     
-    -- Wajib memiliki Humanoid dan Part Utama (Badan/Torso) agar sah sebagai Karakter/Bot Hidup
     if not hum or not root then return false end
     if hum.Health <= 0 then return false end
-    
-    -- Abaikan jika objek berupa Tool atau aksesori lepas
     if char:IsA("Tool") or char:FindFirstChildOfClass("Tool") then return false end
 
     return true
@@ -570,7 +567,6 @@ local function IsEnemyEntity(target)
         end
         return true
     elseif typeof(target) == "Instance" and target:IsA("Model") then
-        -- Jika ini adalah Bot/NPC di dalam Workspace
         return true
     end
     return false
@@ -611,23 +607,27 @@ local function GetAllTargetableEntities()
         end
     end
     
-    -- 2. Ambil semua Bot / NPC murni dari Workspace (mengabaikan benda, map, part mati)
-    for _, obj in ipairs(Workspace:GetChildren()) do
-        if obj:IsA("Model") and obj ~= LocalPlayer.Character and IsValidCharacter(obj) then
-            -- Pastikan bukan karakter pemain agar tidak duplikat
-            local isPlayerChar = false
-            for _, p in ipairs(Players:GetPlayers()) do
-                if p.Character == obj then
-                    isPlayerChar = true
-                    break
+    -- 2. Ambil Bot/NPC dari Workspace utama DAN menyusuri semua folder di dalamnya
+    local function scanFolder(parentObj)
+        for _, obj in ipairs(parentObj:GetChildren()) do
+            if obj:IsA("Model") and obj ~= LocalPlayer.Character and IsValidCharacter(obj) then
+                local isPlayerChar = false
+                for _, p in ipairs(Players:GetPlayers()) do
+                    if p.Character == obj then
+                        isPlayerChar = true
+                        break
+                    end
                 end
-            end
-            if not isPlayerChar then
-                table.insert(list, obj)
+                if not isPlayerChar then
+                    table.insert(list, obj)
+                end
+            elseif obj:IsA("Folder") or obj:IsA("Model") then
+                scanFolder(obj)
             end
         end
     end
     
+    scanFolder(Workspace)
     return list
 end
 
@@ -930,7 +930,7 @@ Players.PlayerAdded:Connect(function(p)
     if HackConfig.AntiAdminAktif and CheckIfAdmin(p) then
         TitleLabel.Text = "⚠️ ADMIN TERDETEKSI: " .. p.Name
         ShowPopupNotification("⚠️ ADMIN TERDETEKSI: " .. p.Name)
-        task.delay(5, function() TitleLabel.Text = "× D3D MENU: PLAYER & BOT v3.9 ×" end)
+        task.delay(5, function() TitleLabel.Text = "× D3D MENU: PLAYER & BOT v3.9.1 ×" end)
     end
 end)
 
