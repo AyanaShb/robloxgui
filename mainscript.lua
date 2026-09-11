@@ -1,4 +1,5 @@
--- v3.9.2.1 (Updated)
+-- v3.9.3 --
+
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local Lighting = game:GetService("Lighting")
@@ -86,7 +87,7 @@ pcall(function()
 end)
 
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "D3D_Ultimate_Android_V3_9_2"
+ScreenGui.Name = "D3D_Ultimate_Android_V3_9_3"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
@@ -158,8 +159,7 @@ local OriginalLighting = {
     Ambient = Lighting.Ambient,
     OutdoorAmbient = Lighting.OutdoorAmbient,
     GlobalShadows = Lighting.GlobalShadows,
-    FogEnd = Lighting.FogEnd,
-    FogStart = Lighting.FogStart
+    FogEnd = Lighting.FogEnd
 }
 
 local VisualsConfig = {
@@ -190,7 +190,7 @@ local WorldConfig = {
     DaylightClock = 14,
     WallHack = false,
     NoFog = false,
-    SelectedTeleportTarget = "Pilih Target",
+    SelectedTeleportTarget = "",
     FlyAktif = false
 }
 
@@ -219,9 +219,6 @@ local ChamsCache = {}
 local EnemyChamsCache = {}
 local LockedTarget = nil
 local EntityGenderCache = {}
-
--- UI Theme State
-local isDarkTheme = true
 
 -- FOV Circle GUI
 local FOVGui, FOVFrame
@@ -298,7 +295,7 @@ end)
 local TitleLabel = Instance.new("TextLabel")
 TitleLabel.Size = UDim2.new(1, 0, 0, 36)
 TitleLabel.BackgroundTransparency = 1
-TitleLabel.Text = "× D3D MENU: PLAYER & BOT v3.9.2.1 ×"
+TitleLabel.Text = "× D3D MENU: PLAYER & BOT v3.9.3 ×"
 TitleLabel.TextColor3 = Color3.fromRGB(240, 240, 255)
 TitleLabel.TextSize = 11.5
 TitleLabel.Font = Enum.Font.GothamBold
@@ -314,7 +311,6 @@ Instance.new("UICorner", TabContainer).CornerRadius = UDim.new(0, 10)
 
 local tabs = {"Visual", "Player", "World", "Skill", "Configuration"}
 local TabContentFrames = {}
-local ThemedElements = {}
 
 for i, tabName in ipairs(tabs) do
     local btn = Instance.new("TextButton")
@@ -354,43 +350,10 @@ for i, tabName in ipairs(tabs) do
         content.Visible = true
         for _, b in ipairs(TabContainer:GetChildren()) do
             if b:IsA("TextButton") then
-                b.TextColor3 = isDarkTheme and Color3.fromRGB(110, 110, 140) or Color3.fromRGB(90, 90, 110)
+                b.TextColor3 = Color3.fromRGB(110, 110, 140)
             end
         end
-        btn.TextColor3 = isDarkTheme and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(10, 10, 10)
-    end)
-end
-
-local function RegisterThemedItem(elem, typeCategory)
-    table.insert(ThemedElements, {Object = elem, Type = typeCategory})
-end
-
-local function ApplyTheme()
-    pcall(function()
-        if isDarkTheme then
-            MainFrame.BackgroundColor3 = Color3.fromRGB(6, 6, 9)
-            TabContainer.BackgroundColor3 = Color3.fromRGB(12, 12, 18)
-            TitleLabel.TextColor3 = Color3.fromRGB(240, 240, 255)
-        else
-            MainFrame.BackgroundColor3 = Color3.fromRGB(240, 240, 245)
-            TabContainer.BackgroundColor3 = Color3.fromRGB(220, 220, 230)
-            TitleLabel.TextColor3 = Color3.fromRGB(20, 20, 30)
-        end
-
-        for _, item in ipairs(ThemedElements) do
-            if item.Object and item.Object.Parent then
-                if item.Type == "container" then
-                    item.Object.BackgroundColor3 = isDarkTheme and Color3.fromRGB(12, 12, 18) or Color3.fromRGB(225, 225, 235)
-                elseif item.Type == "subbutton" then
-                    item.Object.BackgroundColor3 = isDarkTheme and Color3.fromRGB(25, 25, 36) or Color3.fromRGB(205, 205, 215)
-                    if item.Object:IsA("TextButton") then
-                        item.Object.TextColor3 = isDarkTheme and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(20, 20, 20)
-                    end
-                elseif item.Type == "text" then
-                    item.Object.TextColor3 = isDarkTheme and Color3.fromRGB(220, 220, 235) or Color3.fromRGB(30, 30, 40)
-                end
-            end
-        end
+        btn.TextColor3 = Color3.fromRGB(255, 255, 255)
     end)
 end
 
@@ -400,7 +363,6 @@ local function CreateToggle(parent, text, defaultVal, callback)
     frame.BackgroundColor3 = Color3.fromRGB(12, 12, 18)
     frame.BorderSizePixel = 0
     Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 8)
-    RegisterThemedItem(frame, "container")
 
     local label = Instance.new("TextLabel", frame)
     label.Size = UDim2.new(0.7, 0, 1, 0)
@@ -411,7 +373,6 @@ local function CreateToggle(parent, text, defaultVal, callback)
     label.TextSize = 10.5
     label.Font = Enum.Font.GothamMedium
     label.TextXAlignment = Enum.TextXAlignment.Left
-    RegisterThemedItem(label, "text")
 
     local toggleBtn = Instance.new("TextButton", frame)
     toggleBtn.Size = UDim2.new(0, 42, 0, 20)
@@ -419,7 +380,6 @@ local function CreateToggle(parent, text, defaultVal, callback)
     toggleBtn.BackgroundColor3 = defaultVal and Color3.fromRGB(0, 230, 130) or Color3.fromRGB(25, 25, 36)
     toggleBtn.Text = ""
     Instance.new("UICorner", toggleBtn).CornerRadius = UDim.new(1, 0)
-    RegisterThemedItem(toggleBtn, "subbutton")
 
     local circle = Instance.new("Frame", toggleBtn)
     circle.Size = UDim2.new(0, 16, 0, 16)
@@ -430,7 +390,7 @@ local function CreateToggle(parent, text, defaultVal, callback)
     local active = defaultVal
     toggleBtn.MouseButton1Click:Connect(function()
         active = not active
-        toggleBtn.BackgroundColor3 = active and Color3.fromRGB(0, 230, 130) or (isDarkTheme and Color3.fromRGB(25, 25, 36) or Color3.fromRGB(205, 205, 215))
+        toggleBtn.BackgroundColor3 = active and Color3.fromRGB(0, 230, 130) or Color3.fromRGB(25, 25, 36)
         circle:TweenPosition(active and UDim2.new(1, -18, 0.5, -8) or UDim2.new(0, 2, 0.5, -8), Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0.1, true)
         if callback then callback(active) end
     end)
@@ -444,10 +404,9 @@ local function CreateDropdown(parent, text, options, defaultOption, callback)
     frame.BackgroundColor3 = Color3.fromRGB(12, 12, 18)
     frame.BorderSizePixel = 0
     Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 8)
-    RegisterThemedItem(frame, "container")
 
     local label = Instance.new("TextLabel", frame)
-    label.Size = UDim2.new(0.5, 0, 1, 0)
+    label.Size = UDim2.new(0.4, 0, 1, 0)
     label.Position = UDim2.new(0, 12, 0, 0)
     label.BackgroundTransparency = 1
     label.Text = text
@@ -455,18 +414,16 @@ local function CreateDropdown(parent, text, options, defaultOption, callback)
     label.TextSize = 10.5
     label.Font = Enum.Font.GothamMedium
     label.TextXAlignment = Enum.TextXAlignment.Left
-    RegisterThemedItem(label, "text")
 
     local dropBtn = Instance.new("TextButton", frame)
-    dropBtn.Size = UDim2.new(0, 150, 0, 32)
-    dropBtn.Position = UDim2.new(1, -162, 0.5, -16)
+    dropBtn.Size = UDim2.new(0, 170, 0, 32)
+    dropBtn.Position = UDim2.new(1, -182, 0.5, -16)
     dropBtn.BackgroundColor3 = Color3.fromRGB(25, 25, 36)
-    dropBtn.Text = defaultOption
+    dropBtn.Text = tostring(defaultOption)
     dropBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
     dropBtn.TextSize = 9.5
     dropBtn.Font = Enum.Font.GothamBold
     Instance.new("UICorner", dropBtn).CornerRadius = UDim.new(0, 6)
-    RegisterThemedItem(dropBtn, "subbutton")
 
     local currentIndex = 1
     for i, opt in ipairs(options) do
@@ -474,16 +431,34 @@ local function CreateDropdown(parent, text, options, defaultOption, callback)
     end
 
     dropBtn.MouseButton1Click:Connect(function()
-        if #options > 0 then
-            currentIndex = (currentIndex % #options) + 1
-            local selected = options[currentIndex]
-            dropBtn.Text = tostring(selected)
-            if callback then callback(selected) end
-        end
+        if #options == 0 then return end
+        currentIndex = (currentIndex % #options) + 1
+        local selected = options[currentIndex]
+        dropBtn.Text = tostring(selected)
+        if callback then callback(selected) end
     end)
 
+    -- Dynamic update method reference attached to frame for external refresh
+    frame.Name = "CustomDropdown_" .. text
     frame.Parent = parent
-    return dropBtn
+
+    return {
+        UpdateOptions = function(newOpts, newDefault)
+            options = newOpts
+            if #options > 0 then
+                currentIndex = 1
+                if newDefault then
+                    for i, opt in ipairs(options) do
+                        if tostring(opt) == tostring(newDefault) then currentIndex = i break end
+                    end
+                end
+                dropBtn.Text = tostring(options[currentIndex])
+                if callback then callback(options[currentIndex]) end
+            else
+                dropBtn.Text = "Tidak Ada Target"
+            end
+        end
+    }
 end
 
 local function CreateColorPicker(parent, text, defaultColor, callback)
@@ -492,7 +467,6 @@ local function CreateColorPicker(parent, text, defaultColor, callback)
     frame.BackgroundColor3 = Color3.fromRGB(12, 12, 18)
     frame.BorderSizePixel = 0
     Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 8)
-    RegisterThemedItem(frame, "container")
 
     local label = Instance.new("TextLabel", frame)
     label.Size = UDim2.new(0.6, 0, 1, 0)
@@ -503,7 +477,6 @@ local function CreateColorPicker(parent, text, defaultColor, callback)
     label.TextSize = 10.5
     label.Font = Enum.Font.GothamMedium
     label.TextXAlignment = Enum.TextXAlignment.Left
-    RegisterThemedItem(label, "text")
 
     local pickerCircle = Instance.new("TextButton", frame)
     pickerCircle.Size = UDim2.new(0, 32, 0, 32)
@@ -534,7 +507,6 @@ local function CreateSlider(parent, text, min, max, default, callback)
     frame.BackgroundColor3 = Color3.fromRGB(12, 12, 18)
     frame.BorderSizePixel = 0
     Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 8)
-    RegisterThemedItem(frame, "container")
 
     local label = Instance.new("TextLabel", frame)
     label.Size = UDim2.new(1, -24, 0, 22)
@@ -545,14 +517,12 @@ local function CreateSlider(parent, text, min, max, default, callback)
     label.TextSize = 10.5
     label.Font = Enum.Font.GothamMedium
     label.TextXAlignment = Enum.TextXAlignment.Left
-    RegisterThemedItem(label, "text")
 
     local sliderBar = Instance.new("Frame", frame)
     sliderBar.Size = UDim2.new(1, -24, 0, 6)
     sliderBar.Position = UDim2.new(0, 12, 0, 32)
     sliderBar.BackgroundColor3 = Color3.fromRGB(25, 25, 36)
     Instance.new("UICorner", sliderBar).CornerRadius = UDim.new(1, 0)
-    RegisterThemedItem(sliderBar, "subbutton")
 
     local fill = Instance.new("Frame", sliderBar)
     fill.Size = UDim2.new((default - min)/(max - min), 0, 1, 0)
@@ -591,7 +561,6 @@ local function CreateButton(parent, text, callback)
     frame.BackgroundColor3 = Color3.fromRGB(12, 12, 18)
     frame.BorderSizePixel = 0
     Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 8)
-    RegisterThemedItem(frame, "container")
 
     local btn = Instance.new("TextButton", frame)
     btn.Size = UDim2.new(1, -16, 1, -8)
@@ -602,7 +571,6 @@ local function CreateButton(parent, text, callback)
     btn.TextSize = 11
     btn.Font = Enum.Font.GothamBold
     Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
-    RegisterThemedItem(btn, "subbutton")
 
     btn.MouseButton1Click:Connect(function()
         if callback then callback() end
@@ -611,6 +579,7 @@ local function CreateButton(parent, text, callback)
     frame.Parent = parent
 end
 
+-- Deteksi Pemain Asli dan Bot (NPC) Secara Rekursif (Mendukung Folder Folder Bot)
 local function IsValidCharacter(char)
     if not char or not char:IsA("Model") then return false end
     if char == LocalPlayer.Character then return false end
@@ -895,16 +864,20 @@ CreateToggle(TabContentFrames["Visual"], "ESP Distance", false, function(v)
     if not v then for _, esp in pairs(ESPCache) do if esp.Distance then esp.Distance.Visible = false end end end
 end)
 CreateColorPicker(TabContentFrames["Visual"], "Distance Color", Color3.fromRGB(255, 255, 255), function(c) VisualsConfig.DistanceColor = c end)
+
+-- Split ESP Gender and ESP Status
 CreateToggle(TabContentFrames["Visual"], "ESP Gender (Cowo/Cewe/Gay)", false, function(v) 
     VisualsConfig.ESP_Gender = v 
     if not v then for _, esp in pairs(ESPCache) do if esp.Gender then esp.Gender.Visible = false end end end
 end)
 CreateColorPicker(TabContentFrames["Visual"], "Gender Color", Color3.fromRGB(255, 255, 255), function(c) VisualsConfig.GenderColor = c end)
+
 CreateToggle(TabContentFrames["Visual"], "ESP Status (Bot/Player)", false, function(v) 
     VisualsConfig.ESP_Status = v 
     if not v then for _, esp in pairs(ESPCache) do if esp.Status then esp.Status.Visible = false end end end
 end)
 CreateColorPicker(TabContentFrames["Visual"], "Status Color", Color3.fromRGB(255, 255, 255), function(c) VisualsConfig.StatusColor = c end)
+
 CreateToggle(TabContentFrames["Visual"], "ESP Health (Vertical Bar)", false, function(v) 
     VisualsConfig.ESP_Health = v 
     if not v then for _, esp in pairs(ESPCache) do if esp.HealthBarBg then esp.HealthBarBg.Visible = false end if esp.HealthBar then esp.HealthBar.Visible = false end end end
@@ -937,13 +910,27 @@ CreateSlider(TabContentFrames["Player"], "Set Power", 50, 250, 100, function(val
 -- World Tab Populating
 CreateToggle(TabContentFrames["World"], "Night Mode", false, function(v)
     WorldConfig.NightMode = v
-    if v then WorldConfig.Daylight = false end
+    if v then WorldConfig.Daylight = false else
+        Lighting.ClockTime = OriginalLighting.ClockTime
+        Lighting.Brightness = OriginalLighting.Brightness
+        Lighting.Ambient = OriginalLighting.Ambient
+        Lighting.OutdoorAmbient = OriginalLighting.OutdoorAmbient
+        Lighting.GlobalShadows = OriginalLighting.GlobalShadows
+        if not WorldConfig.NoFog then Lighting.FogEnd = OriginalLighting.FogEnd end
+    end
     ShowPopupNotification(v and "Night Mode Diaktifkan" or "Night Mode Dimatikan")
 end)
 
 CreateToggle(TabContentFrames["World"], "Daylight (Indoor/Outdoor)", false, function(v)
     WorldConfig.Daylight = v
-    if v then WorldConfig.NightMode = false end
+    if v then WorldConfig.NightMode = false else
+        Lighting.ClockTime = OriginalLighting.ClockTime
+        Lighting.Brightness = OriginalLighting.Brightness
+        Lighting.Ambient = OriginalLighting.Ambient
+        Lighting.OutdoorAmbient = OriginalLighting.OutdoorAmbient
+        Lighting.GlobalShadows = OriginalLighting.GlobalShadows
+        if not WorldConfig.NoFog then Lighting.FogEnd = OriginalLighting.FogEnd end
+    end
     ShowPopupNotification(v and "Daylight Diaktifkan" or "Daylight Dimatikan")
 end)
 
@@ -955,69 +942,91 @@ CreateToggle(TabContentFrames["World"], "Wall Hack (Noclip)", false, function(v)
     ShowPopupNotification(v and "Wall Hack Diaktifkan" or "Wall Hack Dimatikan")
 end)
 
+-- Tambahan Fitur No Fog di Tab World
 CreateToggle(TabContentFrames["World"], "No Fog", false, function(v)
     WorldConfig.NoFog = v
+    if v then
+        Lighting.FogEnd = 999999
+    else
+        Lighting.FogEnd = OriginalLighting.FogEnd
+    end
     ShowPopupNotification(v and "No Fog Diaktifkan" or "No Fog Dimatikan")
 end)
 
--- Teleport Feature Setup
-local function GetPlayerNameList()
-    local names = {"Pilih Target"}
+-- Teleport Target Dropdown & Teleport Button di Tab World
+local function GetTargetNamesList()
+    local names = {}
     for _, p in ipairs(Players:GetPlayers()) do
-        if p ~= LocalPlayer then
+        if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
             table.insert(names, p.Name)
         end
     end
-    for _, ent in ipairs(GetAllTargetableEntities()) do
-        local char = GetEntityModel(ent)
-        if char and not table.find(names, char.Name) then
-            table.insert(names, char.Name)
-        end
-    end
-    return names
-end
-
-local TeleportDropdownRef
-TeleportDropdownRef = CreateDropdown(TabContentFrames["World"], "Target Teleport", GetPlayerNameList(), "Pilih Target", function(selected)
-    WorldConfig.SelectedTeleportTarget = selected
-end)
-
-CreateButton(TabContentFrames["World"], "Mulai Teleport", function()
-    local targetName = WorldConfig.SelectedTeleportTarget
-    if not targetName or targetName == "Pilih Target" then
-        ShowPopupNotification("Pilih target teleport terlebih dahulu!")
-        return
-    end
-
-    local targetChar = nil
-    for _, p in ipairs(Players:GetPlayers()) do
-        if p.Name == targetName and p.Character then
-            targetChar = p.Character
-            break
-        end
-    end
-    if not targetChar then
-        for _, ent in ipairs(GetAllTargetableEntities()) do
-            local char = GetEntityModel(ent)
-            if char and char.Name == targetName then
-                targetChar = char
-                break
+    for _, obj in ipairs(Workspace:GetChildren()) do
+        if obj:IsA("Model") and obj ~= LocalPlayer.Character and obj:FindFirstChild("HumanoidRootPart") then
+            local isP = false
+            for _, p in ipairs(Players:GetPlayers()) do
+                if p.Character == obj then isP = true break end
+            end
+            if not isP then
+                table.insert(names, obj.Name)
             end
         end
     end
+    if #names == 0 then table.insert(names, "Tidak Ada Target") end
+    return names
+end
 
-    if targetChar and targetChar:FindFirstChild("HumanoidRootPart") and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-        LocalPlayer.Character.HumanoidRootPart.CFrame = targetChar.HumanoidRootPart.CFrame + Vector3.new(0, 3, 0)
-        ShowPopupNotification("Berhasil teleport ke: " .. targetName)
-    else
-        ShowPopupNotification("Target tidak ditemukan atau invalid!")
+local tpDropdown = CreateDropdown(TabContentFrames["World"], "Target Teleport", GetTargetNamesList(), GetTargetNamesList()[1], function(selected)
+    WorldConfig.SelectedTeleportTarget = selected
+end)
+
+-- Auto update dropdown options periodically or on focus
+task.spawn(function()
+    while task.wait(2) do
+        pcall(function()
+            local currentList = GetTargetNamesList()
+            if tpDropdown and tpDropdown.UpdateOptions then
+                tpDropdown.UpdateOptions(currentList, WorldConfig.SelectedTeleportTarget)
+            end
+        end)
     end
 end)
 
--- Fly / Slow Grav Jump Feature
+CreateButton(TabContentFrames["World"], "Teleport ke Target", function()
+    pcall(function()
+        local targetName = WorldConfig.SelectedTeleportTarget
+        if not targetName or targetName == "Tidak Ada Target" then
+            ShowPopupNotification("Pilih target teleport terlebih dahulu!")
+            return
+        end
+        local targetChar = nil
+        for _, p in ipairs(Players:GetPlayers()) do
+            if p.Name == targetName and p.Character then
+                targetChar = p.Character
+                break
+            end
+        end
+        if not targetChar then
+            for _, obj in ipairs(Workspace:GetChildren()) do
+                if obj:IsA("Model") and obj.Name == targetName then
+                    targetChar = obj
+                    break
+                end
+            end
+        end
+        if targetChar and targetChar:FindFirstChild("HumanoidRootPart") and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+            LocalPlayer.Character.HumanoidRootPart.CFrame = targetChar.HumanoidRootPart.CFrame + Vector3.new(0, 3, 0)
+            ShowPopupNotification("Berhasil teleport ke " .. targetName)
+        else
+            ShowPopupNotification("Target tidak ditemukan / invalid!")
+        end
+    end)
+end)
+
+-- Fitur Fly Toggle (Tahan Tombol Lompat Bawaan Map & Jatuh Slow Min Gravitasi)
 CreateToggle(TabContentFrames["World"], "Fly (Tahan Tombol Lompat)", false, function(v)
     WorldConfig.FlyAktif = v
-    ShowPopupNotification(v and "Fly Diaktifkan" or "Fly Dimatikan")
+    ShowPopupNotification(v and "Fly Diaktifkan (Tahan Lompat)" or "Fly Dimatikan")
 end)
 
 -- Skill Tab Populating
@@ -1044,11 +1053,25 @@ CreateToggle(TabContentFrames["Skill"], "Gun Mods (Infinite Ammo & RPM)", false,
 end)
 CreateSlider(TabContentFrames["Skill"], "RPM Fire Rate", 400, 2500, 800, function(val) HackConfig.CustomFireRate = val end)
 
--- Configuration Tab Populating (Fixed Save, Load, Delete, and Added Theme Switcher)
-CreateToggle(TabContentFrames["Configuration"], "UI Mode (Dark / Light)", true, function(isDark)
-    isDarkTheme = isDark
+-- Configuration Tab Populating (Perbaikan Bug Save, Load, Delete & Tambahan Switch Mode Light/Dark UI)
+local isDarkMode = true
+
+local function ApplyTheme()
+    pcall(function()
+        if isDarkMode then
+            MainFrame.BackgroundColor3 = Color3.fromRGB(6, 6, 9)
+            TabContainer.BackgroundColor3 = Color3.fromRGB(12, 12, 18)
+        else
+            MainFrame.BackgroundColor3 = Color3.fromRGB(240, 240, 245)
+            TabContainer.BackgroundColor3 = Color3.fromRGB(220, 220, 230)
+        end
+    end)
+end
+
+CreateToggle(TabContentFrames["Configuration"], "UI Mode (Dark / Light)", true, function(v)
+    isDarkMode = v
     ApplyTheme()
-    ShowPopupNotification(isDarkTheme to "Dark Mode Diaktifkan" or "Light Mode Diaktifkan")
+    ShowPopupNotification(v ? "UI Mode: Dark" : "UI Mode: Light")
 end)
 
 CreateButton(TabContentFrames["Configuration"], "Save Settings", function()
@@ -1062,7 +1085,7 @@ CreateButton(TabContentFrames["Configuration"], "Save Settings", function()
             writefile("D3D_Settings.json", HttpService:JSONEncode(data))
             ShowPopupNotification("Settings berhasil disimpan!")
         else
-            ShowPopupNotification("Environment tidak mendukung writefile!")
+            ShowPopupNotification("Fungsi writefile tidak didukung executor!")
         end
     end)
 end)
@@ -1107,11 +1130,11 @@ Players.PlayerAdded:Connect(function(p)
     if HackConfig.AntiAdminAktif and CheckIfAdmin(p) then
         TitleLabel.Text = "⚠️ ADMIN TERDETEKSI: " .. p.Name
         ShowPopupNotification("⚠️ ADMIN TERDETEKSI: " .. p.Name)
-        task.delay(5, function() TitleLabel.Text = "× D3D MENU: PLAYER & BOT v3.9.2.1 ×" end)
+        task.delay(5, function() TitleLabel.Text = "× D3D MENU: PLAYER & BOT v3.9.3 ×" end)
     end
 end)
 
--- Render Stepped World, Physics, Chams & Full Aimbot Loop
+-- Render Stepped World, Physics, Chams, Fly & Full Aimbot Loop
 RunService.RenderStepped:Connect(function()
     if WorldConfig.NightMode then
         Lighting.ClockTime = 0
@@ -1123,19 +1146,10 @@ RunService.RenderStepped:Connect(function()
         Lighting.Brightness = WorldConfig.DaylightBrightness
         Lighting.Ambient = Color3.fromRGB(200, 200, 200)
         Lighting.OutdoorAmbient = Color3.fromRGB(200, 200, 200)
-    else
-        Lighting.ClockTime = OriginalLighting.ClockTime
-        Lighting.Brightness = OriginalLighting.Brightness
-        Lighting.Ambient = OriginalLighting.Ambient
-        Lighting.OutdoorAmbient = OriginalLighting.OutdoorAmbient
     end
 
     if WorldConfig.NoFog then
         Lighting.FogEnd = 999999
-        Lighting.FogStart = 999999
-    else
-        Lighting.FogEnd = OriginalLighting.FogEnd
-        Lighting.FogStart = OriginalLighting.FogStart
     end
 
     if FOVFrame then
@@ -1416,7 +1430,7 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
--- Physics, Noclip, Fly & Deep Memory Gun Mods Loop
+-- Physics, Noclip, Fly Logic & Deep Memory Gun Mods Loop
 RunService.Stepped:Connect(function()
     if LocalPlayer.Character then
         local hrp = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
@@ -1430,21 +1444,19 @@ RunService.Stepped:Connect(function()
             if HackConfig.JumpAktif then hum.UseJumpPower = true; hum.JumpPower = HackConfig.CustomJump end
         end
 
+        -- Fly Mechanic via Holding Jump Button + Slow Fall Gravity
+        if WorldConfig.FlyAktif and hum and hrp then
+            if hum.Jump then
+                hrp.Velocity = Vector3.new(hrp.Velocity.X, 35, hrp.Velocity.Z)
+            elseif hrp.Velocity.Y < 0 then
+                hrp.Velocity = Vector3.new(hrp.Velocity.X, -5, hrp.Velocity.Z)
+            end
+        end
+
         if WorldConfig.WallHack then
             for _, part in pairs(LocalPlayer.Character:GetDescendants()) do
                 if part:IsA("BasePart") then
                     part.CanCollide = false
-                end
-            end
-        end
-
-        if WorldConfig.FlyAktif and hrp and hum then
-            local jumpHeld = hum.Jump
-            if jumpHeld then
-                hrp.Velocity = Vector3.new(hrp.Velocity.X, 50, hrp.Velocity.Z)
-            else
-                if hrp.Velocity.Y < 0 then
-                    hrp.Velocity = Vector3.new(hrp.Velocity.X, -12, hrp.Velocity.Z)
                 end
             end
         end
