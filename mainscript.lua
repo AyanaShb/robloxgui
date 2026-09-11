@@ -1,4 +1,4 @@
--- v3.9.4 - Android CoreGui & Drawing Fix --
+-- v3.9.5 - Full Features & CoreGui Fix --
 
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
@@ -10,19 +10,18 @@ local HttpService = game:GetService("HttpService")
 local Camera = Workspace.CurrentCamera
 local LocalPlayer = Players.LocalPlayer
 
--- Pastikan Drawing Library aman
+-- Proteksi Library Drawing & CoreGui
 local Drawing = Drawing or {
-    new = function(t)
+    new = function()
         return { Visible = false, Remove = function() end }
     end
 }
 
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "D3D_Ultimate_Android_V3_9_4"
+ScreenGui.Name = "D3D_Ultimate_Android_V3_9_5"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
--- Perbaikan Utama: Deteksi Parent GUI Universal untuk Android Executor
 pcall(function()
     if gethui then
         ScreenGui.Parent = gethui()
@@ -225,7 +224,7 @@ end)
 local TitleLabel = Instance.new("TextLabel")
 TitleLabel.Size = UDim2.new(1, 0, 0, 36)
 TitleLabel.BackgroundTransparency = 1
-TitleLabel.Text = "× D3D MENU: PLAYER & BOT v3.9.4 ×"
+TitleLabel.Text = "× D3D MENU: PLAYER & BOT v3.9.5 ×"
 TitleLabel.TextColor3 = Color3.fromRGB(240, 240, 255)
 TitleLabel.TextSize = 11.5
 TitleLabel.Font = Enum.Font.GothamBold
@@ -600,7 +599,74 @@ local function GetClosestEnemy2D()
     return closest
 end
 
--- Tab Visual
+local function HideESPObject(esp)
+    if not esp then return end
+    pcall(function()
+        if esp.Line then esp.Line.Visible = false end
+        if esp.Name then esp.Name.Visible = false end
+        if esp.Distance then esp.Distance.Visible = false end
+        if esp.Gender then esp.Gender.Visible = false end
+        if esp.Status then esp.Status.Visible = false end
+        if esp.HealthBarBg then esp.HealthBarBg.Visible = false end
+        if esp.HealthBar then esp.HealthBar.Visible = false end
+        if esp.HeadCircle then esp.HeadCircle.Visible = false end
+        if esp.Skeleton then
+            for _, bone in pairs(esp.Skeleton) do if bone then bone.Visible = false end end
+        end
+    end)
+end
+
+local function RemoveEntityESP(key)
+    if ESPCache[key] then
+        for _, obj in pairs(ESPCache[key]) do
+            if type(obj) == "table" then
+                for _, bone in pairs(obj) do pcall(function() bone:Remove() end) end
+            else
+                pcall(function() obj:Remove() end)
+            end
+        end
+        ESPCache[key] = nil
+    end
+    if ChamsCache[key] then pcall(function() ChamsCache[key]:Destroy() end); ChamsCache[key] = nil end
+    if EnemyChamsCache[key] then pcall(function() EnemyChamsCache[key]:Destroy() end); EnemyChamsCache[key] = nil end
+end
+
+local function CreateEntityESP(key)
+    RemoveEntityESP(key)
+    local espData = {
+        Line = Drawing.new("Line"),
+        Name = Drawing.new("Text"),
+        Distance = Drawing.new("Text"),
+        Gender = Drawing.new("Text"),
+        Status = Drawing.new("Text"),
+        HealthBarBg = Drawing.new("Line"),
+        HealthBar = Drawing.new("Line"),
+        HeadCircle = Drawing.new("Circle"),
+        Skeleton = {
+            Spine = Drawing.new("Line"),
+            LeftArm = Drawing.new("Line"),
+            RightArm = Drawing.new("Line"),
+            LeftLeg = Drawing.new("Line"),
+            RightLeg = Drawing.new("Line")
+        }
+    }
+    espData.Line.Thickness = 1.5
+    espData.HealthBarBg.Thickness = 3
+    espData.HealthBar.Thickness = 1.5
+    espData.HeadCircle.Thickness = 1.5
+    espData.HeadCircle.NumSides = 12
+    espData.HeadCircle.Filled = false
+
+    for _, bone in pairs(espData.Skeleton) do bone.Thickness = 1.5 end
+    for _, textObj in ipairs({espData.Name, espData.Distance, espData.Gender, espData.Status}) do
+        textObj.Size = 13
+        textObj.Center = true
+        textObj.Outline = true
+    end
+    ESPCache[key] = espData
+end
+
+-- Populating Tabs (Lengkap Kembali)
 CreateToggle(TabContentFrames["Visual"], "Skeleton ESP (Player & Bot)", false, function(v) VisualsConfig.ESP_Skeleton = v end)
 CreateColorPicker(TabContentFrames["Visual"], "Skeleton Color", Color3.fromRGB(0, 240, 255), function(c) VisualsConfig.SkeletonColor = c end)
 CreateToggle(TabContentFrames["Visual"], "Chams / Wall Glow", false, function(v) VisualsConfig.Chams = v end)
@@ -615,14 +681,12 @@ CreateToggle(TabContentFrames["Visual"], "ESP Gender", false, function(v) Visual
 CreateToggle(TabContentFrames["Visual"], "ESP Status", false, function(v) VisualsConfig.ESP_Status = v end)
 CreateToggle(TabContentFrames["Visual"], "ESP Health Bar", false, function(v) VisualsConfig.ESP_Health = v end)
 
--- Tab Player
 CreateToggle(TabContentFrames["Player"], "No Fall Damage", false, function(v) HackConfig.AntiFallDamageAktif = v end)
 CreateToggle(TabContentFrames["Player"], "Kecepatan Lari", false, function(v) HackConfig.SpeedAktif = v end)
 CreateSlider(TabContentFrames["Player"], "Set Speed", 16, 250, 50, function(val) HackConfig.CustomSpeed = val end)
 CreateToggle(TabContentFrames["Player"], "Lompat Tinggi", false, function(v) HackConfig.JumpAktif = v end)
 CreateSlider(TabContentFrames["Player"], "Set Power", 50, 250, 100, function(val) HackConfig.CustomJump = val end)
 
--- Tab World
 CreateToggle(TabContentFrames["World"], "Night Mode", false, function(v) WorldConfig.NightMode = v end)
 CreateToggle(TabContentFrames["World"], "Daylight", false, function(v) WorldConfig.Daylight = v end)
 CreateSlider(TabContentFrames["World"], "Daylight Brightness", 1, 10, 3, function(val) WorldConfig.DaylightBrightness = val end)
@@ -656,7 +720,6 @@ CreateButton(TabContentFrames["World"], "Teleport ke Target", function()
     end)
 end)
 
--- Tab Skill
 CreateToggle(TabContentFrames["Skill"], "Auto Aim (Kunci Layar)", false, function(v) HackConfig.AimbotAktif = v end)
 CreateToggle(TabContentFrames["Skill"], "Auto Aim Wall Check", false, function(v) HackConfig.WallCheck = v end)
 CreateDropdown(TabContentFrames["Skill"], "Mode Aimbot", {"POV Kamera (FOV)", "360° (Brutal)"}, "POV Kamera (FOV)", function(opt) HackConfig.AimbotMode = opt end)
@@ -664,10 +727,7 @@ CreateToggle(TabContentFrames["Skill"], "Tampilkan Lingkaran FOV", false, functi
 CreateSlider(TabContentFrames["Skill"], "Lebar FOV", 10, 600, 150, function(val) HackConfig.FOVRadius = val end)
 CreateToggle(TabContentFrames["Skill"], "Gun Mods", false, function(v) HackConfig.GunModsAktif = v end)
 
--- Tab Configuration
-local isDarkMode = true
 CreateToggle(TabContentFrames["Configuration"], "UI Mode (Dark / Light)", true, function(v)
-    isDarkMode = v
     MainFrame.BackgroundColor3 = v and Color3.fromRGB(6, 6, 9) or Color3.fromRGB(240, 240, 245)
 end)
 
@@ -703,7 +763,7 @@ CreateButton(TabContentFrames["Configuration"], "Delete Settings", function()
     end)
 end)
 
--- Loop Utama Render
+-- Main Render Loop (ESP, Chams, Aimbot, World)
 RunService.RenderStepped:Connect(function()
     if WorldConfig.NightMode then
         Lighting.ClockTime = 0
@@ -729,6 +789,32 @@ RunService.RenderStepped:Connect(function()
             end
         end
     end
+
+    local activeEntities = GetAllTargetableEntities()
+    for _, entity in ipairs(activeEntities) do
+        local char = GetEntityModel(entity)
+        if IsValidCharacter(char) then
+            if not ESPCache[char] then CreateEntityESP(char) end
+            local esp = ESPCache[char]
+            local primaryPart = char:FindFirstChild("HumanoidRootPart") or char:FindFirstChild("Torso")
+            
+            if primaryPart then
+                local vector, onScreen = Camera:WorldToViewportPoint(primaryPart.Position)
+                if onScreen then
+                    if VisualsConfig.ESP_Name then
+                        esp.Name.Text = char.Name
+                        esp.Name.Position = Vector2.new(vector.X, vector.Y - 38)
+                        esp.Name.Color = VisualsConfig.NameColor
+                        esp.Name.Visible = true
+                    else
+                        esp.Name.Visible = false
+                    end
+                else
+                    HideESPObject(esp)
+                end
+            end
+        end
+    end
 end)
 
 RunService.Stepped:Connect(function()
@@ -750,4 +836,4 @@ RunService.Stepped:Connect(function()
     end
 end)
 
-ShowPopupNotification("D3D Menu Berhasil Dimuat!")
+ShowPopupNotification("D3D Menu v3.9.5 Berhasil Dimuat!")
