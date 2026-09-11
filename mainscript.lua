@@ -5,8 +5,86 @@ local UserInputService = game:GetService("UserInputService")
 local Lighting = game:GetService("Lighting")
 local Workspace = game:GetService("Workspace")
 local RunService = game:GetService("RunService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local HttpService = game:GetService("HttpService")
+local ScriptContext = game:GetService("ScriptContext")
 local Camera = Workspace.CurrentCamera
 local LocalPlayer = Players.LocalPlayer
+
+-- ==========================================
+-- AUTO BYPASS ANTI-CHEAT & METATABLE HOOKS
+-- ==========================================
+task.spawn(function()
+    pcall(function()
+        if setreadonly then
+            pcall(function()
+                setreadonly(getrenv(), false)
+                setreadonly(getreg(), false)
+                setreadonly(getgc(), false)
+            end)
+        end
+        if make_writeable then
+            pcall(function() make_writeable(getreg()) end)
+        end
+        if detour_function then
+            detour_function = function(...) return true end
+        end
+        if getconnections then
+            pcall(function()
+                for _, connection in ipairs(getconnections(ScriptContext.Error)) do
+                    connection:Disable()
+                end
+            end)
+        end
+        if getcallingscript then
+            pcall(function()
+                getcallingscript = function() return nil end
+            end)
+        end
+        for _, tableName in ipairs({"_G", "shared"}) do
+            pcall(function()
+                local target = getgenv()[tableName]
+                if target and type(target) == "table" then
+                    for key, _ in pairs(target) do
+                        local strKey = tostring(key):lower()
+                        if strKey:find("signature") or strKey:find("checksum") or strKey:find("hash") then
+                            target[key] = nil
+                        end
+                    end
+                end
+            end)
+        end
+        for _, remote in ipairs(ReplicatedStorage:GetDescendants()) do
+            if remote:IsA("RemoteEvent") or remote:IsA("RemoteFunction") then
+                local name = remote.Name:lower()
+                if name:find("handshake") or name:find("validate") or name:find("verify") or name:find("integrity") or name:find("anti") then
+                    pcall(function()
+                        if remote:IsA("RemoteEvent") then
+                            remote.FireServer = function(...) return true end
+                        elseif remote:IsA("RemoteFunction") then
+                            remote.InvokeServer = function(...) return true end
+                        end
+                    end)
+                end
+            end
+        end
+    end)
+end)
+
+pcall(function()
+    local mt = getrawmetatable(game)
+    if mt and mt.__index then
+        local oldIndex = mt.__index
+        setreadonly(mt, false)
+        mt.__index = newcclosure(function(t, k)
+            if not checkcaller() and t:IsA("BasePart") and tostring(k) == "CanCollide" then
+                return true
+            end
+            return oldIndex(t, k)
+        end)
+        setreadonly(mt, true)
+    end
+end)
 
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "D3D_Ultimate_Android_V3"
@@ -47,22 +125,15 @@ local VisualsConfig = {
     ESP_Gender = false,
     ESP_Health = false,
     Chams = false,
+    EnemyChams = false,
     SkeletonColor = Color3.fromRGB(0, 240, 255),
     LineColor = Color3.fromRGB(0, 240, 255),
     NameColor = Color3.fromRGB(255, 255, 255),
     DistanceColor = Color3.fromRGB(255, 255, 255),
     GenderColor = Color3.fromRGB(255, 255, 255),
     HealthColor = Color3.fromRGB(0, 255, 128),
-    ChamsColor = Color3.fromRGB(255, 0, 128)
-}
-
-local PlayerConfig = {
-    SpeedRun = false,
-    SpeedValue = 24,
-    FlyHack = false,
-    MultiJump = false,
-    Wallhack = false,
-    AntiAim = false
+    ChamsColor = Color3.fromRGB(255, 0, 128),
+    EnemyChamsColor = Color3.fromRGB(255, 0, 0)
 }
 
 local WorldConfig = {
@@ -72,27 +143,50 @@ local WorldConfig = {
     DaylightClock = 14
 }
 
-local SkillConfig = {
-    Aimbot = false,
-    AimTargetPart = "Head",
-    AimDistance = 1000,
-    AimFovSize = 140
+-- Hack States
+local HackConfig = {
+    AntiAdminAktif = false,
+    AimbotAktif = false,
+    AimbotMode = "POV Kamera (FOV)",
+    AimTargetMode = "Head",
+    AimbotSmoothness = 15,
+    ShowFOV = false,
+    FOVRadius = 150,
+    FFAModeAktif = false,
+    AntiFallDamageAktif = false,
+    SpeedAktif = false,
+    CustomSpeed = 50,
+    JumpAktif = false,
+    CustomJump = 100,
+    GunModsAktif = false,
+    CustomFireRate = 800
 }
 
 local ESPCache = {}
 local ChamsCache = {}
+local EnemyChamsCache = {}
 
-local FOVCircle = Drawing.new("Circle")
-FOVCircle.Visible = false
-FOVCircle.Filled = false
-FOVCircle.Thickness = 1.5
-FOVCircle.Color = Color3.fromRGB(255, 0, 0)
-FOVCircle.NumSides = 64
-
-local AimbotLine = Drawing.new("Line")
-AimbotLine.Visible = false
-AimbotLine.Thickness = 1.5
-AimbotLine.Color = Color3.fromRGB(0, 255, 128)
+-- FOV Circle GUI
+local FOVGui, FOVFrame
+pcall(function()
+    FOVGui = Instance.new("ScreenGui")
+    FOVGui.Name = "Universal_FOV_System"
+    FOVGui.Parent = ScreenGui
+    FOVGui.IgnoreGuiInset = true
+    FOVFrame = Instance.new("Frame")
+    FOVFrame.Parent = FOVGui
+    FOVFrame.AnchorPoint = Vector2.new(0.5, 0.5)
+    FOVFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
+    FOVFrame.Size = UDim2.new(0, HackConfig.FOVRadius * 2, 0, HackConfig.FOVRadius * 2)
+    FOVFrame.BackgroundTransparency = 1
+    FOVFrame.Visible = false
+    local FOVStroke = Instance.new("UIStroke", FOVFrame)
+    FOVStroke.Color = Color3.fromRGB(255, 255, 255)
+    FOVStroke.Thickness = 1.5
+    FOVStroke.Transparency = 0.5
+    local FOVCorner = Instance.new("UICorner", FOVFrame)
+    FOVCorner.CornerRadius = UDim.new(1, 0)
+end)
 
 local FloatButton = Instance.new("TextButton")
 FloatButton.Size = UDim2.new(0, 52, 0, 52)
@@ -161,17 +255,17 @@ TabContainer.Parent = MainFrame
 
 Instance.new("UICorner", TabContainer).CornerRadius = UDim.new(0, 10)
 
-local tabs = {"Visual", "Player", "World", "Skill"}
+local tabs = {"Visual", "Player", "World", "Skill", "Configuration"}
 local TabContentFrames = {}
 
 for i, tabName in ipairs(tabs) do
     local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(0.25, 0, 1, 0)
-    btn.Position = UDim2.new((i-1)*0.25, 0, 0, 0)
+    btn.Size = UDim2.new(0.2, 0, 1, 0)
+    btn.Position = UDim2.new((i-1)*0.2, 0, 0, 0)
     btn.BackgroundTransparency = 1
     btn.Text = tabName
     btn.TextColor3 = (i == 1) and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(110, 110, 140)
-    btn.TextSize = 11
+    btn.TextSize = 10
     btn.Font = Enum.Font.GothamBold
     btn.Parent = TabContainer
 
@@ -278,7 +372,7 @@ local function CreateColorPicker(parent, text, defaultColor, callback)
     stroke.Thickness = 2
     stroke.Color = Color3.fromRGB(255, 255, 255)
 
-    local colors = {defaultColor, Color3.fromRGB(0, 240, 255), Color3.fromRGB(255, 0, 128), Color3.fromRGB(0, 230, 130), Color3.fromRGB(255, 200, 0), Color3.fromRGB(255, 255, 255)}
+    local colors = {defaultColor, Color3.fromRGB(0, 240, 255), Color3.fromRGB(255, 0, 128), Color3.fromRGB(0, 230, 130), Color3.fromRGB(255, 200, 0), Color3.fromRGB(255, 255, 255), Color3.fromRGB(255, 0, 0)}
     local colorIndex = 1
 
     pickerCircle.MouseButton1Click:Connect(function()
@@ -344,49 +438,12 @@ local function CreateSlider(parent, text, min, max, default, callback)
     frame.Parent = parent
 end
 
-local function CreateChoice(parent, text, choices, defaultIndex, callback)
-    local frame = Instance.new("Frame")
-    frame.Size = UDim2.new(1, 0, 0, 48)
-    frame.BackgroundColor3 = Color3.fromRGB(12, 12, 18)
-    frame.BorderSizePixel = 0
-    Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 8)
-
-    local label = Instance.new("TextLabel", frame)
-    label.Size = UDim2.new(0.5, 0, 1, 0)
-    label.Position = UDim2.new(0, 12, 0, 0)
-    label.BackgroundTransparency = 1
-    label.Text = text
-    label.TextColor3 = Color3.fromRGB(220, 220, 235)
-    label.TextSize = 10.5
-    label.Font = Enum.Font.GothamMedium
-    label.TextXAlignment = Enum.TextXAlignment.Left
-
-    local choiceBtn = Instance.new("TextButton", frame)
-    choiceBtn.Size = UDim2.new(0, 120, 0, 28)
-    choiceBtn.Position = UDim2.new(1, -132, 0.5, -14)
-    choiceBtn.BackgroundColor3 = Color3.fromRGB(25, 25, 36)
-    choiceBtn.Text = choices[defaultIndex]
-    choiceBtn.TextColor3 = Color3.fromRGB(0, 240, 255)
-    choiceBtn.TextSize = 10.5
-    choiceBtn.Font = Enum.Font.GothamBold
-    Instance.new("UICorner", choiceBtn).CornerRadius = UDim.new(0, 6)
-
-    local currentIndex = defaultIndex
-    choiceBtn.MouseButton1Click:Connect(function()
-        currentIndex = (currentIndex % #choices) + 1
-        choiceBtn.Text = choices[currentIndex]
-        if callback then callback(choices[currentIndex]) end
-    end)
-
-    frame.Parent = parent
-end
-
 local function IsEnemy(player)
     if player == LocalPlayer then return false end
     if not player.Character then return false end
     local hum = player.Character:FindFirstChildOfClass("Humanoid")
     if not hum or hum.Health <= 0 then return false end
-
+    if HackConfig.FFAModeAktif then return true end
     if player.Team and LocalPlayer.Team then
         if player.Team == LocalPlayer.Team then return false end
     end
@@ -407,6 +464,10 @@ local function RemovePlayerESP(player)
     if ChamsCache[player] then
         pcall(function() ChamsCache[player]:Destroy() end)
         ChamsCache[player] = nil
+    end
+    if EnemyChamsCache[player] then
+        pcall(function() EnemyChamsCache[player]:Destroy() end)
+        EnemyChamsCache[player] = nil
     end
 end
 
@@ -475,13 +536,16 @@ end
 Players.PlayerAdded:Connect(SetupPlayer)
 Players.PlayerRemoving:Connect(RemovePlayerESP)
 
+-- Visual Tab Populating
 CreateToggle(TabContentFrames["Visual"], "Skeleton ESP (Ultra Stable)", false, function(v) VisualsConfig.ESP_Skeleton = v end)
 CreateColorPicker(TabContentFrames["Visual"], "Skeleton Color", Color3.fromRGB(0, 240, 255), function(c) 
     VisualsConfig.SkeletonColor = c 
     for _, esp in pairs(ESPCache) do for _, bone in pairs(esp.Skeleton) do bone.Color = c end end
 end)
-CreateToggle(TabContentFrames["Visual"], "Chams / Wall Glow (Tembus Dinding)", false, function(v) VisualsConfig.Chams = v end)
+CreateToggle(TabContentFrames["Visual"], "Chams / Wall Glow", false, function(v) VisualsConfig.Chams = v end)
 CreateColorPicker(TabContentFrames["Visual"], "Chams Glow Color", Color3.fromRGB(255, 0, 128), function(c) VisualsConfig.ChamsColor = c end)
+CreateToggle(TabContentFrames["Visual"], "Enemy Chams", false, function(v) VisualsConfig.EnemyChams = v end)
+CreateColorPicker(TabContentFrames["Visual"], "Enemy Chams Color", Color3.fromRGB(255, 0, 0), function(c) VisualsConfig.EnemyChamsColor = c end)
 CreateToggle(TabContentFrames["Visual"], "ESP Line", false, function(v) VisualsConfig.ESP_Line = v end)
 CreateColorPicker(TabContentFrames["Visual"], "Line Color", Color3.fromRGB(0, 240, 255), function(c) VisualsConfig.LineColor = c end)
 CreateToggle(TabContentFrames["Visual"], "ESP Name", false, function(v) VisualsConfig.ESP_Name = v end)
@@ -493,18 +557,28 @@ CreateColorPicker(TabContentFrames["Visual"], "Gender Color", Color3.fromRGB(255
 CreateToggle(TabContentFrames["Visual"], "ESP Health (Vertical Bar)", false, function(v) VisualsConfig.ESP_Health = v end)
 CreateColorPicker(TabContentFrames["Visual"], "Health Bar Color", Color3.fromRGB(0, 255, 128), function(c) VisualsConfig.HealthColor = c end)
 
-CreateToggle(TabContentFrames["Player"], "Speed Run", false, function(v) PlayerConfig.SpeedRun = v end)
-CreateSlider(TabContentFrames["Player"], "Speed Run Max", 16, 100, 24, function(val) PlayerConfig.SpeedValue = val end)
-CreateToggle(TabContentFrames["Player"], "Fly Hack (Mobile Optimized)", false, function(v) PlayerConfig.FlyHack = v end)
-CreateToggle(TabContentFrames["Player"], "Multi Jump", false, function(v) PlayerConfig.MultiJump = v end)
-CreateToggle(TabContentFrames["Player"], "Wallhack / Noclip (Tembus Objek)", false, function(v) PlayerConfig.Wallhack = v end)
-CreateToggle(TabContentFrames["Player"], "Anti Aim (Auto-Evasion)", false, function(v) PlayerConfig.AntiAim = v end)
+-- Player Tab Populating
+CreateToggle(TabContentFrames["Player"], "No Fall Damage", false, function(v) HackConfig.AntiFallDamageAktif = v end)
+CreateToggle(TabContentFrames["Player"], "Kecepatan Lari", false, function(v) 
+    HackConfig.SpeedAktif = v
+    if not v and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
+        LocalPlayer.Character.Humanoid.WalkSpeed = 16
+    end
+end)
+CreateSlider(TabContentFrames["Player"], "Set Speed", 16, 250, 50, function(val) HackConfig.CustomSpeed = val end)
+CreateToggle(TabContentFrames["Player"], "Lompat Tinggi", false, function(v) 
+    HackConfig.JumpAktif = v
+    if not v and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
+        LocalPlayer.Character.Humanoid.UseJumpPower = true
+        LocalPlayer.Character.Humanoid.JumpPower = 50
+    end
+end)
+CreateSlider(TabContentFrames["Player"], "Set Power", 50, 250, 100, function(val) HackConfig.CustomJump = val end)
 
+-- World Tab Populating
 CreateToggle(TabContentFrames["World"], "Night Mode", false, function(v)
     WorldConfig.NightMode = v
-    if v then
-        WorldConfig.Daylight = false
-    else
+    if v then WorldConfig.Daylight = false else
         Lighting.ClockTime = OriginalLighting.ClockTime
         Lighting.Brightness = OriginalLighting.Brightness
         Lighting.Ambient = OriginalLighting.Ambient
@@ -516,9 +590,7 @@ end)
 
 CreateToggle(TabContentFrames["World"], "Daylight (Indoor/Outdoor)", false, function(v)
     WorldConfig.Daylight = v
-    if v then
-        WorldConfig.NightMode = false
-    else
+    if v then WorldConfig.NightMode = false else
         Lighting.ClockTime = OriginalLighting.ClockTime
         Lighting.Brightness = OriginalLighting.Brightness
         Lighting.Ambient = OriginalLighting.Ambient
@@ -531,68 +603,125 @@ end)
 CreateSlider(TabContentFrames["World"], "Daylight Brightness", 1, 10, 3, function(val) WorldConfig.DaylightBrightness = val end)
 CreateSlider(TabContentFrames["World"], "Daylight Time (Clock)", 0, 24, 14, function(val) WorldConfig.DaylightClock = val end)
 
-CreateToggle(TabContentFrames["Skill"], "Aimbot (Strict FOV Lock)", false, function(v) SkillConfig.Aimbot = v end)
-CreateChoice(TabContentFrames["Skill"], "Aim Target Part", {"Head", "Chest"}, 1, function(choice) SkillConfig.AimTargetPart = choice end)
-CreateSlider(TabContentFrames["Skill"], "Aim Distance Scan", 100, 2000, 1000, function(val) SkillConfig.AimDistance = val end)
-CreateSlider(TabContentFrames["Skill"], "Aim FOV Size", 50, 400, 140, function(val) SkillConfig.AimFovSize = val end)
+-- Skill Tab Populating (Main Features + Gun Mods combined)
+CreateToggle(TabContentFrames["Skill"], "Peringatan Admin (Popup Warning)", false, function(v) HackConfig.AntiAdminAktif = v end)
+CreateToggle(TabContentFrames["Skill"], "Aktifkan Auto Aim (Kunci Layar)", false, function(v) HackConfig.AimbotAktif = v end)
+CreateToggle(TabContentFrames["Skill"], "Tampilkan Lingkaran FOV", false, function(v) HackConfig.ShowFOV = v end)
+CreateSlider(TabContentFrames["Skill"], "Lebar Lingkaran FOV", 10, 600, 150, function(val) HackConfig.FOVRadius = val end)
+CreateSlider(TabContentFrames["Skill"], "Kelengketan Aim POV (Smoothness)", 1, 100, 15, function(val) HackConfig.AimbotSmoothness = val end)
+CreateToggle(TabContentFrames["Skill"], "Gun Mods (Infinite Ammo & RPM)", false, function(v) HackConfig.GunModsAktif = v end)
+CreateSlider(TabContentFrames["Skill"], "RPM Fire Rate", 400, 2500, 800, function(val) HackConfig.CustomFireRate = val end)
 
-UserInputService.JumpRequest:Connect(function()
-    local char = LocalPlayer.Character
-    local hum = char and char:FindFirstChildOfClass("Humanoid")
-    if hum and PlayerConfig.MultiJump then
-        hum:ChangeState(Enum.HumanoidStateType.Jumping)
+-- Configuration Tab Populating
+local ConfigFileName = "LiteHack_Config.json"
+local function SaveSettings()
+    local settings = {
+        AntiAdmin = HackConfig.AntiAdminAktif,
+        Aimbot = HackConfig.AimbotAktif,
+        ShowFOV = HackConfig.ShowFOV,
+        FOVRadius = HackConfig.FOVRadius,
+        Smoothness = HackConfig.AimbotSmoothness,
+        AntiFall = HackConfig.AntiFallDamageAktif,
+        SpeedAktif = HackConfig.SpeedAktif,
+        CustomSpeed = HackConfig.CustomSpeed,
+        JumpAktif = HackConfig.JumpAktif,
+        CustomJump = HackConfig.CustomJump,
+        GunModsAktif = HackConfig.GunModsAktif,
+        CustomFireRate = HackConfig.CustomFireRate
+    }
+    if writefile then
+        pcall(function()
+            writefile(ConfigFileName, HttpService:JSONEncode(settings))
+        end)
+        return true
+    end
+    return false
+end
+
+local function LoadSettings()
+    if isfile and readfile and isfile(ConfigFileName) then
+        local success, json = pcall(function() return readfile(ConfigFileName) end)
+        if success and json then
+            local settings = HttpService:JSONDecode(json)
+            if settings.AntiAdmin ~= nil then HackConfig.AntiAdminAktif = settings.AntiAdmin end
+            if settings.Aimbot ~= nil then HackConfig.AimbotAktif = settings.Aimbot end
+            if settings.ShowFOV ~= nil then HackConfig.ShowFOV = settings.ShowFOV end
+            if settings.FOVRadius ~= nil then HackConfig.FOVRadius = settings.FOVRadius end
+            if settings.Smoothness ~= nil then HackConfig.AimbotSmoothness = settings.Smoothness end
+            if settings.AntiFall ~= nil then HackConfig.AntiFallDamageAktif = settings.AntiFall end
+            if settings.SpeedAktif ~= nil then HackConfig.SpeedAktif = settings.SpeedAktif end
+            if settings.CustomSpeed ~= nil then HackConfig.CustomSpeed = settings.CustomSpeed end
+            if settings.JumpAktif ~= nil then HackConfig.JumpAktif = settings.JumpAktif end
+            if settings.CustomJump ~= nil then HackConfig.CustomJump = settings.CustomJump end
+            if settings.GunModsAktif ~= nil then HackConfig.GunModsAktif = settings.GunModsAktif end
+            if settings.CustomFireRate ~= nil then HackConfig.CustomFireRate = settings.CustomFireRate end
+            return true
+        end
+    end
+    return false
+end
+
+CreateToggle(TabContentFrames["Configuration"], "Ubah Tema Neon Ungu/Cyan", true, function(v)
+    if v then
+        MainGradient.Color = ColorSequence.new({
+            ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 0, 128)),
+            ColorSequenceKeypoint.new(0.5, Color3.fromRGB(0, 240, 255)),
+            ColorSequenceKeypoint.new(1, Color3.fromRGB(160, 0, 255))
+        })
+    else
+        MainGradient.Color = ColorSequence.new({
+            ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)),
+            ColorSequenceKeypoint.new(0.5, Color3.fromRGB(100, 100, 100)),
+            ColorSequenceKeypoint.new(1, Color3.fromRGB(20, 20, 20))
+        })
     end
 end)
 
+local SaveBtn = Instance.new("TextButton", TabContentFrames["Configuration"])
+SaveBtn.Size = UDim2.new(1, 0, 0, 36)
+SaveBtn.BackgroundColor3 = Color3.fromRGB(0, 230, 130)
+SaveBtn.Text = "💾 Save Konfigurasi"
+SaveBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+SaveBtn.Font = Enum.Font.GothamBold
+SaveBtn.TextSize = 11
+Instance.new("UICorner", SaveBtn).CornerRadius = UDim.new(0, 8)
+SaveBtn.MouseButton1Click:Connect(function()
+    SaveSettings()
+end)
+
+local LoadBtn = Instance.new("TextButton", TabContentFrames["Configuration"])
+LoadBtn.Size = UDim2.new(1, 0, 0, 36)
+LoadBtn.BackgroundColor3 = Color3.fromRGB(0, 120, 255)
+LoadBtn.Text = "📂 Load Konfigurasi"
+LoadBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+LoadBtn.Font = Enum.Font.GothamBold
+LoadBtn.TextSize = 11
+Instance.new("UICorner", LoadBtn).CornerRadius = UDim.new(0, 8)
+LoadBtn.MouseButton1Click:Connect(function()
+    LoadSettings()
+end)
+
+-- Admin Check Logic
+local function CheckIfAdmin(p)
+    if p == LocalPlayer then return false end
+    local nameRaw = string.upper(p.Name .. " " .. p.DisplayName)
+    if string.find(nameRaw, "%[GM%]") or string.find(nameRaw, "%[MOD%]") or string.find(nameRaw, "GAME MASTER") or string.find(nameRaw, "MODERATOR") then return true end
+    return false
+end
+
+local function SendAdminWarning(p)
+    pcall(function()
+        TitleLabel.Text = "⚠️ ADMIN TERDETEKSI: " .. p.Name
+        task.delay(5, function() TitleLabel.Text = "× D3D MENU: ULTRA REBUILD v3.0 ×" end)
+    end)
+end
+
+Players.PlayerAdded:Connect(function(p)
+    if HackConfig.AntiAdminAktif and CheckIfAdmin(p) then SendAdminWarning(p) end
+end)
+
+-- Render Stepped World, Physics, Chams & Aimbot Loop
 RunService.RenderStepped:Connect(function()
-    local char = LocalPlayer.Character
-    local hrp = char and char:FindFirstChild("HumanoidRootPart")
-    local hum = char and char:FindFirstChildOfClass("Humanoid")
-
-    if char and hrp and hum then
-        if PlayerConfig.SpeedRun then
-            hum.WalkSpeed = PlayerConfig.SpeedValue
-        else
-            hum.WalkSpeed = 16
-        end
-
-        if PlayerConfig.Wallhack then
-            for _, part in ipairs(char:GetDescendants()) do
-                if part:IsA("BasePart") then
-                    part.CanCollide = false
-                end
-            end
-        end
-
-        if PlayerConfig.FlyHack then
-            local bv = hrp:FindFirstChild("D3DFlyVelocity")
-            if not bv then
-                bv = Instance.new("BodyVelocity")
-                bv.Name = "D3DFlyVelocity"
-                bv.MaxForce = Vector3.new(400000, 400000, 400000)
-                bv.Velocity = Vector3.new(0, 0, 0)
-                bv.Parent = hrp
-            end
-            
-            local camCF = Camera.CFrame
-            local moveDir = Vector3.new(0, 0, 0)
-            if UserInputService:IsKeyDown(Enum.KeyCode.W) or UserInputService.TouchEnabled then
-                moveDir = moveDir + (camCF.LookVector * 50)
-            end
-            if UserInputService:IsKeyDown(Enum.KeyCode.Space) then
-                moveDir = moveDir + Vector3.new(0, 45, 0)
-            end
-            bv.Velocity = moveDir
-        else
-            local bv = hrp:FindFirstChild("D3DFlyVelocity")
-            if bv then bv:Destroy() end
-        end
-
-        if PlayerConfig.AntiAim then
-            hrp.CFrame = hrp.CFrame + Vector3.new(math.random(-2, 2), 0, math.random(-2, 2))
-        end
-    end
-
     if WorldConfig.NightMode then
         Lighting.ClockTime = 0
         Lighting.Brightness = 0.1
@@ -604,75 +733,65 @@ RunService.RenderStepped:Connect(function()
         Lighting.Ambient = Color3.fromRGB(200, 200, 200)
         Lighting.OutdoorAmbient = Color3.fromRGB(200, 200, 200)
     end
-end)
 
-local function GetClosestEnemyInFOV()
-    local screenCenter = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
-    local bestTargetPos, bestDist = nil, math.huge
-    local char = LocalPlayer.Character
-    local hrp = char and char:FindFirstChild("HumanoidRootPart")
-    if not hrp then return nil end
+    if FOVFrame then
+        FOVFrame.Size = UDim2.new(0, HackConfig.FOVRadius * 2, 0, HackConfig.FOVRadius * 2)
+        FOVFrame.Visible = HackConfig.ShowFOV and HackConfig.AimbotAktif
+    end
 
-    for _, player in ipairs(Players:GetPlayers()) do
-        if IsEnemy(player) then
-            local pChar = player.Character
-            local targetPart = pChar and pChar:FindFirstChild("Head")
-            local hum = pChar and pChar:FindFirstChildOfClass("Humanoid")
-
-            if targetPart and hum and hum.Health > 0 then
-                local worldPos = targetPart.Position
-                local distance = (hrp.Position - worldPos).Magnitude
-
-                if distance <= SkillConfig.AimDistance then
-                    local screenPos, onScreen = Camera:WorldToViewportPoint(worldPos)
+    -- Aimbot & Target Tracking Logic
+    if HackConfig.AimbotAktif then
+        local closest, shortestDist = nil, HackConfig.FOVRadius
+        local center = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
+        for _, player in ipairs(Players:GetPlayers()) do
+            if IsEnemy(player) and player.Character then
+                local char = player.Character
+                local part = char:FindFirstChild(HackConfig.AimTargetMode) or char:FindFirstChild("HumanoidRootPart")
+                local hum = char:FindFirstChildOfClass("Humanoid")
+                if part and hum and hum.Health > 0 then
+                    local pos, onScreen = Camera:WorldToViewportPoint(part.Position)
                     if onScreen then
-                        local screenPos2D = Vector2.new(screenPos.X, screenPos.Y)
-                        local distToCenter = (screenPos2D - screenCenter).Magnitude
-
-                        if distToCenter <= SkillConfig.AimFovSize and distToCenter < bestDist then
-                            bestDist = distToCenter
-                            bestTargetPos = worldPos
+                        local dist = (center - Vector2.new(pos.X, pos.Y)).Magnitude
+                        if dist <= shortestDist then
+                            shortestDist = dist
+                            closest = part
                         end
                     end
                 end
             end
         end
+        if closest then
+            local smooth = math.clamp(HackConfig.AimbotSmoothness / 100, 0.01, 1)
+            Camera.CFrame = Camera.CFrame:Lerp(CFrame.lookAt(Camera.CFrame.Position, closest.Position), smooth)
+        end
     end
-    return bestTargetPos
-end
 
-RunService.RenderStepped:Connect(function()
-    local screenCenter = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
-
-    if SkillConfig.Aimbot then
-        FOVCircle.Position = screenCenter
-        FOVCircle.Radius = SkillConfig.AimFovSize
-        FOVCircle.Visible = true
-
-        local targetPos = GetClosestEnemyInFOV()
-        if targetPos then
-            local screenPos, onScreen = Camera:WorldToViewportPoint(targetPos)
-            if onScreen then
-                local target2D = Vector2.new(screenPos.X, screenPos.Y)
-                local dist = (target2D - screenCenter).Magnitude
-
-                if dist <= SkillConfig.AimFovSize then
-                    AimbotLine.From = screenCenter
-                    AimbotLine.To = target2D
-                    AimbotLine.Color = VisualsConfig.HealthColor
-                    AimbotLine.Visible = true
+    -- Enemy Chams Loop
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer and player.Character then
+            local char = player.Character
+            local isEnemy = IsEnemy(player)
+            if VisualsConfig.EnemyChams and isEnemy then
+                if not EnemyChamsCache[player] then
+                    local highlight = Instance.new("Highlight")
+                    highlight.Name = "D3D_EnemyChams"
+                    highlight.Adornee = char
+                    highlight.FillColor = VisualsConfig.EnemyChamsColor
+                    highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+                    highlight.FillTransparency = 0.4
+                    highlight.OutlineTransparency = 0
+                    highlight.Parent = char
+                    EnemyChamsCache[player] = highlight
                 else
-                    AimbotLine.Visible = false
+                    EnemyChamsCache[player].FillColor = VisualsConfig.EnemyChamsColor
+                    EnemyChamsCache[player].Enabled = true
                 end
             else
-                AimbotLine.Visible = false
+                if EnemyChamsCache[player] then
+                    EnemyChamsCache[player].Enabled = false
+                end
             end
-        else
-            AimbotLine.Visible = false
         end
-    else
-        FOVCircle.Visible = false
-        AimbotLine.Visible = false
     end
 
     for player, esp in pairs(ESPCache) do
@@ -822,6 +941,78 @@ RunService.RenderStepped:Connect(function()
                     obj.Visible = false
                 end
             end
+        end
+    end
+end)
+
+-- Physics & Deep Memory Gun Mods Loop
+RunService.Stepped:Connect(function()
+    if LocalPlayer.Character then
+        local hrp = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+        local hum = LocalPlayer.Character:FindFirstChild("Humanoid")
+        if hrp and HackConfig.AntiFallDamageAktif and hrp.Velocity.Y < -40 then
+            hrp.Velocity = Vector3.new(hrp.Velocity.X, -10, hrp.Velocity.Z)
+        end
+        if hum then
+            if HackConfig.SpeedAktif then hum.WalkSpeed = HackConfig.CustomSpeed end
+            if HackConfig.JumpAktif then hum.UseJumpPower = true; hum.JumpPower = HackConfig.CustomJump end
+        end
+    end
+end)
+
+local function ScanValueMods(tool)
+    pcall(function()
+        local function SetSafe(attr, value)
+            if tool:GetAttribute(attr) ~= nil then tool:SetAttribute(attr, value) end
+        end
+        SetSafe("TotalAmmo", 999999)
+        SetSafe("NewMax", 999999)
+        SetSafe("magazineSize", 999999)
+        SetSafe("spread", 0)
+        SetSafe("recoilMax", 0)
+        SetSafe("reloadTime", 0.05)
+        SetSafe("rateOfFire", HackConfig.CustomFireRate)
+        for _, obj in pairs(tool:GetDescendants()) do
+            if obj:IsA("IntValue") or obj:IsA("NumberValue") then
+                local name = obj.Name:lower()
+                if name:find("ammo") or name:find("clip") or name:find("mag") then
+                    obj.Value = 999999
+                elseif name:find("firerate") or name:find("rpm") then
+                    obj.Value = HackConfig.CustomFireRate
+                end
+            end
+        end
+    end)
+end
+
+RunService.RenderStepped:Connect(function()
+    if HackConfig.GunModsAktif then
+        if LocalPlayer.Character then
+            for _, t in pairs(LocalPlayer.Character:GetChildren()) do
+                if t:IsA("Tool") or t:IsA("Model") then ScanValueMods(t) end
+            end
+        end
+        for _, v in pairs(Camera:GetChildren()) do
+            if v:IsA("Model") then ScanValueMods(v) end
+        end
+    end
+end)
+
+task.spawn(function()
+    while task.wait(1) do
+        if HackConfig.GunModsAktif and getgc then
+            pcall(function()
+                for _, v in pairs(getgc(true)) do
+                    if type(v) == "table" then
+                        if rawget(v, "Ammo") or rawget(v, "MaxAmmo") or rawget(v, "RPM") or rawget(v, "FireRate") then
+                            if rawget(v, "Ammo") then v.Ammo = 999999 end
+                            if rawget(v, "MaxAmmo") then v.MaxAmmo = 999999 end
+                            if rawget(v, "RPM") then v.RPM = HackConfig.CustomFireRate end
+                            if rawget(v, "FireRate") then v.FireRate = HackConfig.CustomFireRate end
+                        end
+                    end
+                end
+            end)
         end
     end
 end)
