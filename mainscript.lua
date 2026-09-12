@@ -1,13 +1,11 @@
 -- ========================================================
--- D3D Menu v3.9.4 - Full Fixed & Updated Combined Script
+-- D3D Menu v3.9.5 - Final Fixes Combined Script
 -- ========================================================
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local Lighting = game:GetService("Lighting")
 local Workspace = game:GetService("Workspace")
 local RunService = game:GetService("RunService")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local ScriptContext = game:GetService("ScriptContext")
 local HttpService = game:GetService("HttpService")
 local Camera = Workspace.CurrentCamera
 local LocalPlayer = Players.LocalPlayer
@@ -24,23 +22,8 @@ task.spawn(function()
     end)
 end)
 
-pcall(function()
-    local mt = getrawmetatable(game)
-    if mt and mt.__index then
-        local oldIndex = mt.__index
-        setreadonly(mt, false)
-        mt.__index = newcclosure(function(t, k)
-            if not checkcaller() and t:IsA("BasePart") and tostring(k) == "CanCollide" then
-                return true
-            end
-            return oldIndex(t, k)
-        end)
-        setreadonly(mt, true)
-    end
-end)
-
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "D3D_Ultimate_Android_V3_9_4"
+ScreenGui.Name = "D3D_Ultimate_Android_V3_9_5"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
@@ -115,7 +98,6 @@ local OriginalLighting = {
     FogStart = Lighting.FogStart
 }
 
--- Backup instance bawaan Atmosfer/Sky jika No Fog aktif
 local SavedAtmosphere = {}
 for _, v in ipairs(Lighting:GetChildren()) do
     if v:IsA("Atmosphere") or v:IsA("Sky") then
@@ -178,7 +160,6 @@ local ESPCache = {}
 local ChamsCache = {}
 local EnemyChamsCache = {}
 local LockedTarget = nil
-local EntityGenderCache = {}
 local AppTheme = "Dark"
 local ThemeElements = {}
 local SettingUpdaters = {}
@@ -258,7 +239,7 @@ end)
 local TitleLabel = Instance.new("TextLabel")
 TitleLabel.Size = UDim2.new(1, 0, 0, 36)
 TitleLabel.BackgroundTransparency = 1
-TitleLabel.Text = "× D3D MENU: PLAYER & BOT v3.9.4 ×"
+TitleLabel.Text = "× D3D MENU: PLAYER & BOT v3.9.5 ×"
 TitleLabel.TextColor3 = Color3.fromRGB(240, 240, 255)
 TitleLabel.TextSize = 11.5
 TitleLabel.Font = Enum.Font.GothamBold
@@ -320,6 +301,20 @@ for i, tabName in ipairs(tabs) do
         end
         btn.TextColor3 = (AppTheme == "Light") and Color3.fromRGB(0, 0, 0) or Color3.fromRGB(255, 255, 255)
     end)
+end
+
+local function ApplyThemeMode(mode)
+    AppTheme = mode
+    local isLight = (mode == "Light")
+    for _, item in ipairs(ThemeElements) do
+        pcall(function()
+            if item.Type == "Main" then item.Obj.BackgroundColor3 = isLight and Color3.fromRGB(240, 240, 245) or Color3.fromRGB(6, 6, 9)
+            elseif item.Type == "Sub" then item.Obj.BackgroundColor3 = isLight and Color3.fromRGB(225, 225, 235) or Color3.fromRGB(12, 12, 18)
+            elseif item.Type == "ElementBg" then item.Obj.BackgroundColor3 = isLight and Color3.fromRGB(210, 210, 220) or Color3.fromRGB(25, 25, 36)
+            elseif item.Type == "Text" then item.Obj.TextColor3 = isLight and Color3.fromRGB(20, 20, 30) or Color3.fromRGB(240, 240, 255)
+            elseif item.Type == "TextSub" then item.Obj.TextColor3 = isLight and Color3.fromRGB(40, 40, 55) or Color3.fromRGB(220, 220, 235) end
+        end)
+    end
 end
 
 local function CreateToggle(parent, text, defaultVal, callback, settingKey, configTable)
@@ -412,7 +407,6 @@ local function CreateDropdown(parent, text, optionsFunc, defaultOption, callback
 
     local listFrame = Instance.new("ScrollingFrame", frame)
     listFrame.Size = UDim2.new(0, 160, 0, 100)
-    -- Posisi diatur muncul ke ATAS agar tidak tertutup atau susah dibaca
     listFrame.Position = UDim2.new(1, -172, 0, -105)
     listFrame.BackgroundColor3 = Color3.fromRGB(16, 16, 24)
     listFrame.BorderSizePixel = 0
@@ -528,8 +522,11 @@ local function CreateColorPicker(parent, text, defaultColor, callback, settingKe
         SettingUpdaters[settingKey] = function(val)
             if typeof(val) == "Color3" then
                 applyColor(val)
-            elseif type(val) == "table" and val.R then
-                local col = Color3.new(val.R, val.G, val.B)
+            elseif type(val) == "table" then
+                local r = val.r or val.R or 255
+                local g = val.g or val.G or 255
+                local b = val.b or val.B or 255
+                local col = Color3.new(r, g, b)
                 applyColor(col)
             end
         end
@@ -829,14 +826,33 @@ CreateSlider(TabContentFrames["Player"], "Set Speed", 16, 250, 50, function(val)
 CreateToggle(TabContentFrames["Player"], "Lompat Tinggi", false, function(v) HackConfig.JumpAktif = v end, "JumpAktif", HackConfig)
 CreateSlider(TabContentFrames["Player"], "Set Power", 50, 250, 100, function(val) HackConfig.CustomJump = val end, "CustomJump", HackConfig)
 
--- Tab World Elements
-CreateToggle(TabContentFrames["World"], "Night Mode", false, function(v) WorldConfig.NightMode = v end, "NightMode", WorldConfig)
-CreateToggle(TabContentFrames["World"], "Daylight", false, function(v) WorldConfig.Daylight = v end, "Daylight", WorldConfig)
+-- Tab World Elements (Night Mode & Daylight Fix)
+CreateToggle(TabContentFrames["World"], "Night Mode", false, function(v)
+    WorldConfig.NightMode = v
+    WorldConfig.Daylight = false -- Conflict prevent
+    if not v then
+        Lighting.ClockTime = OriginalLighting.ClockTime
+        Lighting.Brightness = OriginalLighting.Brightness
+        Lighting.Ambient = OriginalLighting.Ambient
+        Lighting.OutdoorAmbient = OriginalLighting.OutdoorAmbient
+    end
+end, "NightMode", WorldConfig)
+
+CreateToggle(TabContentFrames["World"], "Daylight", false, function(v)
+    WorldConfig.Daylight = v
+    WorldConfig.NightMode = false -- Conflict prevent
+    if not v then
+        Lighting.ClockTime = OriginalLighting.ClockTime
+        Lighting.Brightness = OriginalLighting.Brightness
+        Lighting.Ambient = OriginalLighting.Ambient
+        Lighting.OutdoorAmbient = OriginalLighting.OutdoorAmbient
+    end
+end, "Daylight", WorldConfig)
+
 CreateSlider(TabContentFrames["World"], "Daylight Brightness", 1, 10, 3, function(val) WorldConfig.DaylightBrightness = val end, "DaylightBrightness", WorldConfig)
 CreateSlider(TabContentFrames["World"], "Daylight Time (Clock)", 0, 24, 14, function(val) WorldConfig.DaylightClock = val end, "DaylightClock", WorldConfig)
 CreateToggle(TabContentFrames["World"], "Wall Hack (Noclip)", false, function(v) WorldConfig.WallHack = v end, "WallHack", WorldConfig)
 
--- Perbaikan Fitur No Fog (Mengembalikan kembali settingan Asli secara utuh)
 CreateToggle(TabContentFrames["World"], "No Fog", false, function(v)
     WorldConfig.NoFog = v
     if v then
@@ -860,18 +876,20 @@ CreateToggle(TabContentFrames["World"], "No Fog", false, function(v)
             end
         end)
     end
-    ShowPopupNotification(v and "No Fog Diaktifkan" or "No Fog Dimatikan")
 end, "NoFog", WorldConfig)
 
 CreateToggle(TabContentFrames["World"], "Fly (Tahan Tombol Lompat)", false, function(v) WorldConfig.FlyAktif = v end, "FlyAktif", WorldConfig)
 
+-- Target Teleport Dropdown (Filter ketat khusus Player & valid Target entities)
 local function GetPlayerNamesList()
     local names = {}
     for _, entity in ipairs(GetAllTargetableEntities()) do
         local char = GetEntityModel(entity)
         if char then
             local name = char.Name
-            if typeof(entity) == "Instance" and entity:IsA("Player") then name = entity.Name end
+            if typeof(entity) == "Instance" and entity:IsA("Player") then 
+                name = entity.Name 
+            end
             table.insert(names, name)
         end
     end
@@ -879,7 +897,7 @@ local function GetPlayerNamesList()
     return names
 end
 
-CreateDropdown(TabContentFrames["World"], "Target Teleport", GetPlayerNamesList, GetPlayerNamesList()[1], function(selected)
+CreateDropdown(TabContentFrames["World"], "Target Teleport", GetPlayerNamesList, "Tidak Ada Target", function(selected)
     WorldConfig.SelectedTeleportTarget = selected
 end, "SelectedTeleportTarget", WorldConfig)
 
@@ -907,7 +925,7 @@ CreateButton(TabContentFrames["World"], "Mulai Teleport", function()
     end)
 end)
 
--- Tab Skill Elements (Kill Aura & Auto Reload Berhasil Dihapus)
+-- Tab Skill Elements
 CreateToggle(TabContentFrames["Skill"], "Peringatan Admin", false, function(v) HackConfig.AntiAdminAktif = v end, "AntiAdminAktif", HackConfig)
 CreateToggle(TabContentFrames["Skill"], "Auto Aim", false, function(v) HackConfig.AimbotAktif = v end, "AimbotAktif", HackConfig)
 CreateToggle(TabContentFrames["Skill"], "Auto Aim Wall Check", false, function(v) HackConfig.WallCheck = v end, "WallCheck", HackConfig)
@@ -919,19 +937,9 @@ CreateSlider(TabContentFrames["Skill"], "Lebar Lingkaran FOV", 10, 600, 150, fun
 CreateToggle(TabContentFrames["Skill"], "Gun Mods (Ammo & RPM)", false, function(v) HackConfig.GunModsAktif = v end, "GunModsAktif", HackConfig)
 CreateSlider(TabContentFrames["Skill"], "RPM Fire Rate", 400, 2500, 800, function(val) HackConfig.CustomFireRate = val end, "CustomFireRate", HackConfig)
 
--- Tab Configuration Elements
+-- Tab Configuration Elements (Theme & Fully Synchronized Save/Load)
 CreateDropdown(TabContentFrames["Configuration"], "UI Theme Mode", {"Dark", "Light"}, "Dark", function(mode)
-    AppTheme = mode
-    local isLight = (mode == "Light")
-    for _, item in ipairs(ThemeElements) do
-        pcall(function()
-            if item.Type == "Main" then item.Obj.BackgroundColor3 = isLight and Color3.fromRGB(240, 240, 245) or Color3.fromRGB(6, 6, 9)
-            elseif item.Type == "Sub" then item.Obj.BackgroundColor3 = isLight and Color3.fromRGB(225, 225, 235) or Color3.fromRGB(12, 12, 18)
-            elseif item.Type == "ElementBg" then item.Obj.BackgroundColor3 = isLight and Color3.fromRGB(210, 210, 220) or Color3.fromRGB(25, 25, 36)
-            elseif item.Type == "Text" then item.Obj.TextColor3 = isLight and Color3.fromRGB(20, 20, 30) or Color3.fromRGB(240, 240, 255)
-            elseif item.Type == "TextSub" then item.Obj.TextColor3 = isLight and Color3.fromRGB(40, 40, 55) or Color3.fromRGB(220, 220, 235) end
-        end)
-    end
+    ApplyThemeMode(mode)
 end, "Theme", nil)
 
 CreateButton(TabContentFrames["Configuration"], "Save Settings", function()
@@ -962,7 +970,7 @@ CreateButton(TabContentFrames["Configuration"], "Load Settings", function()
                 if data.Hacks then HackConfig = data.Hacks end
                 if data.Theme then AppTheme = data.Theme end
 
-                -- Sinkronisasi menyeluruh ke seluruh setting & UI elements
+                -- Sinkronisasi menyeluruh ke UI dan eksekusi setting aktif
                 for key, val in pairs(VisualsConfig) do
                     if SettingUpdaters[key] then SettingUpdaters[key](val) end
                 end
@@ -972,7 +980,9 @@ CreateButton(TabContentFrames["Configuration"], "Load Settings", function()
                 for key, val in pairs(HackConfig) do
                     if SettingUpdaters[key] then SettingUpdaters[key](val) end
                 end
-                if SettingUpdaters["Theme"] then SettingUpdaters["Theme"](AppTheme) end
+                if data.Theme and SettingUpdaters["Theme"] then 
+                    SettingUpdaters["Theme"](data.Theme) 
+                end
 
                 ShowPopupNotification("Semua Settings berhasil dimuat & diterapkan!")
             end
@@ -1177,6 +1187,24 @@ RunService.RenderStepped:Connect(function()
                         esp.Distance.Color = VisualsConfig.DistanceColor
                         esp.Distance.Visible = true
                     else esp.Distance.Visible = false end
+
+                    if VisualsConfig.ESP_Health and hum then
+                        local healthPct = math.clamp(hum.Health / hum.MaxHealth, 0, 1)
+                        local barHeight = 40
+                        local barX = vector.X - 28
+                        local barY = vector.Y - 20
+                        esp.HealthBarBg.From = Vector2.new(barX, barY)
+                        esp.HealthBarBg.To = Vector2.new(barX, barY + barHeight)
+                        esp.HealthBarBg.Visible = true
+
+                        esp.HealthBar.From = Vector2.new(barX, barY + (barHeight * (1 - healthPct)))
+                        esp.HealthBar.To = Vector2.new(barX, barY + barHeight)
+                        esp.HealthBar.Color = VisualsConfig.HealthColor
+                        esp.HealthBar.Visible = true
+                    else
+                        esp.HealthBarBg.Visible = false
+                        esp.HealthBar.Visible = false
+                    end
                 else HideESPObject(esp) end
             else HideESPObject(esp) end
         end
@@ -1209,105 +1237,4 @@ RunService.Stepped:Connect(function()
     end
 end)
 
--- v3.9.4 - Part 2 (Gun Mods, Health ESP, & Cleanup Final)
-
-task.spawn(function()
-    while task.wait(0.5) do
-        if HackConfig.GunModsAktif and LocalPlayer.Character then
-            pcall(function()
-                for _, tool in pairs(LocalPlayer.Character:GetChildren()) do
-                    if tool:IsA("Tool") then
-                        for _, v in pairs(tool:GetDescendants()) do
-                            if v:IsA("NumberValue") or v:IsA("IntValue") then
-                                local nameLower = v.Name:lower()
-                                if nameLower:find("firerate") or nameLower:find("cooldown") or nameLower:find("delay") then
-                                    v.Value = 60 / HackConfig.CustomFireRate
-                                elseif nameLower:find("ammo") or nameLower:find("clip") or nameLower:find("bullet") then
-                                    if v.Value <= 5 then v.Value = 99 end
-                                end
-                            end
-                        end
-                    end
-                end
-            end)
-        end
-    end
-end)
-
-task.spawn(function()
-    while task.wait(0.1) do
-        pcall(function()
-            local activeEntities = GetAllTargetableEntities()
-            for _, entity in ipairs(activeEntities) do
-                local char = GetEntityModel(entity)
-                if IsValidCharacter(char) and ESPCache[char] then
-                    local esp = ESPCache[char]
-                    local primaryPart = char:FindFirstChild("HumanoidRootPart") or char:FindFirstChild("Torso") or char:FindFirstChild("UpperTorso") or char:FindFirstChild("Head")
-                    local hum = char:FindFirstChildOfClass("Humanoid")
-                    
-                    if primaryPart and hum and VisualsConfig.ESP_Health then
-                        local vector, onScreen = Camera:WorldToViewportPoint(primaryPart.Position)
-                        if onScreen then
-                            local healthPct = math.clamp(hum.Health / hum.MaxHealth, 0, 1)
-                            local barHeight = 40
-                            local barWidth = 3
-                            local barX = vector.X - 28
-                            local barY = vector.Y - 20
-
-                            esp.HealthBarBg.From = Vector2.new(barX, barY)
-                            esp.HealthBarBg.To = Vector2.new(barX, barY + barHeight)
-                            esp.HealthBarBg.Visible = true
-
-                            esp.HealthBar.From = Vector2.new(barX, barY + (barHeight * (1 - healthPct)))
-                            esp.HealthBar.To = Vector2.new(barX, barY + barHeight)
-                            esp.HealthBar.Visible = true
-                        else
-                            esp.HealthBarBg.Visible = false
-                            esp.HealthBar.Visible = false
-                        end
-                    else
-                        esp.HealthBarBg.Visible = false
-                        esp.HealthBar.Visible = false
-                    end
-                end
-            end
-        end)
-    end
-end)
-
--- Tombol Unload Tambahan untuk Membersihkan Seluruh Hook & Instance
-CreateButton(TabContentFrames["Configuration"], "Force Full Cleanup & Unload", function()
-    pcall(function()
-        for key, _ in pairs(ESPCache) do 
-            RemoveEntityESP(key) 
-        end
-        for _, highlight in pairs(ChamsCache) do
-            if highlight then highlight:Destroy() end
-        end
-        for _, highlight in pairs(EnemyChamsCache) do
-            if highlight then highlight:Destroy() end
-        end
-        
-        if FOVGui then FOVGui:Destroy() end
-        if ScreenGui then ScreenGui:Destroy() end
-
-        Lighting.ClockTime = OriginalLighting.ClockTime
-        Lighting.Brightness = OriginalLighting.Brightness
-        Lighting.Ambient = OriginalLighting.Ambient
-        Lighting.OutdoorAmbient = OriginalLighting.OutdoorAmbient
-        Lighting.GlobalShadows = OriginalLighting.GlobalShadows
-        Lighting.FogEnd = OriginalLighting.FogEnd
-        Lighting.FogStart = OriginalLighting.FogStart
-
-        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
-            LocalPlayer.Character.Humanoid.WalkSpeed = 16
-            LocalPlayer.Character.Humanoid.JumpPower = 50
-        end
-
-        print("[D3D Menu] Successfully unloaded and memory cleaned.")
-    end)
-end)
-
-ShowPopupNotification("D3D Menu v3.9.4 All Parts Successfully Loaded!")
-print("[D3D Menu] Script fully initialized with zero memory leaks.")
-
+ShowPopupNotification("D3D Menu v3.9.5 Fully Loaded & Fixed!")
