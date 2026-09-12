@@ -1,11 +1,11 @@
--- ========================================================
--- D3D Menu v3.9.5 - Final Fixes Combined Script
--- ========================================================
+-- v3.9.3 - Part 1
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local Lighting = game:GetService("Lighting")
 local Workspace = game:GetService("Workspace")
 local RunService = game:GetService("RunService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local ScriptContext = game:GetService("ScriptContext")
 local HttpService = game:GetService("HttpService")
 local Camera = Workspace.CurrentCamera
 local LocalPlayer = Players.LocalPlayer
@@ -19,11 +19,71 @@ task.spawn(function()
                 setreadonly(getgc(), false)
             end)
         end
+        if make_writeable then
+            pcall(function() make_writeable(getreg()) end)
+        end
+        if detour_function then
+            detour_function = function(...) return true end
+        end
+        if getconnections then
+            pcall(function()
+                for _, connection in ipairs(getconnections(ScriptContext.Error)) do
+                    connection:Disable()
+                end
+            end)
+        end
+        if getcallingscript then
+            pcall(function()
+                getcallingscript = function() return nil end
+            end)
+        end
+        for _, tableName in ipairs({"_G", "shared"}) do
+            pcall(function()
+                local target = getgenv()[tableName]
+                if target and type(target) == "table" then
+                    for key, _ in pairs(target) do
+                        local strKey = tostring(key):lower()
+                        if strKey:find("signature") or strKey:find("checksum") or strKey:find("hash") then
+                            target[key] = nil
+                        end
+                    end
+                end
+            end)
+        end
+        for _, remote in ipairs(ReplicatedStorage:GetDescendants()) do
+            if remote:IsA("RemoteEvent") or remote:IsA("RemoteFunction") then
+                local name = remote.Name:lower()
+                if name:find("handshake") or name:find("validate") or name:find("verify") or name:find("integrity") or name:find("anti") then
+                    pcall(function()
+                        if remote:IsA("RemoteEvent") then
+                            remote.FireServer = function(...) return true end
+                        elseif remote:IsA("RemoteFunction") then
+                            remote.InvokeServer = function(...) return true end
+                        end
+                    end)
+                end
+            end
+        end
     end)
 end)
 
+pcall(function()
+    local mt = getrawmetatable(game)
+    if mt and mt.__index then
+        local oldIndex = mt.__index
+        setreadonly(mt, false)
+        mt.__index = newcclosure(function(t, k)
+            if not checkcaller() and t:IsA("BasePart") and tostring(k) == "CanCollide" then
+                return true
+            end
+            return oldIndex(t, k)
+        end)
+        setreadonly(mt, true)
+    end
+end)
+
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "D3D_Ultimate_Android_V3_9_5"
+ScreenGui.Name = "D3D_Ultimate_Android_V3_9_3"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
@@ -94,16 +154,8 @@ local OriginalLighting = {
     Ambient = Lighting.Ambient,
     OutdoorAmbient = Lighting.OutdoorAmbient,
     GlobalShadows = Lighting.GlobalShadows,
-    FogEnd = Lighting.FogEnd,
-    FogStart = Lighting.FogStart
+    FogEnd = Lighting.FogEnd
 }
-
-local SavedAtmosphere = {}
-for _, v in ipairs(Lighting:GetChildren()) do
-    if v:IsA("Atmosphere") or v:IsA("Sky") then
-        table.insert(SavedAtmosphere, v)
-    end
-end
 
 local VisualsConfig = {
     ESP_Skeleton = false,
@@ -160,9 +212,9 @@ local ESPCache = {}
 local ChamsCache = {}
 local EnemyChamsCache = {}
 local LockedTarget = nil
+local EntityGenderCache = {}
 local AppTheme = "Dark"
 local ThemeElements = {}
-local SettingUpdaters = {}
 
 local FOVGui, FOVFrame
 pcall(function()
@@ -239,7 +291,7 @@ end)
 local TitleLabel = Instance.new("TextLabel")
 TitleLabel.Size = UDim2.new(1, 0, 0, 36)
 TitleLabel.BackgroundTransparency = 1
-TitleLabel.Text = "× D3D MENU: PLAYER & BOT v3.9.5 ×"
+TitleLabel.Text = "× D3D MENU: PLAYER & BOT v3.9.3 ×"
 TitleLabel.TextColor3 = Color3.fromRGB(240, 240, 255)
 TitleLabel.TextSize = 11.5
 TitleLabel.Font = Enum.Font.GothamBold
@@ -303,21 +355,7 @@ for i, tabName in ipairs(tabs) do
     end)
 end
 
-local function ApplyThemeMode(mode)
-    AppTheme = mode
-    local isLight = (mode == "Light")
-    for _, item in ipairs(ThemeElements) do
-        pcall(function()
-            if item.Type == "Main" then item.Obj.BackgroundColor3 = isLight and Color3.fromRGB(240, 240, 245) or Color3.fromRGB(6, 6, 9)
-            elseif item.Type == "Sub" then item.Obj.BackgroundColor3 = isLight and Color3.fromRGB(225, 225, 235) or Color3.fromRGB(12, 12, 18)
-            elseif item.Type == "ElementBg" then item.Obj.BackgroundColor3 = isLight and Color3.fromRGB(210, 210, 220) or Color3.fromRGB(25, 25, 36)
-            elseif item.Type == "Text" then item.Obj.TextColor3 = isLight and Color3.fromRGB(20, 20, 30) or Color3.fromRGB(240, 240, 255)
-            elseif item.Type == "TextSub" then item.Obj.TextColor3 = isLight and Color3.fromRGB(40, 40, 55) or Color3.fromRGB(220, 220, 235) end
-        end)
-    end
-end
-
-local function CreateToggle(parent, text, defaultVal, callback, settingKey, configTable)
+local function CreateToggle(parent, text, defaultVal, callback)
     local frame = Instance.new("Frame")
     frame.Size = UDim2.new(1, 0, 0, 36)
     frame.BackgroundColor3 = Color3.fromRGB(12, 12, 18)
@@ -351,30 +389,17 @@ local function CreateToggle(parent, text, defaultVal, callback, settingKey, conf
     Instance.new("UICorner", circle).CornerRadius = UDim.new(1, 0)
 
     local active = defaultVal
-    local function applyState(newState)
-        active = newState
-        toggleBtn.BackgroundColor3 = active and Color3.fromRGB(0, 230, 130) or ((AppTheme == "Light") and Color3.fromRGB(200, 200, 210) or Color3.fromRGB(25, 25, 36))
-        circle.Position = active and UDim2.new(1, -18, 0.5, -8) or UDim2.new(0, 2, 0.5, -8)
-        if configTable and settingKey then
-            configTable[settingKey] = active
-        end
-        if callback then callback(active) end
-    end
-
     toggleBtn.MouseButton1Click:Connect(function()
-        applyState(not active)
+        active = not active
+        toggleBtn.BackgroundColor3 = active and Color3.fromRGB(0, 230, 130) or ((AppTheme == "Light") and Color3.fromRGB(200, 200, 210) or Color3.fromRGB(25, 25, 36))
+        circle:TweenPosition(active and UDim2.new(1, -18, 0.5, -8) or UDim2.new(0, 2, 0.5, -8), Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0.1, true)
+        if callback then callback(active) end
     end)
-
-    if settingKey and configTable then
-        SettingUpdaters[settingKey] = function(val)
-            applyState(val)
-        end
-    end
 
     frame.Parent = parent
 end
 
-local function CreateDropdown(parent, text, optionsFunc, defaultOption, callback, settingKey, configTable)
+local function CreateDropdown(parent, text, options, defaultOption, callback)
     local frame = Instance.new("Frame")
     frame.Size = UDim2.new(1, 0, 0, 48)
     frame.BackgroundColor3 = Color3.fromRGB(12, 12, 18)
@@ -383,7 +408,7 @@ local function CreateDropdown(parent, text, optionsFunc, defaultOption, callback
     table.insert(ThemeElements, {Type = "Sub", Obj = frame})
 
     local label = Instance.new("TextLabel", frame)
-    label.Size = UDim2.new(0.4, 0, 1, 0)
+    label.Size = UDim2.new(0.5, 0, 1, 0)
     label.Position = UDim2.new(0, 12, 0, 0)
     label.BackgroundTransparency = 1
     label.Text = text
@@ -394,85 +419,33 @@ local function CreateDropdown(parent, text, optionsFunc, defaultOption, callback
     table.insert(ThemeElements, {Type = "TextSub", Obj = label})
 
     local dropBtn = Instance.new("TextButton", frame)
-    dropBtn.Size = UDim2.new(0, 160, 0, 32)
-    dropBtn.Position = UDim2.new(1, -172, 0.5, -16)
+    dropBtn.Size = UDim2.new(0, 140, 0, 32)
+    dropBtn.Position = UDim2.new(1, -152, 0.5, -16)
     dropBtn.BackgroundColor3 = Color3.fromRGB(25, 25, 36)
-    dropBtn.Text = tostring(defaultOption)
+    dropBtn.Text = defaultOption
     dropBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    dropBtn.TextSize = 9.5
+    dropBtn.TextSize = 10
     dropBtn.Font = Enum.Font.GothamBold
     Instance.new("UICorner", dropBtn).CornerRadius = UDim.new(0, 6)
     table.insert(ThemeElements, {Type = "ElementBg", Obj = dropBtn})
     table.insert(ThemeElements, {Type = "Text", Obj = dropBtn})
 
-    local listFrame = Instance.new("ScrollingFrame", frame)
-    listFrame.Size = UDim2.new(0, 160, 0, 100)
-    listFrame.Position = UDim2.new(1, -172, 0, -105)
-    listFrame.BackgroundColor3 = Color3.fromRGB(16, 16, 24)
-    listFrame.BorderSizePixel = 0
-    listFrame.Visible = false
-    listFrame.ZIndex = 50
-    listFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
-    listFrame.ScrollBarThickness = 3
-    Instance.new("UICorner", listFrame).CornerRadius = UDim.new(0, 6)
-
-    local uiList = Instance.new("UIListLayout", listFrame)
-    uiList.SortOrder = Enum.SortOrder.LayoutOrder
-    uiList.Padding = UDim.new(0, 2)
-
-    uiList:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-        listFrame.CanvasSize = UDim2.new(0, 0, 0, uiList.AbsoluteContentSize.Y + 5)
-    end)
-
-    local function refreshOptions()
-        for _, child in ipairs(listFrame:GetChildren()) do
-            if child:IsA("TextButton") then child:Destroy() end
-        end
-        local currentOptions = type(optionsFunc) == "function" and optionsFunc() or optionsFunc
-        for _, opt in ipairs(currentOptions) do
-            local optBtn = Instance.new("TextButton")
-            optBtn.Size = UDim2.new(1, 0, 0, 28)
-            optBtn.BackgroundColor3 = Color3.fromRGB(25, 25, 36)
-            optBtn.Text = tostring(opt)
-            optBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-            optBtn.TextSize = 9.5
-            optBtn.Font = Enum.Font.Gotham
-            optBtn.ZIndex = 51
-            Instance.new("UICorner", optBtn).CornerRadius = UDim.new(0, 4)
-            optBtn.Parent = listFrame
-
-            optBtn.MouseButton1Click:Connect(function()
-                dropBtn.Text = tostring(opt)
-                listFrame.Visible = false
-                if configTable and settingKey then
-                    configTable[settingKey] = opt
-                end
-                if callback then callback(opt) end
-            end)
-        end
+    local currentIndex = 1
+    for i, opt in ipairs(options) do
+        if opt == defaultOption then currentIndex = i break end
     end
 
     dropBtn.MouseButton1Click:Connect(function()
-        listFrame.Visible = not listFrame.Visible
-        if listFrame.Visible then
-            refreshOptions()
-        end
+        currentIndex = (currentIndex % #options) + 1
+        local selected = options[currentIndex]
+        dropBtn.Text = selected
+        if callback then callback(selected) end
     end)
-
-    if settingKey and configTable then
-        SettingUpdaters[settingKey] = function(val)
-            dropBtn.Text = tostring(val)
-            if configTable and settingKey then
-                configTable[settingKey] = val
-            end
-            if callback then callback(val) end
-        end
-    end
 
     frame.Parent = parent
 end
 
-local function CreateColorPicker(parent, text, defaultColor, callback, settingKey, configTable)
+local function CreateColorPicker(parent, text, defaultColor, callback)
     local frame = Instance.new("Frame")
     frame.Size = UDim2.new(1, 0, 0, 48)
     frame.BackgroundColor3 = Color3.fromRGB(12, 12, 18)
@@ -505,37 +478,16 @@ local function CreateColorPicker(parent, text, defaultColor, callback, settingKe
     local colors = {defaultColor, Color3.fromRGB(0, 240, 255), Color3.fromRGB(255, 0, 128), Color3.fromRGB(0, 230, 130), Color3.fromRGB(255, 200, 0), Color3.fromRGB(255, 255, 255), Color3.fromRGB(255, 0, 0)}
     local colorIndex = 1
 
-    local function applyColor(col)
-        pickerCircle.BackgroundColor3 = col
-        if configTable and settingKey then
-            configTable[settingKey] = col
-        end
-        if callback then callback(col) end
-    end
-
     pickerCircle.MouseButton1Click:Connect(function()
         colorIndex = (colorIndex % #colors) + 1
-        applyColor(colors[colorIndex])
+        pickerCircle.BackgroundColor3 = colors[colorIndex]
+        if callback then callback(colors[colorIndex]) end
     end)
-
-    if settingKey and configTable then
-        SettingUpdaters[settingKey] = function(val)
-            if typeof(val) == "Color3" then
-                applyColor(val)
-            elseif type(val) == "table" then
-                local r = val.r or val.R or 255
-                local g = val.g or val.G or 255
-                local b = val.b or val.B or 255
-                local col = Color3.new(r, g, b)
-                applyColor(col)
-            end
-        end
-    end
 
     frame.Parent = parent
 end
 
-local function CreateSlider(parent, text, min, max, default, callback, settingKey, configTable)
+local function CreateSlider(parent, text, min, max, default, callback)
     local frame = Instance.new("Frame")
     frame.Size = UDim2.new(1, 0, 0, 52)
     frame.BackgroundColor3 = Color3.fromRGB(12, 12, 18)
@@ -571,16 +523,6 @@ local function CreateSlider(parent, text, min, max, default, callback, settingKe
     btn.BackgroundTransparency = 1
     btn.Text = ""
 
-    local function applyValue(val)
-        val = math.clamp(val, min, max)
-        fill.Size = UDim2.new((val - min)/(max - min), 0, 1, 0)
-        label.Text = text .. ": " .. tostring(val)
-        if configTable and settingKey then
-            configTable[settingKey] = val
-        end
-        if callback then callback(val) end
-    end
-
     local dragging = false
     btn.MouseButton1Down:Connect(function() dragging = true end)
     UserInputService.InputEnded:Connect(function(input)
@@ -592,16 +534,12 @@ local function CreateSlider(parent, text, min, max, default, callback, settingKe
     UserInputService.InputChanged:Connect(function(input)
         if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
             local pos = math.clamp((input.Position.X - sliderBar.AbsolutePosition.X) / sliderBar.AbsoluteSize.X, 0, 1)
+            fill.Size = UDim2.new(pos, 0, 1, 0)
             local val = math.floor(min + ((max - min) * pos))
-            applyValue(val)
+            label.Text = text .. ": " .. tostring(val)
+            if callback then callback(val) end
         end
     end)
-
-    if settingKey and configTable then
-        SettingUpdaters[settingKey] = function(val)
-            applyValue(val)
-        end
-    end
 
     frame.Parent = parent
 end
@@ -644,13 +582,18 @@ local function IsValidCharacter(char)
     
     if not hum or not root then return false end
     if hum.Health <= 0 then return false end
+    if char:IsA("Tool") or char:FindFirstChildOfClass("Tool") then return false end
+
     return true
 end
 
 local function GetEntityModel(target)
     if typeof(target) == "Instance" then
-        if target:IsA("Player") then return target.Character
-        elseif target:IsA("Model") then return target end
+        if target:IsA("Player") then
+            return target.Character
+        elseif target:IsA("Model") then
+            return target
+        end
     end
     return nil
 end
@@ -663,7 +606,9 @@ local function IsEnemyEntity(target)
     if typeof(target) == "Instance" and target:IsA("Player") then
         if target == LocalPlayer then return false end
         if HackConfig.FFAModeAktif then return true end
-        if target.Team and LocalPlayer.Team and target.Team == LocalPlayer.Team then return false end
+        if target.Team and LocalPlayer.Team then
+            if target.Team == LocalPlayer.Team then return false end
+        end
         return true
     elseif typeof(target) == "Instance" and target:IsA("Model") then
         return true
@@ -684,33 +629,46 @@ local function GetDynamicTargetPart(char)
     if not char then return nil end
     local head = char:FindFirstChild("Head")
     local neck = char:FindFirstChild("UpperTorso") or char:FindFirstChild("Torso")
-    local body = char:FindFirstChild("HumanoidRootPart") or neck or head or char.PrimaryPart
-    if HackConfig.AimTargetMode == "Head" then return head or body
-    elseif HackConfig.AimTargetMode == "Neck" then return neck or head or body
-    elseif HackConfig.AimTargetMode == "Body" then return body or head end
+    local body = char:FindFirstChild("HumanoidRootPart") or neck or head or char.PrimaryPart or char:FindFirstChildOfClass("BasePart")
+
+    if HackConfig.AimTargetMode == "Head" then
+        return head or body
+    elseif HackConfig.AimTargetMode == "Neck" then
+        return neck or head or body
+    elseif HackConfig.AimTargetMode == "Body" then
+        return body or head
+    end
     return body
 end
 
 local function GetAllTargetableEntities()
     local list = {}
+    
     for _, p in ipairs(Players:GetPlayers()) do
         if p ~= LocalPlayer and p.Character and IsValidCharacter(p.Character) then
             table.insert(list, p)
         end
     end
+    
     local function scanFolder(parentObj)
         for _, obj in ipairs(parentObj:GetChildren()) do
             if obj:IsA("Model") and obj ~= LocalPlayer.Character and IsValidCharacter(obj) then
                 local isPlayerChar = false
                 for _, p in ipairs(Players:GetPlayers()) do
-                    if p.Character == obj then isPlayerChar = true break end
+                    if p.Character == obj then
+                        isPlayerChar = true
+                        break
+                    end
                 end
-                if not isPlayerChar then table.insert(list, obj) end
+                if not isPlayerChar then
+                    table.insert(list, obj)
+                end
             elseif obj:IsA("Folder") or obj:IsA("Model") then
                 scanFolder(obj)
             end
         end
     end
+    
     scanFolder(Workspace)
     return list
 end
@@ -724,7 +682,10 @@ local function GetNewTarget3D()
             if targetPart then
                 if not HackConfig.WallCheck or IsVisible(targetPart) then
                     local dist = (Camera.CFrame.Position - targetPart.Position).Magnitude
-                    if dist < shortestDist then shortestDist = dist; closest = char end
+                    if dist < shortestDist then
+                        shortestDist = dist
+                        closest = char
+                    end
                 end
             end
         end
@@ -744,7 +705,10 @@ local function GetClosestEnemy2D()
                     local pos, onScreen = Camera:WorldToViewportPoint(targetPart.Position)
                     if onScreen then
                         local dist = (center - Vector2.new(pos.X, pos.Y)).Magnitude
-                        if dist < shortestDist then shortestDist = dist; closest = char end
+                        if dist < shortestDist then
+                            shortestDist = dist
+                            closest = char
+                        end
                     end
                 end
             end
@@ -764,131 +728,225 @@ local function HideESPObject(esp)
         if esp.HealthBarBg then esp.HealthBarBg.Visible = false end
         if esp.HealthBar then esp.HealthBar.Visible = false end
         if esp.HeadCircle then esp.HeadCircle.Visible = false end
-        if esp.Skeleton then for _, bone in pairs(esp.Skeleton) do if bone then bone.Visible = false end end end
+        if esp.Skeleton then
+            for _, bone in pairs(esp.Skeleton) do
+                if bone then bone.Visible = false end
+            end
+        end
     end)
 end
 
 local function RemoveEntityESP(key)
     if ESPCache[key] then
         for _, obj in pairs(ESPCache[key]) do
-            if type(obj) == "table" then for _, bone in pairs(obj) do pcall(function() bone:Remove() end) end
-            else pcall(function() obj:Remove() end) end
+            if type(obj) == "table" then
+                for _, bone in pairs(obj) do pcall(function() bone:Remove() end) end
+            else
+                pcall(function() obj:Remove() end)
+            end
         end
         ESPCache[key] = nil
     end
-    if ChamsCache[key] then pcall(function() ChamsCache[key]:Destroy() end); ChamsCache[key] = nil end
-    if EnemyChamsCache[key] then pcall(function() EnemyChamsCache[key]:Destroy() end); EnemyChamsCache[key] = nil end
+    if ChamsCache[key] then
+        pcall(function() ChamsCache[key]:Destroy() end)
+        ChamsCache[key] = nil
+    end
+    if EnemyChamsCache[key] then
+        pcall(function() EnemyChamsCache[key]:Destroy() end)
+        EnemyChamsCache[key] = nil
+    end
 end
 
 local function CreateEntityESP(key)
     RemoveEntityESP(key)
+
     local espData = {
-        Line = Drawing.new("Line"), Name = Drawing.new("Text"), Distance = Drawing.new("Text"),
-        Gender = Drawing.new("Text"), Status = Drawing.new("Text"), HealthBarBg = Drawing.new("Line"),
-        HealthBar = Drawing.new("Line"), HeadCircle = Drawing.new("Circle"),
-        Skeleton = { Spine = Drawing.new("Line"), LeftArm = Drawing.new("Line"), RightArm = Drawing.new("Line"), LeftLeg = Drawing.new("Line"), RightLeg = Drawing.new("Line") }
+        Line = Drawing.new("Line"),
+        Name = Drawing.new("Text"),
+        Distance = Drawing.new("Text"),
+        Gender = Drawing.new("Text"),
+        Status = Drawing.new("Text"),
+        HealthBarBg = Drawing.new("Line"),
+        HealthBar = Drawing.new("Line"),
+        HeadCircle = Drawing.new("Circle"),
+        Skeleton = {
+            Spine = Drawing.new("Line"),
+            LeftArm = Drawing.new("Line"),
+            RightArm = Drawing.new("Line"),
+            LeftLeg = Drawing.new("Line"),
+            RightLeg = Drawing.new("Line")
+        }
     }
-    espData.Line.Thickness = 1.5; espData.Line.Color = VisualsConfig.LineColor; espData.Line.Visible = false
-    espData.HealthBarBg.Thickness = 3; espData.HealthBarBg.Color = Color3.fromRGB(40, 40, 40); espData.HealthBarBg.Visible = false
-    espData.HealthBar.Thickness = 1.5; espData.HealthBar.Color = VisualsConfig.HealthColor; espData.HealthBar.Visible = false
-    espData.HeadCircle.Thickness = 1.5; espData.HeadCircle.NumSides = 12; espData.HeadCircle.Filled = false; espData.HeadCircle.Visible = false
-    for _, bone in pairs(espData.Skeleton) do bone.Thickness = 1.5; bone.Color = VisualsConfig.SkeletonColor; bone.Visible = false end
-    for _, textObj in ipairs({espData.Name, espData.Distance, espData.Gender, espData.Status}) do
-        textObj.Size = 13; textObj.Center = true; textObj.Outline = true; textObj.Font = Drawing.Fonts.UI; textObj.Visible = false
+
+    espData.Line.Thickness = 1.5
+    espData.Line.Color = VisualsConfig.LineColor
+    espData.Line.Transparency = 0.7
+    espData.Line.Visible = false
+
+    espData.HealthBarBg.Thickness = 3
+    espData.HealthBarBg.Color = Color3.fromRGB(40, 40, 40)
+    espData.HealthBarBg.Transparency = 0.8
+    espData.HealthBarBg.Visible = false
+
+    espData.HealthBar.Thickness = 1.5
+    espData.HealthBar.Color = VisualsConfig.HealthColor
+    espData.HealthBar.Transparency = 1
+    espData.HealthBar.Visible = false
+
+    espData.HeadCircle.Thickness = 1.5
+    espData.HeadCircle.NumSides = 12
+    espData.HeadCircle.Filled = false
+    espData.HeadCircle.Color = VisualsConfig.SkeletonColor
+    espData.HeadCircle.Transparency = 0.8
+    espData.HeadCircle.Visible = false
+
+    for _, bone in pairs(espData.Skeleton) do
+        bone.Thickness = 1.5
+        bone.Color = VisualsConfig.SkeletonColor
+        bone.Transparency = 0.8
+        bone.Visible = false
     end
+
+    for _, textObj in ipairs({espData.Name, espData.Distance, espData.Gender, espData.Status}) do
+        textObj.Size = 13
+        textObj.Center = true
+        textObj.Outline = true
+        textObj.OutlineColor = Color3.fromRGB(0, 0, 0)
+        textObj.Font = Drawing.Fonts.UI
+        textObj.Visible = false
+    end
+
     ESPCache[key] = espData
 end
 
--- Tab Visual Elements
-CreateToggle(TabContentFrames["Visual"], "Skeleton ESP (Player & Bot)", false, function(v) VisualsConfig.ESP_Skeleton = v end, "ESP_Skeleton", VisualsConfig)
-CreateColorPicker(TabContentFrames["Visual"], "Skeleton Color", Color3.fromRGB(0, 240, 255), function(c) VisualsConfig.SkeletonColor = c end, "SkeletonColor", VisualsConfig)
-CreateToggle(TabContentFrames["Visual"], "Chams / Wall Glow", false, function(v) VisualsConfig.Chams = v end, "Chams", VisualsConfig)
-CreateColorPicker(TabContentFrames["Visual"], "Chams Glow Color", Color3.fromRGB(255, 0, 128), function(c) VisualsConfig.ChamsColor = c end, "ChamsColor", VisualsConfig)
-CreateToggle(TabContentFrames["Visual"], "Enemy Chams", false, function(v) VisualsConfig.EnemyChams = v end, "EnemyChams", VisualsConfig)
-CreateColorPicker(TabContentFrames["Visual"], "Enemy Chams Color", Color3.fromRGB(255, 0, 0), function(c) VisualsConfig.EnemyChamsColor = c end, "EnemyChamsColor", VisualsConfig)
-CreateToggle(TabContentFrames["Visual"], "ESP Line", false, function(v) VisualsConfig.ESP_Line = v end, "ESP_Line", VisualsConfig)
-CreateColorPicker(TabContentFrames["Visual"], "Line Color", Color3.fromRGB(0, 240, 255), function(c) VisualsConfig.LineColor = c end, "LineColor", VisualsConfig)
-CreateToggle(TabContentFrames["Visual"], "ESP Name", false, function(v) VisualsConfig.ESP_Name = v end, "ESP_Name", VisualsConfig)
-CreateColorPicker(TabContentFrames["Visual"], "Name Color", Color3.fromRGB(255, 255, 255), function(c) VisualsConfig.NameColor = c end, "NameColor", VisualsConfig)
-CreateToggle(TabContentFrames["Visual"], "ESP Distance", false, function(v) VisualsConfig.ESP_Distance = v end, "ESP_Distance", VisualsConfig)
-CreateColorPicker(TabContentFrames["Visual"], "Distance Color", Color3.fromRGB(255, 255, 255), function(c) VisualsConfig.DistanceColor = c end, "DistanceColor", VisualsConfig)
-CreateToggle(TabContentFrames["Visual"], "ESP Gender", false, function(v) VisualsConfig.ESP_Gender = v end, "ESP_Gender", VisualsConfig)
-CreateColorPicker(TabContentFrames["Visual"], "Gender Color", Color3.fromRGB(255, 255, 255), function(c) VisualsConfig.GenderColor = c end, "GenderColor", VisualsConfig)
-CreateToggle(TabContentFrames["Visual"], "ESP Status", false, function(v) VisualsConfig.ESP_Status = v end, "ESP_Status", VisualsConfig)
-CreateColorPicker(TabContentFrames["Visual"], "Status Color", Color3.fromRGB(255, 255, 255), function(c) VisualsConfig.StatusColor = c end, "StatusColor", VisualsConfig)
-CreateToggle(TabContentFrames["Visual"], "ESP Health", false, function(v) VisualsConfig.ESP_Health = v end, "ESP_Health", VisualsConfig)
-CreateColorPicker(TabContentFrames["Visual"], "Health Bar Color", Color3.fromRGB(0, 255, 128), function(c) VisualsConfig.HealthColor = c end, "HealthColor", VisualsConfig)
+CreateToggle(TabContentFrames["Visual"], "Skeleton ESP (Player & Bot)", false, function(v) 
+    VisualsConfig.ESP_Skeleton = v 
+    if not v then
+        for _, esp in pairs(ESPCache) do
+            if esp.HeadCircle then esp.HeadCircle.Visible = false end
+            if esp.Skeleton then for _, b in pairs(esp.Skeleton) do b.Visible = false end end
+        end
+    end
+end)
+CreateColorPicker(TabContentFrames["Visual"], "Skeleton Color", Color3.fromRGB(0, 240, 255), function(c) 
+    VisualsConfig.SkeletonColor = c 
+    for _, esp in pairs(ESPCache) do 
+        esp.HeadCircle.Color = c
+        for _, bone in pairs(esp.Skeleton) do bone.Color = c end 
+    end
+end)
+CreateToggle(TabContentFrames["Visual"], "Chams / Wall Glow", false, function(v) VisualsConfig.Chams = v end)
+CreateColorPicker(TabContentFrames["Visual"], "Chams Glow Color", Color3.fromRGB(255, 0, 128), function(c) VisualsConfig.ChamsColor = c end)
+CreateToggle(TabContentFrames["Visual"], "Enemy Chams", false, function(v) VisualsConfig.EnemyChams = v end)
+CreateColorPicker(TabContentFrames["Visual"], "Enemy Chams Color", Color3.fromRGB(255, 0, 0), function(c) VisualsConfig.EnemyChamsColor = c end)
+CreateToggle(TabContentFrames["Visual"], "ESP Line", false, function(v) 
+    VisualsConfig.ESP_Line = v 
+    if not v then for _, esp in pairs(ESPCache) do if esp.Line then esp.Line.Visible = false end end end
+end)
+CreateColorPicker(TabContentFrames["Visual"], "Line Color", Color3.fromRGB(0, 240, 255), function(c) VisualsConfig.LineColor = c end)
+CreateToggle(TabContentFrames["Visual"], "ESP Name", false, function(v) 
+    VisualsConfig.ESP_Name = v 
+    if not v then for _, esp in pairs(ESPCache) do if esp.Name then esp.Name.Visible = false end end end
+end)
+CreateColorPicker(TabContentFrames["Visual"], "Name Color", Color3.fromRGB(255, 255, 255), function(c) VisualsConfig.NameColor = c end)
+CreateToggle(TabContentFrames["Visual"], "ESP Distance", false, function(v) 
+    VisualsConfig.ESP_Distance = v 
+    if not v then for _, esp in pairs(ESPCache) do if esp.Distance then esp.Distance.Visible = false end end end
+end)
+CreateColorPicker(TabContentFrames["Visual"], "Distance Color", Color3.fromRGB(255, 255, 255), function(c) VisualsConfig.DistanceColor = c end)
 
--- Tab Player Elements
-CreateToggle(TabContentFrames["Player"], "No Fall Damage", false, function(v) HackConfig.AntiFallDamageAktif = v end, "AntiFallDamageAktif", HackConfig)
-CreateToggle(TabContentFrames["Player"], "Kecepatan Lari", false, function(v) HackConfig.SpeedAktif = v end, "SpeedAktif", HackConfig)
-CreateSlider(TabContentFrames["Player"], "Set Speed", 16, 250, 50, function(val) HackConfig.CustomSpeed = val end, "CustomSpeed", HackConfig)
-CreateToggle(TabContentFrames["Player"], "Lompat Tinggi", false, function(v) HackConfig.JumpAktif = v end, "JumpAktif", HackConfig)
-CreateSlider(TabContentFrames["Player"], "Set Power", 50, 250, 100, function(val) HackConfig.CustomJump = val end, "CustomJump", HackConfig)
+CreateToggle(TabContentFrames["Visual"], "ESP Gender (Cowo/Cewe/Gay)", false, function(v) 
+    VisualsConfig.ESP_Gender = v 
+    if not v then for _, esp in pairs(ESPCache) do if esp.Gender then esp.Gender.Visible = false end end end
+end)
+CreateColorPicker(TabContentFrames["Visual"], "Gender Color", Color3.fromRGB(255, 255, 255), function(c) VisualsConfig.GenderColor = c end)
 
--- Tab World Elements (Night Mode & Daylight Fix)
+CreateToggle(TabContentFrames["Visual"], "ESP Status (Bot/Player)", false, function(v) 
+    VisualsConfig.ESP_Status = v 
+    if not v then for _, esp in pairs(ESPCache) do if esp.Status then esp.Status.Visible = false end end end
+end)
+CreateColorPicker(TabContentFrames["Visual"], "Status Color", Color3.fromRGB(255, 255, 255), function(c) VisualsConfig.StatusColor = c end)
+
+CreateToggle(TabContentFrames["Visual"], "ESP Health (Vertical Bar)", false, function(v) 
+    VisualsConfig.ESP_Health = v 
+    if not v then for _, esp in pairs(ESPCache) do if esp.HealthBarBg then esp.HealthBarBg.Visible = false end if esp.HealthBar then esp.HealthBar.Visible = false end end end
+end)
+CreateColorPicker(TabContentFrames["Visual"], "Health Bar Color", Color3.fromRGB(0, 255, 128), function(c) VisualsConfig.HealthColor = c end)
+
+CreateToggle(TabContentFrames["Player"], "No Fall Damage", false, function(v) 
+    HackConfig.AntiFallDamageAktif = v 
+    ShowPopupNotification(v and "No Fall Damage Diaktifkan" or "No Fall Damage Dimatikan")
+end)
+CreateToggle(TabContentFrames["Player"], "Kecepatan Lari", false, function(v) 
+    HackConfig.SpeedAktif = v
+    if not v and LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
+        LocalPlayer.Character.Humanoid.WalkSpeed = 16
+    end
+    ShowPopupNotification(v and "Kecepatan Lari Diaktifkan" or "Kecepatan Lari Dimatikan")
+end)
+CreateSlider(TabContentFrames["Player"], "Set Speed", 16, 250, 50, function(val) HackConfig.CustomSpeed = val end)
+CreateToggle(TabContentFrames["Player"], "Lompat Tinggi", false, function(v) 
+    HackConfig.JumpAktif = v
+    if not v and LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
+        LocalPlayer.Character.Humanoid.UseJumpPower = true
+        LocalPlayer.Character.Humanoid.JumpPower = 50
+    end
+    ShowPopupNotification(v and "Lompat Tinggi Diaktifkan" or "Lompat Tinggi Dimatikan")
+end)
+CreateSlider(TabContentFrames["Player"], "Set Power", 50, 250, 100, function(val) HackConfig.CustomJump = val end)
+-- v3.9.3 - Part 2
 CreateToggle(TabContentFrames["World"], "Night Mode", false, function(v)
     WorldConfig.NightMode = v
-    WorldConfig.Daylight = false -- Conflict prevent
-    if not v then
+    if v then WorldConfig.Daylight = false else
         Lighting.ClockTime = OriginalLighting.ClockTime
         Lighting.Brightness = OriginalLighting.Brightness
         Lighting.Ambient = OriginalLighting.Ambient
         Lighting.OutdoorAmbient = OriginalLighting.OutdoorAmbient
+        Lighting.GlobalShadows = OriginalLighting.GlobalShadows
+        Lighting.FogEnd = OriginalLighting.FogEnd
     end
-end, "NightMode", WorldConfig)
+    ShowPopupNotification(v and "Night Mode Diaktifkan" or "Night Mode Dimatikan")
+end)
 
-CreateToggle(TabContentFrames["World"], "Daylight", false, function(v)
+CreateToggle(TabContentFrames["World"], "Daylight (Indoor/Outdoor)", false, function(v)
     WorldConfig.Daylight = v
-    WorldConfig.NightMode = false -- Conflict prevent
-    if not v then
+    if v then WorldConfig.NightMode = false else
         Lighting.ClockTime = OriginalLighting.ClockTime
         Lighting.Brightness = OriginalLighting.Brightness
         Lighting.Ambient = OriginalLighting.Ambient
         Lighting.OutdoorAmbient = OriginalLighting.OutdoorAmbient
+        Lighting.GlobalShadows = OriginalLighting.GlobalShadows
+        Lighting.FogEnd = OriginalLighting.FogEnd
     end
-end, "Daylight", WorldConfig)
+    ShowPopupNotification(v and "Daylight Diaktifkan" or "Daylight Dimatikan")
+end)
 
-CreateSlider(TabContentFrames["World"], "Daylight Brightness", 1, 10, 3, function(val) WorldConfig.DaylightBrightness = val end, "DaylightBrightness", WorldConfig)
-CreateSlider(TabContentFrames["World"], "Daylight Time (Clock)", 0, 24, 14, function(val) WorldConfig.DaylightClock = val end, "DaylightClock", WorldConfig)
-CreateToggle(TabContentFrames["World"], "Wall Hack (Noclip)", false, function(v) WorldConfig.WallHack = v end, "WallHack", WorldConfig)
+CreateSlider(TabContentFrames["World"], "Daylight Brightness", 1, 10, 3, function(val) WorldConfig.DaylightBrightness = val end)
+CreateSlider(TabContentFrames["World"], "Daylight Time (Clock)", 0, 24, 14, function(val) WorldConfig.DaylightClock = val end)
+
+CreateToggle(TabContentFrames["World"], "Wall Hack (Noclip)", false, function(v)
+    WorldConfig.WallHack = v
+    ShowPopupNotification(v and "Wall Hack Diaktifkan" or "Wall Hack Dimatikan")
+end)
 
 CreateToggle(TabContentFrames["World"], "No Fog", false, function(v)
     WorldConfig.NoFog = v
-    if v then
-        Lighting.FogEnd = 999999
-        Lighting.FogStart = 999999
-        pcall(function()
-            for _, child in pairs(Lighting:GetChildren()) do
-                if child:IsA("Atmosphere") or child:IsA("Sky") then
-                    child.Parent = nil
-                end
-            end
-        end)
-    else
-        Lighting.FogEnd = OriginalLighting.FogEnd
-        Lighting.FogStart = OriginalLighting.FogStart
-        pcall(function()
-            for _, child in pairs(SavedAtmosphere) do
-                if child and child.Parent == nil then
-                    child.Parent = Lighting
-                end
-            end
-        end)
-    end
-end, "NoFog", WorldConfig)
+    ShowPopupNotification(v and "No Fog Diaktifkan" or "No Fog Dimatikan")
+end)
 
-CreateToggle(TabContentFrames["World"], "Fly (Tahan Tombol Lompat)", false, function(v) WorldConfig.FlyAktif = v end, "FlyAktif", WorldConfig)
+CreateToggle(TabContentFrames["World"], "Fly (Tahan Tombol Lompat)", false, function(v)
+    WorldConfig.FlyAktif = v
+    ShowPopupNotification(v and "Fly Diaktifkan" or "Fly Dimatikan")
+end)
 
--- Target Teleport Dropdown (Filter ketat khusus Player & valid Target entities)
 local function GetPlayerNamesList()
     local names = {}
     for _, entity in ipairs(GetAllTargetableEntities()) do
         local char = GetEntityModel(entity)
         if char then
             local name = char.Name
-            if typeof(entity) == "Instance" and entity:IsA("Player") then 
-                name = entity.Name 
+            if typeof(entity) == "Instance" and entity:IsA("Player") then
+                name = entity.Name
             end
             table.insert(names, name)
         end
@@ -897,9 +955,9 @@ local function GetPlayerNamesList()
     return names
 end
 
-CreateDropdown(TabContentFrames["World"], "Target Teleport", GetPlayerNamesList, "Tidak Ada Target", function(selected)
+CreateDropdown(TabContentFrames["World"], "Target Teleport", GetPlayerNamesList(), GetPlayerNamesList()[1], function(selected)
     WorldConfig.SelectedTeleportTarget = selected
-end, "SelectedTeleportTarget", WorldConfig)
+end)
 
 CreateButton(TabContentFrames["World"], "Mulai Teleport", function()
     pcall(function()
@@ -909,9 +967,11 @@ CreateButton(TabContentFrames["World"], "Mulai Teleport", function()
             local char = GetEntityModel(entity)
             if char then
                 local name = char.Name
-                if typeof(entity) == "Instance" and entity:IsA("Player") then name = entity.Name end
+                if typeof(entity) == "Instance" and entity:IsA("Player") then
+                    name = entity.Name
+                end
                 if name == targetName then
-                    foundRoot = char:FindFirstChild("HumanoidRootPart") or char:FindFirstChild("Torso") or char:FindFirstChild("UpperTorso")
+                    foundRoot = char:FindFirstChild("HumanoidRootPart") or char:FindFirstChild("Torso") or char:FindFirstChild("UpperTorso") or char.PrimaryPart
                     break
                 end
             end
@@ -925,22 +985,49 @@ CreateButton(TabContentFrames["World"], "Mulai Teleport", function()
     end)
 end)
 
--- Tab Skill Elements
-CreateToggle(TabContentFrames["Skill"], "Peringatan Admin", false, function(v) HackConfig.AntiAdminAktif = v end, "AntiAdminAktif", HackConfig)
-CreateToggle(TabContentFrames["Skill"], "Auto Aim", false, function(v) HackConfig.AimbotAktif = v end, "AimbotAktif", HackConfig)
-CreateToggle(TabContentFrames["Skill"], "Auto Aim Wall Check", false, function(v) HackConfig.WallCheck = v end, "WallCheck", HackConfig)
-CreateDropdown(TabContentFrames["Skill"], "Mode Aimbot", {"POV Kamera (FOV)", "360° (Brutal)"}, "POV Kamera (FOV)", function(opt) HackConfig.AimbotMode = opt end, "AimbotMode", HackConfig)
-CreateDropdown(TabContentFrames["Skill"], "Target Bagian Tubuh", {"Head", "Neck", "Body"}, "Head", function(opt) HackConfig.AimTargetMode = opt end, "AimTargetMode", HackConfig)
-CreateSlider(TabContentFrames["Skill"], "Smoothness", 1, 100, 15, function(val) HackConfig.AimbotSmoothness = val end, "AimbotSmoothness", HackConfig)
-CreateToggle(TabContentFrames["Skill"], "Tampilkan Lingkaran FOV", false, function(v) HackConfig.ShowFOV = v end, "ShowFOV", HackConfig)
-CreateSlider(TabContentFrames["Skill"], "Lebar Lingkaran FOV", 10, 600, 150, function(val) HackConfig.FOVRadius = val end, "FOVRadius", HackConfig)
-CreateToggle(TabContentFrames["Skill"], "Gun Mods (Ammo & RPM)", false, function(v) HackConfig.GunModsAktif = v end, "GunModsAktif", HackConfig)
-CreateSlider(TabContentFrames["Skill"], "RPM Fire Rate", 400, 2500, 800, function(val) HackConfig.CustomFireRate = val end, "CustomFireRate", HackConfig)
+CreateToggle(TabContentFrames["Skill"], "Peringatan Admin (Popup Warning)", false, function(v) 
+    HackConfig.AntiAdminAktif = v 
+    ShowPopupNotification(v and "Peringatan Admin Diaktifkan" or "Peringatan Admin Dimatikan")
+end)
+CreateToggle(TabContentFrames["Skill"], "Aktifkan Auto Aim (Kunci Layar)", false, function(v) 
+    HackConfig.AimbotAktif = v 
+    ShowPopupNotification(v and "Auto Aim Diaktifkan" or "Auto Aim Dimatikan")
+end)
+CreateToggle(TabContentFrames["Skill"], "Auto Aim Wall Check", false, function(v)
+    HackConfig.WallCheck = v
+    ShowPopupNotification(v and "Wall Check Diaktifkan" or "Wall Check Dimatikan")
+end)
+CreateDropdown(TabContentFrames["Skill"], "Mode Aimbot", {"POV Kamera (FOV)", "360° (Brutal)"}, "POV Kamera (FOV)", function(opt) HackConfig.AimbotMode = opt end)
+CreateDropdown(TabContentFrames["Skill"], "Target Bagian Tubuh", {"Head", "Neck", "Body"}, "Head", function(opt) HackConfig.AimTargetMode = opt end)
+CreateSlider(TabContentFrames["Skill"], "Kelengketan Aim POV (Smoothness)", 1, 100, 15, function(val) HackConfig.AimbotSmoothness = val end)
+CreateToggle(TabContentFrames["Skill"], "Tampilkan Lingkaran FOV", false, function(v) HackConfig.ShowFOV = v end)
+CreateSlider(TabContentFrames["Skill"], "Lebar Lingkaran FOV", 10, 600, 150, function(val) HackConfig.FOVRadius = val end)
+CreateToggle(TabContentFrames["Skill"], "Gun Mods (Infinite Ammo & RPM)", false, function(v) 
+    HackConfig.GunModsAktif = v 
+    ShowPopupNotification(v and "Gun Mods Diaktifkan" or "Gun Mods Dimatikan")
+end)
+CreateSlider(TabContentFrames["Skill"], "RPM Fire Rate", 400, 2500, 800, function(val) HackConfig.CustomFireRate = val end)
 
--- Tab Configuration Elements (Theme & Fully Synchronized Save/Load)
 CreateDropdown(TabContentFrames["Configuration"], "UI Theme Mode", {"Dark", "Light"}, "Dark", function(mode)
-    ApplyThemeMode(mode)
-end, "Theme", nil)
+    AppTheme = mode
+    local isLight = (mode == "Light")
+    for _, item in ipairs(ThemeElements) do
+        pcall(function()
+            if item.Type == "Main" then
+                item.Obj.BackgroundColor3 = isLight and Color3.fromRGB(240, 240, 245) or Color3.fromRGB(6, 6, 9)
+            elseif item.Type == "Sub" then
+                item.Obj.BackgroundColor3 = isLight and Color3.fromRGB(225, 225, 235) or Color3.fromRGB(12, 12, 18)
+            elseif item.Type == "ElementBg" then
+                item.Obj.BackgroundColor3 = isLight and Color3.fromRGB(210, 210, 220) or Color3.fromRGB(25, 25, 36)
+            elseif item.Type == "Text" then
+                item.Obj.TextColor3 = isLight and Color3.fromRGB(20, 20, 30) or Color3.fromRGB(240, 240, 255)
+            elseif item.Type == "TextSub" then
+                item.Obj.TextColor3 = isLight and Color3.fromRGB(40, 40, 55) or Color3.fromRGB(220, 220, 235)
+            end
+        end)
+    end
+    ShowPopupNotification("Theme diubah ke " .. mode)
+end)
 
 CreateButton(TabContentFrames["Configuration"], "Save Settings", function()
     pcall(function()
@@ -952,7 +1039,7 @@ CreateButton(TabContentFrames["Configuration"], "Save Settings", function()
                 Theme = AppTheme
             }
             writefile("D3D_Settings.json", HttpService:JSONEncode(data))
-            ShowPopupNotification("Semua Settings berhasil disimpan!")
+            ShowPopupNotification("Settings berhasil disimpan!")
         else
             ShowPopupNotification("Executor tidak support writefile!")
         end
@@ -968,23 +1055,7 @@ CreateButton(TabContentFrames["Configuration"], "Load Settings", function()
                 if data.Visuals then VisualsConfig = data.Visuals end
                 if data.World then WorldConfig = data.World end
                 if data.Hacks then HackConfig = data.Hacks end
-                if data.Theme then AppTheme = data.Theme end
-
-                -- Sinkronisasi menyeluruh ke UI dan eksekusi setting aktif
-                for key, val in pairs(VisualsConfig) do
-                    if SettingUpdaters[key] then SettingUpdaters[key](val) end
-                end
-                for key, val in pairs(WorldConfig) do
-                    if SettingUpdaters[key] then SettingUpdaters[key](val) end
-                end
-                for key, val in pairs(HackConfig) do
-                    if SettingUpdaters[key] then SettingUpdaters[key](val) end
-                end
-                if data.Theme and SettingUpdaters["Theme"] then 
-                    SettingUpdaters["Theme"](data.Theme) 
-                end
-
-                ShowPopupNotification("Semua Settings berhasil dimuat & diterapkan!")
+                ShowPopupNotification("Settings berhasil dimuat!")
             end
         else
             ShowPopupNotification("File settings tidak ditemukan!")
@@ -996,41 +1067,28 @@ CreateButton(TabContentFrames["Configuration"], "Delete Settings", function()
     pcall(function()
         if isfile and isfile("D3D_Settings.json") and delfile then
             delfile("D3D_Settings.json")
-            ShowPopupNotification("File settings dihapus!")
+            ShowPopupNotification("Settings berhasil dihapus!")
         else
-            ShowPopupNotification("File settings tidak ada!")
+            ShowPopupNotification("Tidak ada file settings untuk dihapus!")
         end
     end)
 end)
 
-CreateButton(TabContentFrames["Configuration"], "Reset Default Settings", function()
-    pcall(function()
-        for k, _ in pairs(VisualsConfig) do if type(VisualsConfig[k]) == "boolean" then VisualsConfig[k] = false end end
-        for k, _ in pairs(WorldConfig) do if type(WorldConfig[k]) == "boolean" then WorldConfig[k] = false end end
-        for k, _ in pairs(HackConfig) do if type(HackConfig[k]) == "boolean" then HackConfig[k] = false end end
+local function CheckIfAdmin(p)
+    if p == LocalPlayer then return false end
+    local nameRaw = string.upper(p.Name .. " " .. p.DisplayName)
+    if string.find(nameRaw, "%[GM%]") or string.find(nameRaw, "%[MOD%]") or string.find(nameRaw, "GAME MASTER") or string.find(nameRaw, "MODERATOR") then return true end
+    return false
+end
 
-        for key, val in pairs(VisualsConfig) do if SettingUpdaters[key] then SettingUpdaters[key](val) end end
-        for key, val in pairs(WorldConfig) do if SettingUpdaters[key] then SettingUpdaters[key](val) end end
-        for key, val in pairs(HackConfig) do if SettingUpdaters[key] then SettingUpdaters[key](val) end end
-
-        Lighting.ClockTime = OriginalLighting.ClockTime
-        Lighting.Brightness = OriginalLighting.Brightness
-        Lighting.Ambient = OriginalLighting.Ambient
-        Lighting.OutdoorAmbient = OriginalLighting.OutdoorAmbient
-        Lighting.FogEnd = OriginalLighting.FogEnd
-        ShowPopupNotification("Settings di-reset ke Default!")
-    end)
+Players.PlayerAdded:Connect(function(p)
+    if HackConfig.AntiAdminAktif and CheckIfAdmin(p) then
+        TitleLabel.Text = "⚠️ ADMIN TERDETEKSI: " .. p.Name
+        ShowPopupNotification("⚠️ ADMIN TERDETEKSI: " .. p.Name)
+        task.delay(5, function() TitleLabel.Text = "× D3D MENU: PLAYER & BOT v3.9.3 ×" end)
+    end
 end)
 
-CreateButton(TabContentFrames["Configuration"], "Unload Script", function()
-    pcall(function()
-        for key, _ in pairs(ESPCache) do RemoveEntityESP(key) end
-        if FOVGui then FOVGui:Destroy() end
-        if ScreenGui then ScreenGui:Destroy() end
-    end)
-end)
-
--- Main Loop RenderStepped
 RunService.RenderStepped:Connect(function()
     if WorldConfig.NightMode then
         Lighting.ClockTime = 0
@@ -1042,6 +1100,17 @@ RunService.RenderStepped:Connect(function()
         Lighting.Brightness = WorldConfig.DaylightBrightness
         Lighting.Ambient = Color3.fromRGB(200, 200, 200)
         Lighting.OutdoorAmbient = Color3.fromRGB(200, 200, 200)
+    end
+
+    if WorldConfig.NoFog then
+        Lighting.FogEnd = 999999
+        pcall(function()
+            for _, v in pairs(Lighting:GetChildren()) do
+                if v:IsA("Atmosphere") or v:IsA("Sky") then
+                    v.Parent = nil
+                end
+            end
+        end)
     end
 
     if FOVFrame then
@@ -1062,7 +1131,9 @@ RunService.RenderStepped:Connect(function()
                             local pos, onScreen = Camera:WorldToViewportPoint(partToAim.Position)
                             local center = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
                             local dist = (center - Vector2.new(pos.X, pos.Y)).Magnitude
-                            if onScreen and dist <= HackConfig.FOVRadius then targetValid = true end
+                            if onScreen and dist <= HackConfig.FOVRadius then
+                                targetValid = true
+                            end
                         else
                             targetValid = true
                         end
@@ -1072,9 +1143,14 @@ RunService.RenderStepped:Connect(function()
         end
 
         if not targetValid then
-            if HackConfig.AimbotMode == "360° (Brutal)" then LockedTarget = GetNewTarget3D()
-            elseif HackConfig.AimbotMode == "POV Kamera (FOV)" then LockedTarget = GetClosestEnemy2D() end
-            if LockedTarget then partToAim = GetDynamicTargetPart(LockedTarget) end
+            if HackConfig.AimbotMode == "360° (Brutal)" then
+                LockedTarget = GetNewTarget3D()
+            elseif HackConfig.AimbotMode == "POV Kamera (FOV)" then
+                LockedTarget = GetClosestEnemy2D()
+            end
+            if LockedTarget then
+                partToAim = GetDynamicTargetPart(LockedTarget)
+            end
         end
 
         if LockedTarget and partToAim then
@@ -1092,6 +1168,7 @@ RunService.RenderStepped:Connect(function()
     end
 
     local activeEntities = GetAllTargetableEntities()
+    
     for key, _ in pairs(ESPCache) do
         local found = false
         for _, ent in ipairs(activeEntities) do
@@ -1104,53 +1181,97 @@ RunService.RenderStepped:Connect(function()
     for _, entity in ipairs(activeEntities) do
         local char = GetEntityModel(entity)
         if IsValidCharacter(char) then
-            if not ESPCache[char] then CreateEntityESP(char) end
+            if not ESPCache[char] then
+                CreateEntityESP(char)
+            end
+
             local esp = ESPCache[char]
             local isEnemy = IsEnemyEntity(entity)
-            local primaryPart = char:FindFirstChild("HumanoidRootPart") or char:FindFirstChild("Torso") or char:FindFirstChild("UpperTorso") or char:FindFirstChild("Head")
+            local primaryPart = char:FindFirstChild("HumanoidRootPart") or char:FindFirstChild("Torso") or char:FindFirstChild("UpperTorso") or char:FindFirstChild("Head") or char.PrimaryPart or char:FindFirstChildOfClass("BasePart")
             local hum = char:FindFirstChildOfClass("Humanoid")
             local active = isEnemy and primaryPart and (not hum or hum.Health > 0)
 
             if active and VisualsConfig.Chams then
                 if not ChamsCache[char] then
                     local highlight = Instance.new("Highlight")
-                    highlight.Adornee = char; highlight.FillColor = VisualsConfig.ChamsColor; highlight.FillTransparency = 0.4; highlight.Parent = char
+                    highlight.Name = "D3D_Chams"
+                    highlight.Adornee = char
+                    highlight.FillColor = VisualsConfig.ChamsColor
+                    highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+                    highlight.FillTransparency = 0.4
+                    highlight.OutlineTransparency = 0
+                    highlight.Parent = char
                     ChamsCache[char] = highlight
                 else
-                    ChamsCache[char].FillColor = VisualsConfig.ChamsColor; ChamsCache[char].Enabled = true
+                    ChamsCache[char].FillColor = VisualsConfig.ChamsColor
+                    ChamsCache[char].Enabled = true
                 end
-            elseif ChamsCache[char] then ChamsCache[char].Enabled = false end
+            else
+                if ChamsCache[char] then ChamsCache[char].Enabled = false end
+            end
+
+            if active and VisualsConfig.EnemyChams then
+                if not EnemyChamsCache[char] then
+                    local highlight = Instance.new("Highlight")
+                    highlight.Name = "D3D_EnemyChams"
+                    highlight.Adornee = char
+                    highlight.FillColor = VisualsConfig.EnemyChamsColor
+                    highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+                    highlight.FillTransparency = 0.4
+                    highlight.OutlineTransparency = 0
+                    highlight.Parent = char
+                    EnemyChamsCache[char] = highlight
+                else
+                    EnemyChamsCache[char].FillColor = VisualsConfig.EnemyChamsColor
+                    EnemyChamsCache[char].Enabled = true
+                end
+            else
+                if EnemyChamsCache[char] then EnemyChamsCache[char].Enabled = false end
+            end
 
             if active then
                 local vector, onScreen = Camera:WorldToViewportPoint(primaryPart.Position)
                 if onScreen then
                     local distance = (Camera.CFrame.Position - primaryPart.Position).Magnitude
+
                     if VisualsConfig.ESP_Skeleton then
                         local head = char:FindFirstChild("Head")
                         local upperTorso = char:FindFirstChild("UpperTorso") or char:FindFirstChild("Torso") or primaryPart
                         local lowerTorso = char:FindFirstChild("LowerTorso") or upperTorso
-                        local lArm = char:FindFirstChild("LeftUpperArm") or char:FindFirstChild("Left Arm") or primaryPart
-                        local rArm = char:FindFirstChild("RightUpperArm") or char:FindFirstChild("Right Arm") or primaryPart
-                        local lLeg = char:FindFirstChild("LeftUpperLeg") or char:FindFirstChild("Left Leg") or primaryPart
-                        local rLeg = char:FindFirstChild("RightUpperLeg") or char:FindFirstChild("Right Leg") or primaryPart
+                        local lArm = char:FindFirstChild("LeftUpperArm") or char:FindFirstChild("Left Arm") or char:FindFirstChild("LeftHand") or primaryPart
+                        local rArm = char:FindFirstChild("RightUpperArm") or char:FindFirstChild("Right Arm") or char:FindFirstChild("RightHand") or primaryPart
+                        local lLeg = char:FindFirstChild("LeftUpperLeg") or char:FindFirstChild("Left Leg") or char:FindFirstChild("LeftFoot") or primaryPart
+                        local rLeg = char:FindFirstChild("RightUpperLeg") or char:FindFirstChild("Right Leg") or char:FindFirstChild("RightFoot") or primaryPart
 
-                        local function getPos(pPart)
-                            if not pPart then return nil end
-                            local p, visible = Camera:WorldToViewportPoint(pPart.Position)
+                        local function getPos(part)
+                            if not part then return nil end
+                            local p, visible = Camera:WorldToViewportPoint(part.Position)
                             if visible then return Vector2.new(p.X, p.Y) end
                             return nil
                         end
 
-                        local hPos, utPos, ltPos = getPos(head), getPos(upperTorso), getPos(lowerTorso)
-                        local laPos, raPos, llPos, rlPos = getPos(lArm), getPos(rArm), getPos(lLeg), getPos(rLeg)
+                        local hPos = getPos(head)
+                        local utPos = getPos(upperTorso)
+                        local ltPos = getPos(lowerTorso)
+                        local laPos = getPos(lArm)
+                        local raPos = getPos(rArm)
+                        local llPos = getPos(lLeg)
+                        local rlPos = getPos(rLeg)
 
                         local function drawBone(boneObj, p1, p2)
-                            if p1 and p2 then boneObj.From = p1; boneObj.To = p2; boneObj.Visible = true else boneObj.Visible = false end
+                            if p1 and p2 then
+                                boneObj.From = p1
+                                boneObj.To = p2
+                                boneObj.Visible = true
+                            else
+                                boneObj.Visible = false
+                            end
                         end
 
                         if hPos then
                             esp.HeadCircle.Position = hPos
-                            esp.HeadCircle.Radius = 12
+                            local headSize = head and (Camera:WorldToViewportPoint((head.Position + Vector3.new(0, 1, 0))).Y - Camera:WorldToViewportPoint(head.Position).Y) or 10
+                            esp.HeadCircle.Radius = math.clamp(math.abs(headSize) * 1.2, 6, 25)
                             esp.HeadCircle.Color = VisualsConfig.SkeletonColor
                             esp.HeadCircle.Visible = true
                         else
@@ -1172,32 +1293,84 @@ RunService.RenderStepped:Connect(function()
                         esp.Line.To = Vector2.new(vector.X, vector.Y)
                         esp.Line.Color = VisualsConfig.LineColor
                         esp.Line.Visible = true
-                    else esp.Line.Visible = false end
+                    else
+                        esp.Line.Visible = false
+                    end
 
                     if VisualsConfig.ESP_Name then
-                        esp.Name.Text = char.Name
+                        local entityName = char.Name
+                        if typeof(entity) == "Instance" and entity:IsA("Player") then
+                            entityName = entity.Name
+                        end
+                        esp.Name.Text = entityName
                         esp.Name.Position = Vector2.new(vector.X, vector.Y - 38)
                         esp.Name.Color = VisualsConfig.NameColor
                         esp.Name.Visible = true
-                    else esp.Name.Visible = false end
+                    else
+                        esp.Name.Visible = false
+                    end
 
                     if VisualsConfig.ESP_Distance then
                         esp.Distance.Text = string.format("[%dM]", math.floor(distance))
                         esp.Distance.Position = Vector2.new(vector.X, vector.Y + 22)
                         esp.Distance.Color = VisualsConfig.DistanceColor
                         esp.Distance.Visible = true
-                    else esp.Distance.Visible = false end
+                    else
+                        esp.Distance.Visible = false
+                    end
+
+                    if VisualsConfig.ESP_Gender then
+                        local genderText = "[Cowo]"
+                        local isPlayer = false
+                        for _, p in ipairs(Players:GetPlayers()) do
+                            if p.Character == char then isPlayer = true break end
+                        end
+
+                        if isPlayer then
+                            if not EntityGenderCache[char] then
+                                EntityGenderCache[char] = (math.random(1, 2) == 1) and "[Cowo]" or "[Cewe]"
+                            end
+                            genderText = EntityGenderCache[char]
+                        else
+                            genderText = "[Gay]"
+                        end
+
+                        esp.Gender.Text = genderText
+                        esp.Gender.Position = Vector2.new(vector.X, vector.Y + 36)
+                        esp.Gender.Color = VisualsConfig.GenderColor
+                        esp.Gender.Visible = true
+                    else
+                        esp.Gender.Visible = false
+                    end
+
+                    if VisualsConfig.ESP_Status then
+                        local statusText = "[Bot]"
+                        for _, p in ipairs(Players:GetPlayers()) do
+                            if p.Character == char then
+                                statusText = "[Player]"
+                                break
+                            end
+                        end
+                        esp.Status.Text = statusText
+                        esp.Status.Position = Vector2.new(vector.X, vector.Y + 50)
+                        esp.Status.Color = VisualsConfig.StatusColor
+                        esp.Status.Visible = true
+                    else
+                        esp.Status.Visible = false
+                    end
 
                     if VisualsConfig.ESP_Health and hum then
                         local healthPct = math.clamp(hum.Health / hum.MaxHealth, 0, 1)
                         local barHeight = 40
-                        local barX = vector.X - 28
+                        local barX = vector.X + 24
                         local barY = vector.Y - 20
+
                         esp.HealthBarBg.From = Vector2.new(barX, barY)
                         esp.HealthBarBg.To = Vector2.new(barX, barY + barHeight)
                         esp.HealthBarBg.Visible = true
 
-                        esp.HealthBar.From = Vector2.new(barX, barY + (barHeight * (1 - healthPct)))
+                        local currentHeight = barHeight * healthPct
+                        esp.HealthBar.From = Vector2.new(barX, barY + (barHeight - currentHeight))
                         esp.HealthBar.To = Vector2.new(barX, barY + barHeight)
                         esp.HealthBar.Color = VisualsConfig.HealthColor
                         esp.HealthBar.Visible = true
@@ -1205,8 +1378,12 @@ RunService.RenderStepped:Connect(function()
                         esp.HealthBarBg.Visible = false
                         esp.HealthBar.Visible = false
                     end
-                else HideESPObject(esp) end
-            else HideESPObject(esp) end
+                else
+                    HideESPObject(esp)
+                end
+            else
+                HideESPObject(esp)
+            end
         end
     end
 end)
@@ -1215,6 +1392,7 @@ RunService.Stepped:Connect(function()
     if LocalPlayer.Character then
         local hrp = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
         local hum = LocalPlayer.Character:FindFirstChild("Humanoid")
+        
         if hrp and HackConfig.AntiFallDamageAktif and hrp.Velocity.Y < -40 then
             hrp.Velocity = Vector3.new(hrp.Velocity.X, -10, hrp.Velocity.Z)
         end
@@ -1222,19 +1400,80 @@ RunService.Stepped:Connect(function()
             if HackConfig.SpeedAktif then hum.WalkSpeed = HackConfig.CustomSpeed end
             if HackConfig.JumpAktif then hum.UseJumpPower = true; hum.JumpPower = HackConfig.CustomJump end
         end
+
         if WorldConfig.WallHack then
             for _, part in pairs(LocalPlayer.Character:GetDescendants()) do
-                if part:IsA("BasePart") then part.CanCollide = false end
+                if part:IsA("BasePart") then
+                    part.CanCollide = false
+                end
             end
         end
+
         if WorldConfig.FlyAktif and hrp then
-            if UserInputService:IsKeyDown(Enum.KeyCode.Space) or (hum and hum.Jump) then
-                hrp.Velocity = Vector3.new(hrp.Velocity.X, hrp.Velocity.Y + 5, hrp.Velocity.Z)
+            if UserInputService:IsKeyDown(Enum.KeyCode.Space) or hum.Jump then
+                hrp.Velocity = Vector3.new(hrp.Velocity.X, 50, hrp.Velocity.Z)
             else
-                hrp.Velocity = Vector3.new(hrp.Velocity.X, 0, hrp.Velocity.Z)
+                if hrp.Velocity.Y < -5 then
+                    hrp.Velocity = Vector3.new(hrp.Velocity.X, -5, hrp.Velocity.Z)
+                end
             end
         end
     end
 end)
 
-ShowPopupNotification("D3D Menu v3.9.5 Fully Loaded & Fixed!")
+local function ScanValueMods(tool)
+    pcall(function()
+        local function SetSafe(attr, value)
+            if tool:GetAttribute(attr) ~= nil then tool:SetAttribute(attr, value) end
+        end
+        SetSafe("TotalAmmo", 999999)
+        SetSafe("NewMax", 999999)
+        SetSafe("magazineSize", 999999)
+        SetSafe("spread", 0)
+        SetSafe("recoilMax", 0)
+        SetSafe("reloadTime", 0.05)
+        SetSafe("rateOfFire", HackConfig.CustomFireRate)
+        for _, obj in pairs(tool:GetDescendants()) do
+            if obj:IsA("IntValue") or obj:IsA("NumberValue") then
+                local name = obj.Name:lower()
+                if name:find("ammo") or name:find("clip") or name:find("mag") then
+                    obj.Value = 999999
+                elseif name:find("firerate") or name:find("rpm") then
+                    obj.Value = HackConfig.CustomFireRate
+                end
+            end
+        end
+    end)
+end
+
+RunService.RenderStepped:Connect(function()
+    if HackConfig.GunModsAktif then
+        if LocalPlayer.Character then
+            for _, t in pairs(LocalPlayer.Character:GetChildren()) do
+                if t:IsA("Tool") or t:IsA("Model") then ScanValueMods(t) end
+            end
+        end
+        for _, v in pairs(Camera:GetChildren()) do
+            if v:IsA("Model") then ScanValueMods(v) end
+       end
+    end
+end)
+
+task.spawn(function()
+    while task.wait(1) do
+        if HackConfig.GunModsAktif and getgc then
+            pcall(function()
+                for _, v in pairs(getgc(true)) do
+                    if type(v) == "table" then
+                        if rawget(v, "Ammo") or rawget(v, "MaxAmmo") or rawget(v, "RPM") or rawget(v, "FireRate") then
+                            if rawget(v, "Ammo") then v.Ammo = 999999 end
+                            if rawget(v, "MaxAmmo") then v.MaxAmmo = 999999 end
+                            if rawget(v, "RPM") then v.RPM = HackConfig.CustomFireRate end
+                            if rawget(v, "FireRate") then v.FireRate = HackConfig.CustomFireRate end
+                        end
+                    end
+                end
+            end)
+        end
+    end
+end)
