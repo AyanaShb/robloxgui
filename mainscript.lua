@@ -1,16 +1,16 @@
--- Modern Blade-Style Client UI Framework for Android Roblox
--- Layout: Dark Theme, Left Vertical Sidebar Tabs, Dual-Column Content Grid, Floating Toggle
+-- Compact Blade-Style Client UI Framework for Android Roblox
+-- Features: Slim Sidebar fitting exact tabs, Clear borders/dividers, Dual-Column Viewport, Floating Toggle
 
 local CoreGui = game:GetService("CoreGui")
 local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
 
-if CoreGui:FindFirstChild("BladeStyleUI") then
-    CoreGui.BladeStyleUI:Destroy()
+if CoreGui:FindFirstChild("CompactBladeUI") then
+    CoreGui.CompactBladeUI:Destroy()
 end
 
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "BladeStyleUI"
+ScreenGui.Name = "CompactBladeUI"
 ScreenGui.Parent = CoreGui
 ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
@@ -18,51 +18,51 @@ ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 local ToggleBtn = Instance.new("TextButton")
 ToggleBtn.Name = "FloatingToggle"
 ToggleBtn.Parent = ScreenGui
-ToggleBtn.BackgroundColor3 = Color3.fromRGB(20, 20, 26)
-ToggleBtn.BackgroundTransparency = 0.2
+ToggleBtn.BackgroundColor3 = Color3.fromRGB(18, 18, 24)
+ToggleBtn.BackgroundTransparency = 0.1
 ToggleBtn.Position = UDim2.new(0.05, 0, 0.15, 0)
-ToggleBtn.Size = UDim2.new(0, 45, 0, 45)
+ToggleBtn.Size = UDim2.new(0, 42, 0, 42)
 ToggleBtn.Font = Enum.Font.GothamBold
 ToggleBtn.Text = "ui"
-ToggleBtn.TextColor3 = Color3.fromRGB(150, 100, 255)
-ToggleBtn.TextSize = 16
+ToggleBtn.TextColor3 = Color3.fromRGB(160, 110, 255)
+ToggleBtn.TextSize = 15
 
 local ToggleCorner = Instance.new("UICorner")
 ToggleCorner.CornerRadius = UDim.new(1, 0)
 ToggleCorner.Parent = ToggleBtn
 
 local ToggleStroke = Instance.new("UIStroke")
-ToggleStroke.Color = Color3.fromRGB(100, 70, 180)
-ToggleStroke.Transparency = 0.4
+ToggleStroke.Color = Color3.fromRGB(120, 80, 200)
+ToggleStroke.Transparency = 0.3
 ToggleStroke.Thickness = 1.5
 ToggleStroke.Parent = ToggleBtn
 
--- Main Window Frame (Blade Client Aesthetic)
+-- Main Window Frame (Compact & Sharp Borders)
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
 MainFrame.Parent = ScreenGui
-MainFrame.BackgroundColor3 = Color3.fromRGB(14, 14, 18)
+MainFrame.BackgroundColor3 = Color3.fromRGB(12, 12, 16)
 MainFrame.BackgroundTransparency = 0.05
 MainFrame.Position = UDim2.new(0.2, 0, 0.15, 0)
-MainFrame.Size = UDim2.new(0, 560, 0, 320)
+MainFrame.Size = UDim2.new(0, 480, 0, 270)
 MainFrame.Visible = true
 
 local MainCorner = Instance.new("UICorner")
-MainCorner.CornerRadius = UDim.new(0, 10)
+MainCorner.CornerRadius = UDim.new(0, 8)
 MainCorner.Parent = MainFrame
 
 local MainStroke = Instance.new("UIStroke")
-MainStroke.Color = Color3.fromRGB(45, 45, 55)
-MainStroke.Transparency = 0.5
-MainStroke.Thickness = 1
+MainStroke.Color = Color3.fromRGB(70, 70, 95)
+MainStroke.Transparency = 0.2
+MainStroke.Thickness = 1.5
 MainStroke.Parent = MainFrame
 
--- Top Search & Header Bar inside Main Frame
+-- Top Header / Drag Bar
 local TopHeader = Instance.new("Frame")
 TopHeader.Name = "TopHeader"
 TopHeader.Parent = MainFrame
 TopHeader.BackgroundTransparency = 1
-TopHeader.Size = UDim2.new(1, 0, 0, 45)
+TopHeader.Size = UDim2.new(1, 0, 0, 38)
 
 local LogoText = Instance.new("TextLabel")
 LogoText.Parent = TopHeader
@@ -72,41 +72,24 @@ LogoText.Size = UDim2.new(0.2, 0, 1, 0)
 LogoText.Font = Enum.Font.GothamBold
 LogoText.Text = "BLADE"
 LogoText.TextColor3 = Color3.fromRGB(240, 240, 255)
-LogoText.TextSize = 15
+LogoText.TextSize = 14
 LogoText.TextXAlignment = Enum.TextXAlignment.Left
 
--- Search Bar Element
-local SearchBar = Instance.new("Frame")
-SearchBar.Name = "SearchBar"
-SearchBar.Parent = TopHeader
-SearchBar.BackgroundColor3 = Color3.fromRGB(22, 22, 28)
-SearchBar.Position = UDim2.new(0.25, 0, 0.2, 0)
-SearchBar.Size = UDim2.new(0, 200, 0, 26)
+-- Header Divider Line
+local HeaderDivider = Instance.new("Frame")
+HeaderDivider.Parent = MainFrame
+HeaderDivider.BackgroundColor3 = Color3.fromRGB(45, 45, 60)
+HeaderDivider.BorderSizePixel = 0
+HeaderDivider.Position = UDim2.new(0, 0, 0, 38)
+HeaderDivider.Size = UDim2.new(1, 0, 0, 1)
 
-local SearchCorner = Instance.new("UICorner")
-SearchCorner.CornerRadius = UDim.new(0, 6)
-SearchCorner.Parent = SearchBar
-
-local SearchInput = Instance.new("TextBox")
-SearchInput.Parent = SearchBar
-SearchInput.BackgroundTransparency = 1
-SearchInput.Size = UDim2.new(1, 0, 1, 0)
-SearchInput.Font = Enum.Font.Gotham
-SearchInput.PlaceholderText = "Search element..."
-SearchInput.PlaceholderColor3 = Color3.fromRGB(100, 100, 120)
-SearchInput.Text = ""
-SearchInput.TextColor3 = Color3.fromRGB(200, 200, 220)
-SearchInput.TextSize = 11
-
--- Vertical Sidebar (Left Tabs)
-local Sidebar = Instance.new("ScrollingFrame")
+-- Vertical Sidebar (Slim, Exact Fit for Tabs)
+local Sidebar = Instance.new("Frame")
 Sidebar.Name = "Sidebar"
 Sidebar.Parent = MainFrame
 Sidebar.BackgroundTransparency = 1
-Sidebar.Position = UDim2.new(0, 0, 0, 45)
-Sidebar.Size = UDim2.new(0, 145, 1, -45)
-Sidebar.CanvasSize = UDim2.new(0, 0, 0, 0)
-Sidebar.ScrollBarThickness = 0
+Sidebar.Position = UDim2.new(0, 0, 0, 39)
+Sidebar.Size = UDim2.new(0, 115, 1, -39)
 
 local SidebarLayout = Instance.new("UIListLayout")
 SidebarLayout.Parent = Sidebar
@@ -115,18 +98,25 @@ SidebarLayout.Padding = UDim.new(0, 4)
 
 local SidebarPadding = Instance.new("UIPadding")
 SidebarPadding.Parent = Sidebar
-SidebarPadding.PaddingLeft = UDim.new(0, 10)
-SidebarPadding.PaddingTop = UDim.new(0, 5)
+SidebarPadding.PaddingLeft = UDim.new(0, 8)
+SidebarPadding.PaddingTop = UDim.new(0, 8)
 
--- Content Viewport (Right Side)
+-- Vertical Divider Line separating Sidebar & Content
+local VerticalDivider = Instance.new("Frame")
+VerticalDivider.Parent = MainFrame
+VerticalDivider.BackgroundColor3 = Color3.fromRGB(45, 45, 60)
+VerticalDivider.BorderSizePixel = 0
+VerticalDivider.Position = UDim2.new(0, 115, 0, 39)
+VerticalDivider.Size = UDim2.new(0, 1, 1, -39)
+
+-- Content Area Viewport (Right Side)
 local ContentArea = Instance.new("Frame")
 ContentArea.Name = "ContentArea"
 ContentArea.Parent = MainFrame
 ContentArea.BackgroundTransparency = 1
-ContentArea.Position = UDim2.new(0, 150, 0, 45)
-ContentArea.Size = UDim2.new(1, -150, 1, -45)
+ContentArea.Position = UDim2.new(0, 120, 0, 43)
+ContentArea.Size = UDim2.new(1, -125, 1, -45)
 
--- Dual-Column Layout Creator inside Tabs
 local function CreateTabContentPane()
     local Pane = Instance.new("Frame")
     Pane.Parent = ContentArea
@@ -134,6 +124,7 @@ local function CreateTabContentPane()
     Pane.Size = UDim2.new(1, 0, 1, 0)
     Pane.Visible = false
 
+    -- Left Column (Scrollable & Touchable)
     local LeftColumn = Instance.new("ScrollingFrame")
     LeftColumn.Name = "LeftColumn"
     LeftColumn.Parent = Pane
@@ -142,13 +133,14 @@ local function CreateTabContentPane()
     LeftColumn.Size = UDim2.new(0.48, 0, 1, 0)
     LeftColumn.CanvasSize = UDim2.new(0, 0, 0, 0)
     LeftColumn.ScrollBarThickness = 2
-    LeftColumn.ScrollBarImageColor3 = Color3.fromRGB(70, 70, 90)
+    LeftColumn.ScrollBarImageColor3 = Color3.fromRGB(90, 90, 120)
 
     local LeftLayout = Instance.new("UIListLayout")
     LeftLayout.Parent = LeftColumn
     LeftLayout.SortOrder = Enum.SortOrder.LayoutOrder
-    LeftLayout.Padding = UDim.new(0, 8)
+    LeftLayout.Padding = UDim.new(0, 6)
 
+    -- Right Column (Scrollable & Touchable)
     local RightColumn = Instance.new("ScrollingFrame")
     RightColumn.Name = "RightColumn"
     RightColumn.Parent = Pane
@@ -157,12 +149,12 @@ local function CreateTabContentPane()
     RightColumn.Size = UDim2.new(0.48, 0, 1, 0)
     RightColumn.CanvasSize = UDim2.new(0, 0, 0, 0)
     RightColumn.ScrollBarThickness = 2
-    RightColumn.ScrollBarImageColor3 = Color3.fromRGB(70, 70, 90)
+    RightColumn.ScrollBarImageColor3 = Color3.fromRGB(90, 90, 120)
 
     local RightLayout = Instance.new("UIListLayout")
     RightLayout.Parent = RightColumn
     RightLayout.SortOrder = Enum.SortOrder.LayoutOrder
-    RightLayout.Padding = UDim.new(0, 8)
+    RightLayout.Padding = UDim.new(0, 6)
 
     return Pane
 end
@@ -176,41 +168,41 @@ for _, tName in ipairs(tabNames) do
     local TabBtn = Instance.new("TextButton")
     TabBtn.Name = tName .. "Btn"
     TabBtn.Parent = Sidebar
-    TabBtn.BackgroundColor3 = Color3.fromRGB(20, 20, 26)
+    TabBtn.BackgroundColor3 = Color3.fromRGB(20, 20, 28)
     TabBtn.BackgroundTransparency = 0.8
-    TabBtn.Size = UDim2.new(1, -10, 0, 30)
+    TabBtn.Size = UDim2.new(1, -8, 0, 28)
     TabBtn.Font = Enum.Font.GothamMedium
     TabBtn.Text = tName:gsub("^%l", string.upper)
-    TabBtn.TextColor3 = Color3.fromRGB(140, 140, 160)
-    TabBtn.TextSize = 12
+    TabBtn.TextColor3 = Color3.fromRGB(150, 150, 175)
+    TabBtn.TextSize = 11
     TabBtn.TextXAlignment = Enum.TextXAlignment.Left
 
     local BtnPadding = Instance.new("UIPadding")
     BtnPadding.Parent = TabBtn
-    BtnPadding.PaddingLeft = UDim.new(0, 10)
+    BtnPadding.PaddingLeft = UDim.new(0, 8)
 
     local BtnCorner = Instance.new("UICorner")
-    BtnCorner.CornerRadius = UDim.new(0, 6)
+    BtnCorner.CornerRadius = UDim.new(0, 5)
     BtnCorner.Parent = TabBtn
 
     TabBtn.MouseButton1Click:Connect(function()
         for _, p in pairs(tabPanes) do p.Visible = false end
         for _, b in pairs(Sidebar:GetChildren()) do
             if b:IsA("TextButton") then
-                TweenService:Create(b, TweenInfo.new(0.2), {TextColor3 = Color3.fromRGB(140, 140, 160)}):Play()
+                TweenService:Create(b, TweenInfo.new(0.15), {TextColor3 = Color3.fromRGB(150, 150, 175)}):Play()
                 b.BackgroundTransparency = 0.8
             end
         end
         tabPanes[tName].Visible = true
-        TweenService:Create(TabBtn, TweenInfo.new(0.2), {TextColor3 = Color3.fromRGB(255, 255, 255)}):Play()
-        TabBtn.BackgroundTransparency = 0.4
+        TweenService:Create(TabBtn, TweenInfo.new(0.15), {TextColor3 = Color3.fromRGB(255, 255, 255)}):Play()
+        TabBtn.BackgroundTransparency = 0.35
     end)
 end
 
--- Default Active Tab
+-- Default Tab Active
 tabPanes["visual"].Visible = true
 Sidebar:FindFirstChild("visualBtn").TextColor3 = Color3.fromRGB(255, 255, 255)
-Sidebar:FindFirstChild("visualBtn").BackgroundTransparency = 0.4
+Sidebar:FindFirstChild("visualBtn").BackgroundTransparency = 0.35
 
 -- Draggable Logic for Mobile
 local function MakeDraggable(guiObject, dragTarget)
