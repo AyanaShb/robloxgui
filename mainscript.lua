@@ -1,200 +1,207 @@
--- Universal Mobile Combat Menu (Lightweight & Responsive)
--- Compatible with Delta, Codex, Arceus X, etc.
+-- Modern Mobile Drawing UI Framework (Vertical Tabs)
+-- Designed for lightweight execution on Android (Delta, Codex, etc.)
 
-local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
 local CoreGui = game:GetService("CoreGui")
 local UserInputService = game:GetService("UserInputService")
-local LocalPlayer = Players.LocalPlayer
+local RunService = game:GetService("RunService")
 local Camera = workspace.CurrentCamera
 
--- Configuration Table (Features Toggle)
-getgenv().Config = {
-    ESP_Enabled = true,
-    BoxESP = true,
-    NameESP = true,
-    LineESP = false,
-    Aimbot = false,
-    SilentAim = false,
-    Wallbang = false,
-    AimPart = "Head",
-    FOV = 120
+-- Configuration & State Management
+local UIConfig = {
+    Open = true,
+    CurrentTab = "Visual",
+    Position = Vector2.new(100, 100),
+    Size = Vector2.new(420, 260),
+    AccentColor = Color3.fromRGB(0, 229, 255),
+    SecondaryColor = Color3.fromRGB(15, 17, 23),
+    PanelColor = Color3.fromRGB(22, 25, 35),
+    TextColor = Color3.fromRGB(240, 240, 240),
+    MutedColor = Color3.fromRGB(110, 115, 130)
 }
 
--- Create ScreenGui for Mobile Toggle Button
-local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "MobileCombatMenu"
-ScreenGui.Parent = CoreGui
-ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+local DrawingObjects = {}
 
-local ToggleBtn = Instance.new("TextButton")
-ToggleBtn.Name = "ToggleMenu"
-ToggleBtn.Parent = ScreenGui
-ToggleBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-ToggleBtn.BorderColor3 = Color3.fromRGB(0, 255, 128)
-ToggleBtn.Position = UDim2.new(0.05, 0, 0.15, 0)
-ToggleBtn.Size = UDim2.new(0, 110, 0, 45)
-ToggleBtn.Font = Enum.Font.SourceSansBold
-ToggleBtn.Text = "RIOT: UI"
-ToggleBtn.TextColor3 = Color3.fromRGB(0, 255, 128)
-ToggleBtn.TextSize = 16
-ToggleBtn.Draggable = true
-
--- Main Frame (Clean & Minimalist Android UI)
-local MainFrame = Instance.new("Frame")
-MainFrame.Name = "MainPanel"
-MainFrame.Parent = ScreenGui
-MainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
-MainFrame.BorderColor3 = Color3.fromRGB(50, 50, 50)
-MainFrame.Position = UDim2.new(0.2, 0, 0.2, 0)
-MainFrame.Size = UDim2.new(0, 280, 0, 340)
-MainFrame.Visible = true
-MainFrame.Draggable = true
-
-local Title = Instance.new("TextLabel")
-Title.Parent = MainFrame
-Title.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
-Title.Size = UDim2.new(1, 0, 0, 35)
-Title.Font = Enum.Font.SourceSansBold
-Title.Text = "UNIVERSAL COMBAT HUB"
-Title.TextColor3 = Color3.fromRGB(255, 255, 255)
-Title.TextSize = 14
-
-ToggleBtn.MouseButton1Click:Connect(function()
-    MainFrame.Visible = not MainFrame.Visible
-end)
-
--- UI Helper Function to Create Toggles
-local function CreateToggle(name, yPos, configKey)
-    local Btn = Instance.new("TextButton")
-    Btn.Parent = MainFrame
-    Btn.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
-    Btn.BorderColor3 = Color3.fromRGB(40, 40, 40)
-    Btn.Position = UDim2.new(0.05, 0, 0, yPos)
-    Btn.Size = UDim2.new(0.9, 0, 0, 35)
-    Btn.Font = Enum.Font.SourceSans
-    Btn.Text = name .. ": [OFF]"
-    Btn.TextColor3 = Color3.fromRGB(200, 200, 200)
-    Btn.TextSize = 14
-
-    Btn.MouseButton1Click:Connect(function()
-        getgenv().Config[configKey] = not getgenv().Config[configKey]
-        if getgenv().Config[configKey] then
-            Btn.Text = name .. ": [ON]"
-            Btn.TextColor3 = Color3.fromRGB(0, 255, 128)
-        else
-            Btn.Text = name .. ": [OFF]"
-            Btn.TextColor3 = Color3.fromRGB(200, 200, 200)
-        end
-    end)
-end
-
--- Generate Menu Options
-CreateToggle("ESP Box", 45, "BoxESP")
-CreateToggle("ESP Name", 85, "NameESP")
-CreateToggle("Aimbot", 125, "Aimbot")
-CreateToggle("Silent Aim", 165, "SilentAim")
-CreateToggle("Wallbang Helper", 205, "Wallbang")
-
--- Universal ESP Engine (Lightweight Drawing)
-local espCache = {}
-
-local function RemoveESP(player)
-    if espCache[player] then
-        if espCache[player].box then espCache[player].box:Remove() end
-        if espCache[player].name then espCache[player].name:Remove() end
-        espCache[player] = nil
+-- Helper: Create primitive drawing objects safely
+local function CreateDrawing(class, properties)
+    local obj = Drawing.new(class)
+    for k, v in pairs(properties) do
+        obj[k] = v
     end
+    table.insert(DrawingObjects, obj)
+    return obj
 end
 
-local function AddESP(player)
-    if player == LocalPlayer then return end
-    local box = Drawing.new("Square")
-    box.Visible = false
-    box.Color = Color3.fromRGB(0, 255, 128)
-    box.Thickness = 1
-    box.Filled = false
+-- Main Window Components
+local Background = CreateDrawing("Square", {
+    Size = UIConfig.Size,
+    Position = UIConfig.Position,
+    Color = UIConfig.SecondaryColor,
+    Filled = true,
+    Visible = UIConfig.Open,
+    ZIndex = 1
+})
 
-    local name = Drawing.new("Text")
-    name.Visible = false
-    name.Color = Color3.fromRGB(255, 255, 255)
-    name.Size = 14
-    name.Center = true
-    name.Outline = true
+local Outline = CreateDrawing("Square", {
+    Size = UIConfig.Size,
+    Position = UIConfig.Position,
+    Color = UIConfig.AccentColor,
+    Thickness = 1,
+    Filled = false,
+    Visible = UIConfig.Open,
+    ZIndex = 2
+})
 
-    espCache[player] = {box = box, name = name}
+local TopBar = CreateDrawing("Square", {
+    Size = Vector2.new(UIConfig.Size.X, 28),
+    Position = UIConfig.Position,
+    Color = UIConfig.PanelColor,
+    Filled = true,
+    Visible = UIConfig.Open,
+    ZIndex = 3
+})
+
+local TitleText = CreateDrawing("Text", {
+    Text = "NEBULA // MOBILE HUB",
+    Size = 13,
+    Color = UIConfig.TextColor,
+    Position = UIConfig.Position + Vector2.new(12, 7),
+    Visible = UIConfig.Open,
+    ZIndex = 4
+})
+
+-- Sidebar (Vertical Tabs) Background
+local Sidebar = CreateDrawing("Square", {
+    Size = Vector2.new(110, UIConfig.Size.Y - 28),
+    Position = UIConfig.Position + Vector2.new(0, 28),
+    Color = UIConfig.PanelColor,
+    Filled = true,
+    Visible = UIConfig.Open,
+    ZIndex = 3
+})
+
+-- Tab Data Configuration
+local Tabs = {"Visual", "Combat", "World", "Settings"}
+local TabButtons = {}
+local ContentContainers = {}
+
+for i, tabName in ipairs(Tabs) do
+    local tabY = UIConfig.Position.Y + 35 + ((i - 1) * 36)
+    
+    local btnBg = CreateDrawing("Square", {
+        Size = Vector2.new(98, 30),
+        Position = UIConfig.Position + Vector2.new(6, 33 + ((i - 1) * 36)),
+        Color = (tabName == UIConfig.CurrentTab) and UIConfig.AccentColor or Color3.fromRGB(28, 32, 44),
+        Filled = true,
+        Visible = UIConfig.Open,
+        ZIndex = 4
+    })
+    
+    local btnText = CreateDrawing("Text", {
+        Text = tabName,
+        Size = 13,
+        Color = (tabName == UIConfig.CurrentTab) and UIConfig.SecondaryColor or UIConfig.TextColor,
+        Position = UIConfig.Position + Vector2.new(16, 41 + ((i - 1) * 36)),
+        Visible = UIConfig.Open,
+        ZIndex = 5
+    })
+    
+    TabButtons[tabName] = {Bg = btnBg, Text = btnText, Index = i}
 end
 
-Players.PlayerAdded:Connect(AddESP)
-Players.PlayerRemoving:Connect(RemoveESP)
-for _, p in ipairs(Players:GetPlayers()) do AddESP(p) end
+-- Floating Toggle Button for Mobile Screen
+local ToggleButton = CreateDrawing("Square", {
+    Size = Vector2.new(45, 45),
+    Position = Vector2.new(30, 150),
+    Color = UIConfig.AccentColor,
+    Filled = true,
+    Visible = true,
+    ZIndex = 10
+})
 
--- Main Loop (Optimized for Mobile FPS Stability)
-RunService.RenderStepped:Connect(function()
-    for _, player in ipairs(Players:GetPlayers()) do
-        local esp = espCache[player]
-        local char = player.Character
-        if esp and char and char:FindFirstChild("HumanoidRootPart") and char:FindFirstChild("Humanoid") and char.Humanoid.Health > 0 then
-            local hrp = char.HumanoidRootPart
-            local vector, onScreen = Camera:WorldToViewportPoint(hrp.Position)
+local ToggleLabel = CreateDrawing("Text", {
+    Text = "UI",
+    Size = 14,
+    Color = UIConfig.SecondaryColor,
+    Position = Vector2.new(45, 164),
+    Visible = true,
+    ZIndex = 11
+})
 
-            if onScreen and getgenv().Config.ESP_Enabled then
-                local head = char:FindFirstChild("Head")
-                if head and getgenv().Config.BoxESP then
-                    local headVec = Camera:WorldToViewportPoint(head.Position + Vector3.new(0, 0.5, 0))
-                    local legVec = Camera:WorldToViewportPoint(hrp.Position - Vector3.new(0, 3, 0))
-                    local height = math.abs(headVec.Y - legVec.Y)
-                    local width = height / 2
+-- Simple Touch / Drag Interaction System
+local dragging = false
+local dragOffset = Vector2.new(0, 0)
 
-                    esp.box.Size = Vector2.new(width, height)
-                    esp.box.Position = Vector2.new(vector.X - width / 2, headVec.Y)
-                    esp.box.Visible = true
-                else
-                    esp.box.Visible = false
-                end
-
-                if getgenv().Config.NameESP then
-                    esp.name.Text = player.Name
-                    esp.name.Position = Vector2.new(vector.X, vector.Y - 40)
-                    esp.name.Visible = true
-                else
-                    esp.name.Visible = false
-                end
-            else
-                esp.box.Visible = false
-                esp.name.Visible = false
+UserInputService.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
+        local pos = input.Position
+        local pos2D = Vector2.new(pos.X, pos.Y)
+        
+        -- Check Toggle Button Click
+        if pos2D.X >= ToggleButton.Position.X and pos2D.X <= ToggleButton.Position.X + ToggleButton.Size.X and
+           pos2D.Y >= ToggleButton.Position.Y and pos2D.Y <= ToggleButton.Position.Y + ToggleButton.Size.Y then
+            UIConfig.Open = not UIConfig.Open
+            for _, obj in ipairs(DrawingObjects) do
+                obj.Visible = UIConfig.Open
             end
-        else
-            if esp then
-                esp.box.Visible = false
-                esp.name.Visible = false
-            end
+            -- Keep Floating Toggle always visible when closed
+            ToggleButton.Visible = true
+            ToggleLabel.Visible = true
+            return
         end
-    end
-
-    -- Basic Aimbot Logic Handler
-    if getgenv().Config.Aimbot then
-        local closestTarget = nil
-        local shortestDist = math.huge
-
-        for _, player in ipairs(Players:GetPlayers()) do
-            if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("Humanoid") and player.Character.Humanoid.Health > 0 then
-                local targetPart = player.Character:FindFirstChild(getgenv().Config.AimPart)
-                if targetPart then
-                    local screenPos, onScreen = Camera:WorldToViewportPoint(targetPart.Position)
-                    if onScreen then
-                        local magnitude = (Vector2.new(screenPos.X, screenPos.Y) - Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)).Magnitude
-                        if magnitude < shortestDist then
-                            shortestDist = magnitude
-                            closestTarget = targetPart
-                        end
+        
+        if not UIConfig.Open then return end
+        
+        -- Check TopBar Dragging
+        if pos2D.X >= TopBar.Position.X and pos2D.X <= TopBar.Position.X + TopBar.Size.X and
+           pos2D.Y >= TopBar.Position.Y and pos2D.Y <= TopBar.Position.Y + TopBar.Size.Y then
+            dragging = true
+            dragOffset = TopBar.Position - pos2D
+        end
+        
+        -- Check Tab Selection Click
+        for name, data in pairs(TabButtons) do
+            if pos2D.X >= data.Bg.Position.X and pos2D.X <= data.Bg.Position.X + data.Bg.Size.X and
+               pos2D.Y >= data.Bg.Position.Y and pos2D.Y <= data.Bg.Position.Y + data.Bg.Size.Y then
+                UIConfig.CurrentTab = name
+                -- Update Tab Button Colors
+                for tName, tData in pairs(TabButtons) do
+                    if tName == name then
+                        tData.Bg.Color = UIConfig.AccentColor
+                        tData.Text.Color = UIConfig.SecondaryColor
+                    else
+                        tData.Bg.Color = Color3.fromRGB(28, 32, 44)
+                        tData.Text.Color = UIConfig.TextColor
                     end
                 end
             end
         end
+    end
+end)
 
-        if closestTarget then
-            Camera.CFrame = CFrame.new(Camera.CFrame.Position, closestTarget.Position)
+UserInputService.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
+        dragging = false
+    end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+    if dragging and (input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseMovement) then
+        local pos = input.Position
+        local newPos = Vector2.new(pos.X, pos.Y) + dragOffset
+        
+        UIConfig.Position = newPos
+        
+        -- Move all UI elements relative to new window position
+        Background.Position = newPos
+        Outline.Position = newPos
+        TopBar.Position = newPos
+        TitleText.Position = newPos + Vector2.new(12, 7)
+        Sidebar.Position = newPos + Vector2.new(0, 28)
+        
+        for name, data in pairs(TabButtons) do
+            local i = data.Index
+            data.Bg.Position = newPos + Vector2.new(6, 33 + ((i - 1) * 36))
+            data.Text.Position = newPos + Vector2.new(16, 41 + ((i - 1) * 36))
         end
     end
 end)
