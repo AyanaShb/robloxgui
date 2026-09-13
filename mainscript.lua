@@ -1,207 +1,202 @@
--- Modern Mobile Drawing UI Framework (Vertical Tabs)
--- Designed for lightweight execution on Android (Delta, Codex, etc.)
+-- Modern Lightweight Tabbed UI Framework for Android Roblox
+-- Features: Vertical Tabs, Colorful Glassmorphism, Draggable, Smooth Show/Hide Floating Button
 
 local CoreGui = game:GetService("CoreGui")
 local UserInputService = game:GetService("UserInputService")
-local RunService = game:GetService("RunService")
-local Camera = workspace.CurrentCamera
+local TweenService = game:GetService("TweenService")
 
--- Configuration & State Management
-local UIConfig = {
-    Open = true,
-    CurrentTab = "Visual",
-    Position = Vector2.new(100, 100),
-    Size = Vector2.new(420, 260),
-    AccentColor = Color3.fromRGB(0, 229, 255),
-    SecondaryColor = Color3.fromRGB(15, 17, 23),
-    PanelColor = Color3.fromRGB(22, 25, 35),
-    TextColor = Color3.fromRGB(240, 240, 240),
-    MutedColor = Color3.fromRGB(110, 115, 130)
-}
-
-local DrawingObjects = {}
-
--- Helper: Create primitive drawing objects safely
-local function CreateDrawing(class, properties)
-    local obj = Drawing.new(class)
-    for k, v in pairs(properties) do
-        obj[k] = v
-    end
-    table.insert(DrawingObjects, obj)
-    return obj
+-- Prevent duplicate UI execution
+if CoreGui:FindFirstChild("ModernMobileUI") then
+    CoreGui.ModernMobileUI:Destroy()
 end
 
--- Main Window Components
-local Background = CreateDrawing("Square", {
-    Size = UIConfig.Size,
-    Position = UIConfig.Position,
-    Color = UIConfig.SecondaryColor,
-    Filled = true,
-    Visible = UIConfig.Open,
-    ZIndex = 1
-})
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "ModernMobileUI"
+ScreenGui.Parent = CoreGui
+ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
-local Outline = CreateDrawing("Square", {
-    Size = UIConfig.Size,
-    Position = UIConfig.Position,
-    Color = UIConfig.AccentColor,
-    Thickness = 1,
-    Filled = false,
-    Visible = UIConfig.Open,
-    ZIndex = 2
-})
+-- Floating Toggle Button ("ui")
+local ToggleBtn = Instance.new("TextButton")
+ToggleBtn.Name = "FloatingToggle"
+ToggleBtn.Parent = ScreenGui
+ToggleBtn.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
+ToggleBtn.BackgroundTransparency = 0.2
+ToggleBtn.Position = UDim2.new(0.05, 0, 0.2, 0)
+ToggleBtn.Size = UDim2.new(0, 50, 0, 50)
+ToggleBtn.Font = Enum.Font.GothamBold
+ToggleBtn.Text = "ui"
+ToggleBtn.TextColor3 = Color3.fromRGB(0, 220, 255)
+ToggleBtn.TextSize = 18
 
-local TopBar = CreateDrawing("Square", {
-    Size = Vector2.new(UIConfig.Size.X, 28),
-    Position = UIConfig.Position,
-    Color = UIConfig.PanelColor,
-    Filled = true,
-    Visible = UIConfig.Open,
-    ZIndex = 3
-})
+local ToggleCorner = Instance.new("UICorner")
+ToggleCorner.CornerRadius = UDim.new(1, 0)
+ToggleCorner.Parent = ToggleBtn
 
-local TitleText = CreateDrawing("Text", {
-    Text = "NEBULA // MOBILE HUB",
-    Size = 13,
-    Color = UIConfig.TextColor,
-    Position = UIConfig.Position + Vector2.new(12, 7),
-    Visible = UIConfig.Open,
-    ZIndex = 4
-})
+local ToggleStroke = Instance.new("UIStroke")
+ToggleStroke.Color = Color3.fromRGB(0, 220, 255)
+ToggleStroke.Transparency = 0.5
+ToggleStroke.Thickness = 1.5
+ToggleStroke.Parent = ToggleBtn
 
--- Sidebar (Vertical Tabs) Background
-local Sidebar = CreateDrawing("Square", {
-    Size = Vector2.new(110, UIConfig.Size.Y - 28),
-    Position = UIConfig.Position + Vector2.new(0, 28),
-    Color = UIConfig.PanelColor,
-    Filled = true,
-    Visible = UIConfig.Open,
-    ZIndex = 3
-})
+-- Main Window Container (Glassmorphism & Minimalist)
+local MainFrame = Instance.new("Frame")
+MainFrame.Name = "MainFrame"
+MainFrame.Parent = ScreenGui
+MainFrame.BackgroundColor3 = Color3.fromRGB(12, 12, 18)
+MainFrame.BackgroundTransparency = 0.15
+MainFrame.Position = UDim2.new(0.25, 0, 0.25, 0)
+MainFrame.Size = UDim2.new(0, 420, 0, 260)
+MainFrame.Visible = true
 
--- Tab Data Configuration
-local Tabs = {"Visual", "Combat", "World", "Settings"}
-local TabButtons = {}
-local ContentContainers = {}
+local MainCorner = Instance.new("UICorner")
+MainCorner.CornerRadius = UDim.new(0, 10)
+MainCorner.Parent = MainFrame
 
-for i, tabName in ipairs(Tabs) do
-    local tabY = UIConfig.Position.Y + 35 + ((i - 1) * 36)
-    
-    local btnBg = CreateDrawing("Square", {
-        Size = Vector2.new(98, 30),
-        Position = UIConfig.Position + Vector2.new(6, 33 + ((i - 1) * 36)),
-        Color = (tabName == UIConfig.CurrentTab) and UIConfig.AccentColor or Color3.fromRGB(28, 32, 44),
-        Filled = true,
-        Visible = UIConfig.Open,
-        ZIndex = 4
-    })
-    
-    local btnText = CreateDrawing("Text", {
-        Text = tabName,
-        Size = 13,
-        Color = (tabName == UIConfig.CurrentTab) and UIConfig.SecondaryColor or UIConfig.TextColor,
-        Position = UIConfig.Position + Vector2.new(16, 41 + ((i - 1) * 36)),
-        Visible = UIConfig.Open,
-        ZIndex = 5
-    })
-    
-    TabButtons[tabName] = {Bg = btnBg, Text = btnText, Index = i}
+local MainStroke = Instance.new("UIStroke")
+MainStroke.Color = Color3.fromRGB(60, 60, 90)
+MainStroke.Transparency = 0.4
+MainStroke.Thickness = 1
+MainStroke.Parent = MainFrame
+
+-- Top Drag Bar / Header
+local Header = Instance.new("Frame")
+Header.Name = "Header"
+Header.Parent = MainFrame
+Header.BackgroundTransparency = 1
+Header.Size = UDim2.new(1, 0, 0, 35)
+
+local Title = Instance.new("TextLabel")
+Title.Parent = Header
+Title.BackgroundTransparency = 1
+Title.Position = UDim2.new(0.03, 0, 0, 0)
+Title.Size = UDim2.new(0.5, 0, 1, 0)
+Title.Font = Enum.Font.GothamBold
+Title.Text = "MOBILE HUB"
+Title.TextColor3 = Color3.fromRGB(240, 240, 255)
+Title.TextSize = 13
+Title.TextXAlignment = Enum.TextXAlignment.Left
+
+-- Vertical Tab Container (Left Sidebar)
+local TabBar = Instance.new("ScrollingFrame")
+TabBar.Name = "TabBar"
+TabBar.Parent = MainFrame
+TabBar.BackgroundTransparency = 1
+TabBar.Position = UDim2.new(0, 0, 0, 35)
+TabBar.Size = UDim2.new(0, 110, 1, -35)
+TabBar.CanvasSize = UDim2.new(0, 0, 0, 0)
+TabBar.ScrollBarThickness = 0
+
+local TabListLayout = Instance.new("UIListLayout")
+TabListLayout.Parent = TabBar
+TabListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+TabListLayout.Padding = UDim.new(0, 5)
+
+local TabPadding = Instance.new("UIPadding")
+TabPadding.Parent = TabBar
+TabPadding.PaddingTop = UDim.new(0, 8)
+TabPadding.PaddingLeft = UDim.new(0, 8)
+
+-- Content Area Container (Right Viewport)
+local ContentContainer = Instance.new("Frame")
+ContentContainer.Name = "ContentContainer"
+ContentContainer.Parent = MainFrame
+ContentContainer.BackgroundTransparency = 1
+ContentContainer.Position = UDim2.new(0, 115, 0, 35)
+ContentContainer.Size = UDim2.new(1, -115, 1, -35)
+
+-- Tab Management System
+local tabs = {}
+local activeTab = nil
+
+local function CreateTabPane(name)
+    local Pane = Instance.new("ScrollingFrame")
+    Pane.Name = name .. "Pane"
+    Pane.Parent = ContentContainer
+    Pane.BackgroundTransparency = 1
+    Pane.Size = UDim2.new(1, -10, 1, -10)
+    Pane.Position = UDim2.new(0, 5, 0, 5)
+    Pane.CanvasSize = UDim2.new(0, 0, 0, 0)
+    Pane.ScrollBarThickness = 2
+    Pane.ScrollBarImageColor3 = Color3.fromRGB(80, 80, 120)
+    Pane.Visible = false
+
+    local Layout = Instance.new("UIListLayout")
+    Layout.Parent = Pane
+    Layout.SortOrder = Enum.SortOrder.LayoutOrder
+    Layout.Padding = UDim.new(0, 8)
+
+    return Pane
 end
 
--- Floating Toggle Button for Mobile Screen
-local ToggleButton = CreateDrawing("Square", {
-    Size = Vector2.new(45, 45),
-    Position = Vector2.new(30, 150),
-    Color = UIConfig.AccentColor,
-    Filled = true,
-    Visible = true,
-    ZIndex = 10
-})
+local tabNames = {"visual", "combat", "world", "settings"}
+local tabPanes = {}
 
-local ToggleLabel = CreateDrawing("Text", {
-    Text = "UI",
-    Size = 14,
-    Color = UIConfig.SecondaryColor,
-    Position = Vector2.new(45, 164),
-    Visible = true,
-    ZIndex = 11
-})
+for _, tName in ipairs(tabNames) do
+    tabPanes[tName] = CreateTabPane(tName)
 
--- Simple Touch / Drag Interaction System
-local dragging = false
-local dragOffset = Vector2.new(0, 0)
+    -- Create Vertical Tab Selection Button
+    local TabBtn = Instance.new("TextButton")
+    TabBtn.Name = tName .. "Btn"
+    TabBtn.Parent = TabBar
+    TabBtn.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
+    TabBtn.BackgroundTransparency = 0.6
+    TabBtn.Size = UDim2.new(1, -10, 0, 32)
+    TabBtn.Font = Enum.Font.GothamMedium
+    TabBtn.Text = tName:gsub("^%l", string.upper)
+    TabBtn.TextColor3 = Color3.fromRGB(160, 160, 190)
+    TabBtn.TextSize = 12
 
-UserInputService.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
-        local pos = input.Position
-        local pos2D = Vector2.new(pos.X, pos.Y)
-        
-        -- Check Toggle Button Click
-        if pos2D.X >= ToggleButton.Position.X and pos2D.X <= ToggleButton.Position.X + ToggleButton.Size.X and
-           pos2D.Y >= ToggleButton.Position.Y and pos2D.Y <= ToggleButton.Position.Y + ToggleButton.Size.Y then
-            UIConfig.Open = not UIConfig.Open
-            for _, obj in ipairs(DrawingObjects) do
-                obj.Visible = UIConfig.Open
+    local BtnCorner = Instance.new("UICorner")
+N   BtnCorner.CornerRadius = UDim.new(0, 6)
+    BtnCorner.Parent = TabBtn
+
+    TabBtn.MouseButton1Click:Connect(function()
+        for _, p in pairs(tabPanes) do p.Visible = false end
+        for _, b in pairs(TabBar:GetChildren()) do
+            if b:IsA("TextButton") then
+                TweenService:Create(b, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(20, 20, 30), TextColor3 = Color3.fromRGB(160, 160, 190)}):Play()
             end
-            -- Keep Floating Toggle always visible when closed
-            ToggleButton.Visible = true
-            ToggleLabel.Visible = true
-            return
         end
-        
-        if not UIConfig.Open then return end
-        
-        -- Check TopBar Dragging
-        if pos2D.X >= TopBar.Position.X and pos2D.X <= TopBar.Position.X + TopBar.Size.X and
-           pos2D.Y >= TopBar.Position.Y and pos2D.Y <= TopBar.Position.Y + TopBar.Size.Y then
+        tabPanes[tName].Visible = true
+        TweenService:Create(TabBtn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(0, 180, 255), TextColor3 = Color3.fromRGB(255, 255, 255)}):Play()
+    end)
+end
+
+-- Open default tab
+tabPanes["visual"].Visible = true
+TabBar:FindFirstChild("visualBtn").BackgroundColor3 = Color3.fromRGB(0, 180, 255)
+TabBar:FindFirstChild("visualBtn").TextColor3 = Color3.fromRGB(255, 255, 255)
+
+-- Smooth Mobile Dragging System (Draggable Main Frame & Floating Button)
+local function MakeDraggable(guiObject, dragTarget)
+    dragTarget = dragTarget or guiObject
+    local dragging, dragInput, dragStart, startPos
+
+    dragTarget.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
             dragging = true
-            dragOffset = TopBar.Position - pos2D
-        end
-        
-        -- Check Tab Selection Click
-        for name, data in pairs(TabButtons) do
-            if pos2D.X >= data.Bg.Position.X and pos2D.X <= data.Bg.Position.X + data.Bg.Size.X and
-               pos2D.Y >= data.Bg.Position.Y and pos2D.Y <= data.Bg.Position.Y + data.Bg.Size.Y then
-                UIConfig.CurrentTab = name
-                -- Update Tab Button Colors
-                for tName, tData in pairs(TabButtons) do
-                    if tName == name then
-                        tData.Bg.Color = UIConfig.AccentColor
-                        tData.Text.Color = UIConfig.SecondaryColor
-                    else
-                        tData.Bg.Color = Color3.fromRGB(28, 32, 44)
-                        tData.Text.Color = UIConfig.TextColor
-                    end
+            dragStart = input.Position
+            startPos = guiObject.Position
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then
+                    dragging = false
                 end
-            end
+            end)
         end
-    end
-end)
+    end)
 
-UserInputService.InputEnded:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
-        dragging = false
-    end
-end)
-
-UserInputService.InputChanged:Connect(function(input)
-    if dragging and (input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseMovement) then
-        local pos = input.Position
-        local newPos = Vector2.new(pos.X, pos.Y) + dragOffset
-        
-        UIConfig.Position = newPos
-        
-        -- Move all UI elements relative to new window position
-        Background.Position = newPos
-        Outline.Position = newPos
-        TopBar.Position = newPos
-        TitleText.Position = newPos + Vector2.new(12, 7)
-        Sidebar.Position = newPos + Vector2.new(0, 28)
-        
-        for name, data in pairs(TabButtons) do
-            local i = data.Index
-            data.Bg.Position = newPos + Vector2.new(6, 33 + ((i - 1) * 36))
-            data.Text.Position = newPos + Vector2.new(16, 41 + ((i - 1) * 36))
+    UserInputService.InputChanged:Connect(function(input)
+        if dragging and (input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseMovement) then
+            local delta = input.Position - dragStart
+            guiObject.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
         end
-    end
+    end)
+end
+
+MakeDraggable(MainFrame, Header)
+MakeDraggable(ToggleBtn, ToggleBtn)
+
+-- Toggle Show/Hide Window via Floating Button
+ToggleBtn.MouseButton1Click:Connect(function()
+    MainFrame.Visible = not MainFrame.Visible
 end)
