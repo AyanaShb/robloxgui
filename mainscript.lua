@@ -1,161 +1,200 @@
--- init
-if not game:IsLoaded() then 
-    game.Loaded:Wait()
-end
+-- Universal Mobile Combat Menu (Lightweight & Responsive)
+-- Compatible with Delta, Codex, Arceus X, etc.
 
-local SilentAimSettings = {
-    Enabled = false,
-    TeamCheck = false,
-    TargetPart = "HumanoidRootPart"
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local CoreGui = game:GetService("CoreGui")
+local UserInputService = game:GetService("UserInputService")
+local LocalPlayer = Players.LocalPlayer
+local Camera = workspace.CurrentCamera
+
+-- Configuration Table (Features Toggle)
+getgenv().Config = {
+    ESP_Enabled = true,
+    BoxESP = true,
+    NameESP = true,
+    LineESP = false,
+    Aimbot = false,
+    SilentAim = false,
+    Wallbang = false,
+    AimPart = "Head",
+    FOV = 120
 }
 
-local Camera = workspace.CurrentCamera
-local Players = game:GetService("Players")
-local CoreGui = game:GetService("CoreGui")
-
-local LocalPlayer = Players.LocalPlayer
-local WorldToScreen = Camera.WorldToScreenPoint
-local FindFirstChild = game.FindFirstChild
-
--- Hapus GUI lama agar tidak duplikat
-if CoreGui:FindFirstChild("UniversalRemoteAim") then
-    CoreGui.UniversalRemoteAim:Destroy()
-end
-
--- UI Mobile (ScreenGui)
+-- Create ScreenGui for Mobile Toggle Button
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "UniversalRemoteAim"
+ScreenGui.Name = "MobileCombatMenu"
 ScreenGui.Parent = CoreGui
-ScreenGui.ResetOnSpawn = false
+ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
+local ToggleBtn = Instance.new("TextButton")
+ToggleBtn.Name = "ToggleMenu"
+ToggleBtn.Parent = ScreenGui
+ToggleBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+ToggleBtn.BorderColor3 = Color3.fromRGB(0, 255, 128)
+ToggleBtn.Position = UDim2.new(0.05, 0, 0.15, 0)
+ToggleBtn.Size = UDim2.new(0, 110, 0, 45)
+ToggleBtn.Font = Enum.Font.SourceSansBold
+ToggleBtn.Text = "RIOT: UI"
+ToggleBtn.TextColor3 = Color3.fromRGB(0, 255, 128)
+ToggleBtn.TextSize = 16
+ToggleBtn.Draggable = true
+
+-- Main Frame (Clean & Minimalist Android UI)
 local MainFrame = Instance.new("Frame")
-MainFrame.Size = UDim2.new(0, 260, 0, 180)
-MainFrame.Position = UDim2.new(0.5, -130, 0.3, -90)
-MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-MainFrame.BorderSizePixel = 0
-MainFrame.Active = true
-MainFrame.Draggable = true
+MainFrame.Name = "MainPanel"
 MainFrame.Parent = ScreenGui
-
-local UICorner = Instance.new("UICorner")
-UICorner.CornerRadius = UDim.new(0, 6)
-UICorner.Parent = MainFrame
+MainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+MainFrame.BorderColor3 = Color3.fromRGB(50, 50, 50)
+MainFrame.Position = UDim2.new(0.2, 0, 0.2, 0)
+MainFrame.Size = UDim2.new(0, 280, 0, 340)
+MainFrame.Visible = true
+MainFrame.Draggable = true
 
 local Title = Instance.new("TextLabel")
-Title.Size = UDim2.new(1, 0, 0, 35)
-Title.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
-Title.Text = "Silent Aim [Remote Hook]"
-Title.TextColor3 = Color3.fromRGB(255, 255, 255)
-Title.TextSize, Title.Font = 12, Enum.Font.GothamBold
 Title.Parent = MainFrame
+Title.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+Title.Size = UDim2.new(1, 0, 0, 35)
+Title.Font = Enum.Font.SourceSansBold
+Title.Text = "UNIVERSAL COMBAT HUB"
+Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+Title.TextSize = 14
 
-local TitleCorner = Instance.new("UICorner")
-TitleCorner.CornerRadius = UDim.new(0, 6)
-TitleCorner.Parent = Title
+ToggleBtn.MouseButton1Click:Connect(function()
+    MainFrame.Visible = not MainFrame.Visible
+end)
 
--- Fungsi Tombol Toggle UI
-local function CreateButton(name, yPos, defaultState, callback)
-    local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(0.9, 0, 0, 36)
-    btn.Position = UDim2.new(0.05, 0, 0, yPos)
-    btn.BackgroundColor3 = defaultState and Color3.fromRGB(0, 110, 50) or Color3.fromRGB(45, 45, 45)
-    btn.Text = "  " .. name .. ": [ " .. (defaultState and "ON" or "OFF") .. " ]"
-    btn.TextColor3 = Color3.fromRGB(220, 220, 220)
-    btn.TextSize, btn.Font = 11, Enum.Font.Gotham
-    btn.TextXAlignment = Enum.TextXAlignment.Left
-    btn.Parent = MainFrame
+-- UI Helper Function to Create Toggles
+local function CreateToggle(name, yPos, configKey)
+    local Btn = Instance.new("TextButton")
+    Btn.Parent = MainFrame
+    Btn.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+    Btn.BorderColor3 = Color3.fromRGB(40, 40, 40)
+    Btn.Position = UDim2.new(0.05, 0, 0, yPos)
+    Btn.Size = UDim2.new(0.9, 0, 0, 35)
+    Btn.Font = Enum.Font.SourceSans
+    Btn.Text = name .. ": [OFF]"
+    Btn.TextColor3 = Color3.fromRGB(200, 200, 200)
+    Btn.TextSize = 14
 
-    local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, 4)
-    corner.Parent = btn
-
-    local state = defaultState
-    btn.MouseButton1Click:Connect(function()
-        state = not state
-        btn.Text = "  " .. name .. ": [ " .. (state and "ON" or "OFF") .. " ]"
-        btn.BackgroundColor3 = state and Color3.fromRGB(0, 110, 50) or Color3.fromRGB(45, 45, 45)
-        callback(state)
+    Btn.MouseButton1Click:Connect(function()
+        getgenv().Config[configKey] = not getgenv().Config[configKey]
+        if getgenv().Config[configKey] then
+            Btn.Text = name .. ": [ON]"
+            Btn.TextColor3 = Color3.fromRGB(0, 255, 128)
+        else
+            Btn.Text = name .. ": [OFF]"
+            Btn.TextColor3 = Color3.fromRGB(200, 200, 200)
+        end
     end)
-    return btn
 end
 
-CreateButton("Silent Aim", 45, SilentAimSettings.Enabled, function(v) SilentAimSettings.Enabled = v end)
-CreateButton("Team Check", 90, SilentAimSettings.TeamCheck, function(v) SilentAimSettings.TeamCheck = v end)
+-- Generate Menu Options
+CreateToggle("ESP Box", 45, "BoxESP")
+CreateToggle("ESP Name", 85, "NameESP")
+CreateToggle("Aimbot", 125, "Aimbot")
+CreateToggle("Silent Aim", 165, "SilentAim")
+CreateToggle("Wallbang Helper", 205, "Wallbang")
 
--- Tombol Minimalkan UI
-local HideBtn = Instance.new("TextButton")
-HideBtn.Size = UDim2.new(0, 30, 0, 25)
-HideBtn.Position = UDim2.new(0.85, 0, 0.08, 0)
-HideBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-HideBtn.Text = "-"
-HideBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-HideBtn.TextSize, HideBtn.Font = 14, Enum.Font.GothamBold
-HideBtn.Parent = MainFrame
+-- Universal ESP Engine (Lightweight Drawing)
+local espCache = {}
 
-local OpenBtn = Instance.new("TextButton")
-OpenBtn.Size = UDim2.new(0, 40, 0, 40)
-OpenBtn.Position = UDim2.new(0.02, 0, 0.1, 0)
-OpenBtn.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
-OpenBtn.Text = "UI"
-OpenBtn.TextColor3 = Color3.fromRGB(0, 255, 128)
-OpenBtn.TextSize, OpenBtn.Font = 14, Enum.Font.GothamBold
-OpenBtn.Visible = false
-OpenBtn.Active = true
-OpenBtn.Draggable = true
-OpenBtn.Parent = ScreenGui
+local function RemoveESP(player)
+    if espCache[player] then
+        if espCache[player].box then espCache[player].box:Remove() end
+        if espCache[player].name then espCache[player].name:Remove() end
+        espCache[player] = nil
+    end
+end
 
-HideBtn.MouseButton1Click:Connect(function()
-    MainFrame.Visible = false
-    OpenBtn.Visible = true
-end)
+local function AddESP(player)
+    if player == LocalPlayer then return end
+    local box = Drawing.new("Square")
+    box.Visible = false
+    box.Color = Color3.fromRGB(0, 255, 128)
+    box.Thickness = 1
+    box.Filled = false
 
-OpenBtn.MouseButton1Click:Connect(function()
-    MainFrame.Visible = true
-    OpenBtn.Visible = false
-end)
+    local name = Drawing.new("Text")
+    name.Visible = false
+    name.Color = Color3.fromRGB(255, 255, 255)
+    name.Size = 14
+    name.Center = true
+    name.Outline = true
 
--- Mencari Musuh Terdekat 360°
-local function getClosestPlayer()
-    local target = nil
-    local shortestDist = math.huge
+    espCache[player] = {box = box, name = name}
+end
 
-    for _, v in pairs(Players:GetPlayers()) do
-        if v ~= LocalPlayer then
-            if not SilentAimSettings.TeamCheck or v.Team ~= LocalPlayer.Team then
-                local char = v.Character
-                if char and char:FindFirstChild("Humanoid") and char.Humanoid.Health > 0 then
-                    local rootPart = char:FindFirstChild(SilentAimSettings.TargetPart) or char:FindFirstChild("HumanoidRootPart")
-                    if rootPart and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-                        local dist = (rootPart.Position - LocalPlayer.Character.HumanoidRootPart.Position).Magnitude
-                        if dist < shortestDist then
-                            shortestDist = dist
-                            target = rootPart
+Players.PlayerAdded:Connect(AddESP)
+Players.PlayerRemoving:Connect(RemoveESP)
+for _, p in ipairs(Players:GetPlayers()) do AddESP(p) end
+
+-- Main Loop (Optimized for Mobile FPS Stability)
+RunService.RenderStepped:Connect(function()
+    for _, player in ipairs(Players:GetPlayers()) do
+        local esp = espCache[player]
+        local char = player.Character
+        if esp and char and char:FindFirstChild("HumanoidRootPart") and char:FindFirstChild("Humanoid") and char.Humanoid.Health > 0 then
+            local hrp = char.HumanoidRootPart
+            local vector, onScreen = Camera:WorldToViewportPoint(hrp.Position)
+
+            if onScreen and getgenv().Config.ESP_Enabled then
+                local head = char:FindFirstChild("Head")
+                if head and getgenv().Config.BoxESP then
+                    local headVec = Camera:WorldToViewportPoint(head.Position + Vector3.new(0, 0.5, 0))
+                    local legVec = Camera:WorldToViewportPoint(hrp.Position - Vector3.new(0, 3, 0))
+                    local height = math.abs(headVec.Y - legVec.Y)
+                    local width = height / 2
+
+                    esp.box.Size = Vector2.new(width, height)
+                    esp.box.Position = Vector2.new(vector.X - width / 2, headVec.Y)
+                    esp.box.Visible = true
+                else
+                    esp.box.Visible = false
+                end
+
+                if getgenv().Config.NameESP then
+                    esp.name.Text = player.Name
+                    esp.name.Position = Vector2.new(vector.X, vector.Y - 40)
+                    esp.name.Visible = true
+                else
+                    esp.name.Visible = false
+                end
+            else
+                esp.box.Visible = false
+                esp.name.Visible = false
+            end
+        else
+            if esp then
+                esp.box.Visible = false
+                esp.name.Visible = false
+            end
+        end
+    end
+
+    -- Basic Aimbot Logic Handler
+    if getgenv().Config.Aimbot then
+        local closestTarget = nil
+        local shortestDist = math.huge
+
+        for _, player in ipairs(Players:GetPlayers()) do
+            if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("Humanoid") and player.Character.Humanoid.Health > 0 then
+                local targetPart = player.Character:FindFirstChild(getgenv().Config.AimPart)
+                if targetPart then
+                    local screenPos, onScreen = Camera:WorldToViewportPoint(targetPart.Position)
+                    if onScreen then
+                        local magnitude = (Vector2.new(screenPos.X, screenPos.Y) - Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)).Magnitude
+                        if magnitude < shortestDist then
+                            shortestDist = magnitude
+                            closestTarget = targetPart
                         end
                     end
                 end
             end
         end
-    end
-    return target
-end
 
--- Hook RemoteEvent FireServer (Metode paling ampuh untuk game menembak)
-local oldNamecall
-oldNamecall = hookmetamethod(game, "__namecall", newcclosure(function(self, ...)
-    local method = getnamecallmethod()
-    local args = {...}
-    
-    if SilentAimSettings.Enabled and not checkcaller() and (method == "FireServer" or method == "InvokeServer") then
-        local targetPart = getClosestPlayer()
-        if targetPart then
-            for i, v in ipairs(args) do
-                if typeof(v) == "Vector3" then
-                    args[i] = targetPart.Position
-                end
-            end
-            return oldNamecall(self, unpack(args))
+        if closestTarget then
+            Camera.CFrame = CFrame.new(Camera.CFrame.Position, closestTarget.Position)
         end
     end
-    
-    return oldNamecall(self, ...)
-end))
+end)
