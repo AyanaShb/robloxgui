@@ -1,74 +1,110 @@
-local Players = game:GetService("Players")
-local CoreGui = game:GetService("CoreGui")
-local RunService = game:GetService("RunService")
-local LocalPlayer = Players.LocalPlayer
-
-if CoreGui:FindFirstChild("MultiMethodAimMenu") then
-    CoreGui.MultiMethodAimMenu:Destroy()
+-- init
+if not game:IsLoaded() then 
+    game.Loaded:Wait()
 end
 
-local Settings = {
-    Method1 = false, -- Metamethod Hooking
-    Method2 = false, -- Raycast / Vector Overwriting
-    Method3 = false, -- Character Property / Camera ViewDirection Hook
-    TeamCheck = true
+local SilentAimSettings = {
+    Enabled = false,
+    TeamCheck = false,
+    VisibleCheck = false, 
+    TargetPart = "HumanoidRootPart",
+    SilentAimMethod = "Raycast",
+    FOVRadius = 130,
+    FOVVisible = false,
+    HitChance = 100
 }
 
+local Camera = workspace.CurrentCamera
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local CoreGui = game:GetService("CoreGui")
+
+local LocalPlayer = Players.LocalPlayer
+local WorldToScreen = Camera.WorldToScreenPoint
+local WorldToViewportPoint = Camera.WorldToViewportPoint
+local GetPartsObscuringTarget = Camera.GetPartsObscuringTarget
+local FindFirstChild = game.FindFirstChild
+
+-- Hapus GUI lama jika ada
+if CoreGui:FindFirstChild("AndroidSilentAim") then
+    CoreGui.AndroidSilentAim:Destroy()
+end
+
+-- UI Mobile (ScreenGui)
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "MultiMethodAimMenu"
+ScreenGui.Name = "AndroidSilentAim"
 ScreenGui.Parent = CoreGui
 ScreenGui.ResetOnSpawn = false
 
-local Window = Instance.new("Frame")
-Window.Name = "MainWindow"
-Window.Size = UDim2.new(0, 280, 0, 260)
-Window.Position = UDim2.new(0.5, -140, 0.35, -130)
-Window.BackgroundColor3 = Color3.fromRGB(18, 18, 18)
-Window.BorderSizePixel = 0
-Window.Active = true
-Window.Draggable = true
-Window.Parent = ScreenGui
+local MainFrame = Instance.new("Frame")
+MainFrame.Size = UDim2.new(0, 260, 0, 210)
+MainFrame.Position = UDim2.new(0.5, -130, 0.3, -105)
+MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+MainFrame.BorderSizePixel = 0
+MainFrame.Active = true
+MainFrame.Draggable = true
+MainFrame.Parent = ScreenGui
 
-local WindowCorner = Instance.new("UICorner")
-WindowCorner.CornerRadius = UDim.new(0, 6)
-WindowCorner.Parent = Window
-
-local TopBar = Instance.new("Frame")
-TopBar.Size = UDim2.new(1, 0, 0, 30)
-TopBar.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-TopBar.BorderSizePixel = 0
-TopBar.Parent = Window
-
-local TopBarCorner = Instance.new("UICorner")
-TopBarCorner.CornerRadius = UDim.new(0, 6)
-TopBarCorner.Parent = TopBar
+local UICorner = Instance.new("UICorner")
+UICorner.CornerRadius = UDim.new(0, 6)
+UICorner.Parent = MainFrame
 
 local Title = Instance.new("TextLabel")
-Title.Size = UDim2.new(0.7, 0, 1, 0)
-Title.Position = UDim2.new(0.05, 0, 0, 0)
-Title.BackgroundTransparency = 1
-Title.Text = "3-Method Aim [Android ImGui]"
-Title.TextColor3 = Color3.fromRGB(220, 220, 220)
+Title.Size = UDim2.new(1, 0, 0, 35)
+Title.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+Title.Text = "Silent Aim [Android Mobile]"
+Title.TextColor3 = Color3.fromRGB(255, 255, 255)
 Title.TextSize, Title.Font = 12, Enum.Font.GothamBold
-Title.TextXAlignment = Enum.TextXAlignment.Left
-Title.Parent = TopBar
+Title.Parent = MainFrame
 
+local TitleCorner = Instance.new("UICorner")
+TitleCorner.CornerRadius = UDim.new(0, 6)
+TitleCorner.Parent = Title
+
+-- Fungsi Tombol Toggle UI
+local function CreateButton(name, yPos, defaultState, callback)
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(0.9, 0, 0, 36)
+    btn.Position = UDim2.new(0.05, 0, 0, yPos)
+    btn.BackgroundColor3 = defaultState and Color3.fromRGB(0, 110, 50) or Color3.fromRGB(45, 45, 45)
+    btn.Text = "  " .. name .. ": [ " .. (defaultState and "ON" or "OFF") .. " ]"
+    btn.TextColor3 = Color3.fromRGB(220, 220, 220)
+    btn.TextSize, btn.Font = 11, Enum.Font.Gotham
+    btn.TextXAlignment = Enum.TextXAlignment.Left
+    btn.Parent = MainFrame
+
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 4)
+    corner.Parent = btn
+
+    local state = defaultState
+    btn.MouseButton1Click:Connect(function()
+        state = not state
+        btn.Text = "  " .. name .. ": [ " .. (state and "ON" or "OFF") .. " ]"
+        btn.BackgroundColor3 = state and Color3.fromRGB(0, 110, 50) or Color3.fromRGB(45, 45, 45)
+        callback(state)
+    end)
+    return btn
+end
+
+CreateButton("Silent Aim", 45, SilentAimSettings.Enabled, function(v) SilentAimSettings.Enabled = v end)
+CreateButton("Team Check", 90, SilentAimSettings.TeamCheck, function(v) SilentAimSettings.TeamCheck = v end)
+CreateButton("Visible Check", 135, SilentAimSettings.VisibleCheck, function(v) SilentAimSettings.VisibleCheck = v end)
+
+-- Tombol Minimalkan UI
 local HideBtn = Instance.new("TextButton")
-HideBtn.Size = UDim2.new(0, 30, 0, 20)
-HideBtn.Position = UDim2.new(0.85, 0, 0.15, 0)
-HideBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+HideBtn.Size = UDim2.new(0, 30, 0, 25)
+HideBtn.Position = UDim2.new(0.85, 0, 0.08, 0)
+HideBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
 HideBtn.Text = "-"
 HideBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 HideBtn.TextSize, HideBtn.Font = 14, Enum.Font.GothamBold
-HideBtn.Parent = TopBar
-
-local HideBtnCorner = Instance.new("UICorner")
-HideBtnCorner.CornerRadius = UDim.new(0, 4)
-HideBtnCorner.Parent = HideBtn
+HideBtn.Parent = MainFrame
 
 local OpenBtn = Instance.new("TextButton")
-OpenBtn.Size = UDim2.new(0, 45, 0, 45)
-OpenBtn.Position = UDim2.new(0.02, 0, 0.15, 0)
+OpenBtn.Size = UDim2.new(0, 40, 0, 40)
+OpenBtn.Position = UDim2.new(0.02, 0, 0.1, 0)
 OpenBtn.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
 OpenBtn.Text = "UI"
 OpenBtn.TextColor3 = Color3.fromRGB(0, 255, 128)
@@ -78,126 +114,99 @@ OpenBtn.Active = true
 OpenBtn.Draggable = true
 OpenBtn.Parent = ScreenGui
 
-local OpenBtnCorner = Instance.new("UICorner")
-OpenBtnCorner.CornerRadius = UDim.new(0, 8)
-OpenBtnCorner.Parent = OpenBtn
-
 HideBtn.MouseButton1Click:Connect(function()
-    Window.Visible = false
+    MainFrame.Visible = false
     OpenBtn.Visible = true
 end)
 
 OpenBtn.MouseButton1Click:Connect(function()
-    Window.Visible = true
+    MainFrame.Visible = true
     OpenBtn.Visible = false
 end)
 
-local Content = Instance.new("ScrollingFrame")
-Content.Size = UDim2.new(1, -16, 1, -45)
-Content.Position = UDim2.new(0, 8, 0, 38)
-Content.BackgroundTransparency = 1
-Content.BorderSizePixel = 0
-Content.CanvasSize = UDim2.new(0, 0, 0, 220)
-Content.ScrollBarThickness = 3
-Content.Parent = Window
-
-local function CreateToggleButton(name, yPos, callback)
-    local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(1, 0, 0, 35)
-    btn.Position = UDim2.new(0, 0, 0, yPos)
-    btn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-    btn.Text = "  " .. name .. ": [ OFF ]"
-    btn.TextColor3 = Color3.fromRGB(220, 220, 220)
-    btn.TextSize, btn.Font = 11, Enum.Font.Gotham
-    btn.TextXAlignment = Enum.TextXAlignment.Left
-    btn.Parent = Content
-
-    local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, 4)
-    corner.Parent = btn
-
-    local state = false
-    btn.MouseButton1Click:Connect(function()
-        state = not state
-        if state then
-            btn.Text = "  " .. name .. ": [ ON ]"
-            btn.BackgroundColor3 = Color3.fromRGB(0, 110, 50)
-        else
-            btn.Text = "  " .. name .. ": [ OFF ]"
-            btn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-        end
-        callback(state)
-    end)
-    return btn
+-- Logika Inti Silent Aim
+local function CalculateChance(Percentage)
+    Percentage = math.floor(Percentage)
+    local chance = math.floor(Random.new().NextNumber(Random.new(), 0, 1) * 100) / 100
+    return chance <= Percentage / 100
 end
 
-CreateToggleButton("1. Namecall Hook", 10, function(v) Settings.Method1 = v end)
-CreateToggleButton("2. Vector Intercept", 55, function(v) Settings.Method2 = v end)
-CreateToggleButton("3. Camera/CFrame Redirect", 100, function(v) Settings.Method3 = v end)
-CreateToggleButton("Team Check", 145, function(v) Settings.TeamCheck = v end)
+local function getDirection(Origin, Position)
+    return (Position - Origin).Unit * 1000
+end
 
-local function GetClosestEnemy()
-    local target = nil
-    local shortestDist = math.huge
-    for _, v in pairs(Players:GetPlayers()) do
-        if v ~= LocalPlayer then
-            if not Settings.TeamCheck or v.Team ~= LocalPlayer.Team then
-                local char = v.Character
-                if char and char:FindFirstChild("Humanoid") and char.Humanoid.Health > 0 then
-                    local rootPart = char:FindFirstChild("HumanoidRootPart") or char:FindFirstChild("Head")
-                    if rootPart and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-                        local dist = (rootPart.Position - LocalPlayer.Character.HumanoidRootPart.Position).Magnitude
-                        if dist < shortestDist then
-                            shortestDist = dist
-                            target = rootPart
-                        end
-                    end
-                end
-            end
+local function IsPlayerVisible(Player)
+    local PlayerCharacter = Player.Character
+    local LocalPlayerCharacter = LocalPlayer.Character
+    if not (PlayerCharacter or LocalPlayerCharacter) then return end 
+    local PlayerRoot = FindFirstChild(PlayerCharacter, SilentAimSettings.TargetPart) or FindFirstChild(PlayerCharacter, "HumanoidRootPart")
+    if not PlayerRoot then return end 
+    local CastPoints, IgnoreList = {PlayerRoot.Position, LocalPlayerCharacter, PlayerCharacter}, {LocalPlayerCharacter, PlayerCharacter}
+    local ObscuringObjects = #GetPartsObscuringTarget(Camera, CastPoints, IgnoreList)
+    return ObscuringObjects == 0
+end
+
+local function getClosestPlayer()
+    local Closest
+    local DistanceToMouse = math.huge
+    local ScreenCenter = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
+    
+    for _, Player in next, Players:GetPlayers() do
+        if Player == LocalPlayer then continue end
+        if SilentAimSettings.TeamCheck and Player.Team == LocalPlayer.Team then continue end
+
+        local Character = Player.Character
+        if not Character then continue end
+        
+        if SilentAimSettings.VisibleCheck and not IsPlayerVisible(Player) then continue end
+
+        local HumanoidRootPart = FindFirstChild(Character, SilentAimSettings.TargetPart) or FindFirstChild(Character, "HumanoidRootPart")
+        local Humanoid = FindFirstChild(Character, "Humanoid")
+        if not HumanoidRootPart or not Humanoid or Humanoid.Health <= 0 then continue end
+
+        local ScreenPosition, OnScreen = WorldToScreen(Camera, HumanoidRootPart.Position)
+        if not OnScreen then continue end
+
+        local Distance = (ScreenCenter - Vector2.new(ScreenPosition.X, ScreenPosition.Y)).Magnitude
+        if Distance <= DistanceToMouse and Distance <= SilentAimSettings.FOVRadius then
+            Closest = Character[SilentAimSettings.TargetPart] or HumanoidRootPart
+            DistanceToMouse = Distance
         end
     end
-    return target
+    return Closest
 end
 
--- Metode 1: Hook Metamethod Namecall (__namecall)
+local ExpectedArguments = {
+    Raycast = { ArgCountRequired = 3, Args = { "Instance", "Vector3", "Vector3", "RaycastParams" } }
+}
+
+local function ValidateArguments(Args, RayMethod)
+    if #Args < RayMethod.ArgCountRequired then return false end
+    for Pos, Argument in next, Args do
+        if typeof(Argument) ~= RayMethod.Args[Pos] then return false end
+    end
+    return true
+end
+
+-- Hook Metamethod Raycast
 local oldNamecall
-oldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
-    local method = getnamecallmethod()
-    local args = {...}
-    if Settings.Method1 and (method == "FireServer" or method == "InvokeServer") then
-        local target = GetClosestEnemy()
-        if target then
-            for i, arg in ipairs(args) do
-                if typeof(arg) == "Vector3" then
-                    args[i] = target.Position
+oldNamecall = hookmetamethod(game, "__namecall", newcclosure(function(...)
+    local Method = getnamecallmethod()
+    local Arguments = {...}
+    local self = Arguments[1]
+    local chance = CalculateChance(SilentAimSettings.HitChance)
+    
+    if SilentAimSettings.Enabled and self == workspace and not checkcaller() and chance then
+        if Method == "Raycast" then
+            if ValidateArguments(Arguments, ExpectedArguments.Raycast) then
+                local A_Origin = Arguments[2]
+                local HitPart = getClosestPlayer()
+                if HitPart then
+                    Arguments[3] = getDirection(A_Origin, HitPart.Position)
+                    return oldNamecall(unpack(Arguments))
                 end
             end
-            return oldNamecall(self, unpack(args))
         end
     end
-    return oldNamecall(self, ...)
-end)
-
--- Metode 2: Vector Intercept / Raycast parameter manipulation
-local oldIndex
-oldIndex = hookmetamethod(game, "__index", function(self, k)
-    if Settings.Method2 and k == "Hit" then
-        local target = GetClosestEnemy()
-        if target then
-            return target.CFrame
-        end
-    end
-    return oldIndex(self, k)
-end)
-
--- Metode 3: Camera / ViewDirection CFrame Redirection
-RunService.RenderStepped:Connect(function()
-    if Settings.Method3 then
-        local target = GetClosestEnemy()
-        local camera = workspace.CurrentCamera
-        if target and camera then
-            local direction = (target.Position - camera.CFrame.Position).Unit
-            camera.CFrame = CFrame.new(camera.CFrame.Position, camera.CFrame.Position + direction)
-        end
-    end
-end)
+    return oldNamecall(...)
+end))
