@@ -1,8 +1,14 @@
-local CoreGui = game:GetService("CoreGui")
-local Workspace = game:GetService("Workspace")
+local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local LocalPlayer = Players.LocalPlayer
+local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 
--- Buat Menu UI Sederhana (ImGui Style / Mobile Friendly)
+-- Hapus UI lama jika ada agar tidak menumpuk
+if PlayerGui:FindFirstChild("MethodScannerGUI") then
+    PlayerGui.MethodScannerGUI:Destroy()
+end
+
+-- Buat Menu UI Sederhana (Aman untuk Android PlayerGui)
 local ScreenGui = Instance.new("ScreenGui")
 local MainFrame = Instance.new("Frame")
 local Title = Instance.new("TextLabel")
@@ -10,7 +16,7 @@ local ScanBtn = Instance.new("TextButton")
 local OutputLabel = Instance.new("TextLabel")
 
 ScreenGui.Name = "MethodScannerGUI"
-ScreenGui.Parent = CoreGui
+ScreenGui.Parent = PlayerGui
 ScreenGui.ResetOnSpawn = false
 
 MainFrame.Parent = ScreenGui
@@ -49,14 +55,10 @@ OutputLabel.TextWrapped = true
 OutputLabel.TextXAlignment = Enum.TextXAlignment.Left
 OutputLabel.TextYAlignment = Enum.TextYAlignment.Top
 
--- Fungsi Scan untuk mendeteksi metode/struktur tembakan di game ini
 ScanBtn.MouseButton1Click:Connect(function()
     OutputLabel.Text = "Sedang mendeteksi..."
     
-    local foundMethods = {}
     local foundRemotes = 0
-    
-    -- Cek RemoteEvent / RemoteFunction yang berbau tembakan/combat
     for _, v in ipairs(ReplicatedStorage:GetDescendants()) do
         if v:IsA("RemoteEvent") or v:IsA("RemoteFunction") then
             local name = v.Name:lower()
@@ -66,7 +68,6 @@ ScanBtn.MouseButton1Click:Connect(function()
         end
     end
     
-    -- Deteksi keberadaan modul FastCast atau sistem kustom di PlayerScripts/ReplicatedStorage
     local hasFastCast = false
     for _, v in ipairs(game:GetDescendants()) do
         if v.Name:lower():find("fastcast") or v.Name:lower():find("raycast") then
@@ -75,11 +76,9 @@ ScanBtn.MouseButton1Click:Connect(function()
         end
     end
     
-    -- Cetak hasil diagnosa ke layar UI & Console (print)
-    local resultText = string.format("Hasil Scan:\n- Remote Tembakan: %d ditemukan\n- FastCast/Custom Ray: %s\n- Metode Utama: %s", 
+    local resultText = string.format("Hasil Scan:\n- Remote Tembakan: %d ditemukan\n- Modul Custom: %s", 
         foundRemotes, 
-        hasFastCast and "Terdeteksi (Custom Module)" else "Standar Roblox",
-        foundRemotes > 0 and "FireServer / Remote Hook" : "Tidak Diketahui / Client-Sided"
+        hasFastCast and "Ada (FastCast/Ray)" or "Tidak Ada"
     )
     
     OutputLabel.Text = resultText
