@@ -6,10 +6,7 @@ end
 local SilentAimSettings = {
     Enabled = false,
     TeamCheck = false,
-    VisibleCheck = false, 
-    TargetPart = "HumanoidRootPart",
-    FOVRadius = 150,
-    HitChance = 100
+    TargetPart = "HumanoidRootPart"
 }
 
 local Camera = workspace.CurrentCamera
@@ -18,23 +15,22 @@ local CoreGui = game:GetService("CoreGui")
 
 local LocalPlayer = Players.LocalPlayer
 local WorldToScreen = Camera.WorldToScreenPoint
-local GetPartsObscuringTarget = Camera.GetPartsObscuringTarget
 local FindFirstChild = game.FindFirstChild
 
 -- Hapus GUI lama agar tidak duplikat
-if CoreGui:FindFirstChild("FixedAndroidSilentAim") then
-    CoreGui.FixedAndroidSilentAim:Destroy()
+if CoreGui:FindFirstChild("UniversalRemoteAim") then
+    CoreGui.UniversalRemoteAim:Destroy()
 end
 
 -- UI Mobile (ScreenGui)
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "FixedAndroidSilentAim"
+ScreenGui.Name = "UniversalRemoteAim"
 ScreenGui.Parent = CoreGui
 ScreenGui.ResetOnSpawn = false
 
 local MainFrame = Instance.new("Frame")
-MainFrame.Size = UDim2.new(0, 260, 0, 210)
-MainFrame.Position = UDim2.new(0.5, -130, 0.3, -105)
+MainFrame.Size = UDim2.new(0, 260, 0, 180)
+MainFrame.Position = UDim2.new(0.5, -130, 0.3, -90)
 MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
 MainFrame.BorderSizePixel = 0
 MainFrame.Active = true
@@ -48,7 +44,7 @@ UICorner.Parent = MainFrame
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, 0, 0, 35)
 Title.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
-Title.Text = "Silent Aim [Fixed Mobile]"
+Title.Text = "Silent Aim [Remote Hook]"
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
 Title.TextSize, Title.Font = 12, Enum.Font.GothamBold
 Title.Parent = MainFrame
@@ -85,7 +81,6 @@ end
 
 CreateButton("Silent Aim", 45, SilentAimSettings.Enabled, function(v) SilentAimSettings.Enabled = v end)
 CreateButton("Team Check", 90, SilentAimSettings.TeamCheck, function(v) SilentAimSettings.TeamCheck = v end)
-CreateButton("Visible Check", 135, SilentAimSettings.VisibleCheck, function(v) SilentAimSettings.VisibleCheck = v end)
 
 -- Tombol Minimalkan UI
 local HideBtn = Instance.new("TextButton")
@@ -119,76 +114,46 @@ OpenBtn.MouseButton1Click:Connect(function()
     OpenBtn.Visible = false
 end)
 
--- Logika Inti Silent Aim (Dioptimalkan agar tidak freeze karakter)
-local function CalculateChance(Percentage)
-    Percentage = math.floor(Percentage)
-    local chance = math.floor(Random.new().NextNumber(Random.new(), 0, 1) * 100) / 100
-    return chance <= Percentage / 100
-end
-
-local function IsPlayerVisible(Player)
-    local PlayerCharacter = Player.Character
-    local LocalPlayerCharacter = LocalPlayer.Character
-    if not (PlayerCharacter or LocalPlayerCharacter) then return false end 
-    local PlayerRoot = FindFirstChild(PlayerCharacter, SilentAimSettings.TargetPart) or FindFirstChild(PlayerCharacter, "HumanoidRootPart")
-    if not PlayerRoot then return false end 
-    local CastPoints, IgnoreList = {PlayerRoot.Position, LocalPlayerCharacter, PlayerCharacter}, {LocalPlayerCharacter, PlayerCharacter}
-    local ObscuringObjects = #GetPartsObscuringTarget(Camera, CastPoints, IgnoreList)
-    return ObscuringObjects == 0
-end
-
+-- Mencari Musuh Terdekat 360°
 local function getClosestPlayer()
-    local Closest
-    local DistanceToMouse = math.huge
-    local ScreenCenter = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
-    
-    for _, Player in next, Players:GetPlayers() do
-        if Player == LocalPlayer then continue end
-        if SilentAimSettings.TeamCheck and Player.Team == LocalPlayer.Team then continue end
+    local target = nil
+    local shortestDist = math.huge
 
-        local Character = Player.Character
-        if not Character then continue end
-        
-        if SilentAimSettings.VisibleCheck and not IsPlayerVisible(Player) then continue end
-
-        local HumanoidRootPart = FindFirstChild(Character, SilentAimSettings.TargetPart) or FindFirstChild(Character, "HumanoidRootPart")
-        local Humanoid = FindFirstChild(Character, "Humanoid")
-        if not HumanoidRootPart or not Humanoid or Humanoid.Health <= 0 then continue end
-
-        local ScreenPosition, OnScreen = WorldToScreen(Camera, HumanoidRootPart.Position)
-        if not OnScreen then continue end
-
-        local Distance = (ScreenCenter - Vector2.new(ScreenPosition.X, ScreenPosition.Y)).Magnitude
-        if Distance <= DistanceToMouse and Distance <= SilentAimSettings.FOVRadius then
-            Closest = HumanoidRootPart
-            DistanceToMouse = Distance
-        end
-    end
-    return Closest
-end
-
--- Hook Metamethod Raycast yang Aman (Tanpa Validasi Kaku)
-local oldNamecall
-oldNamecall = hookmetamethod(game, "__namecall", newcclosure(function(self, ...)
-    local Method = getnamecallmethod()
-    local Arguments = {...}
-    
-    if SilentAimSettings.Enabled and not checkcaller() then
-        if Method == "Raycast" and self == workspace then
-            local Origin = Arguments[1]
-            local Direction = Arguments[2]
-            
-            if typeof(Origin) == "Vector3" and typeof(Direction) == "Vector3" then
-                if CalculateChance(SilentAimSettings.HitChance) then
-                    local HitPart = getClosestPlayer()
-                    if HitPart then
-                        -- Menyesuaikan arah vektor ke target tanpa merusak jarak asli
-                        local mag = Direction.Magnitude
-                        Arguments[2] = (HitPart.Position - Origin).Unit * mag
-                        return oldNamecall(self, unpack(Arguments))
+    for _, v in pairs(Players:GetPlayers()) do
+        if v ~= LocalPlayer then
+            if not SilentAimSettings.TeamCheck or v.Team ~= LocalPlayer.Team then
+                local char = v.Character
+                if char and char:FindFirstChild("Humanoid") and char.Humanoid.Health > 0 then
+                    local rootPart = char:FindFirstChild(SilentAimSettings.TargetPart) or char:FindFirstChild("HumanoidRootPart")
+                    if rootPart and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+                        local dist = (rootPart.Position - LocalPlayer.Character.HumanoidRootPart.Position).Magnitude
+                        if dist < shortestDist then
+                            shortestDist = dist
+                            target = rootPart
+                        end
                     end
                 end
             end
+        end
+    end
+    return target
+end
+
+-- Hook RemoteEvent FireServer (Metode paling ampuh untuk game menembak)
+local oldNamecall
+oldNamecall = hookmetamethod(game, "__namecall", newcclosure(function(self, ...)
+    local method = getnamecallmethod()
+    local args = {...}
+    
+    if SilentAimSettings.Enabled and not checkcaller() and (method == "FireServer" or method == "InvokeServer") then
+        local targetPart = getClosestPlayer()
+        if targetPart then
+            for i, v in ipairs(args) do
+                if typeof(v) == "Vector3" then
+                    args[i] = targetPart.Position
+                end
+            end
+            return oldNamecall(self, unpack(args))
         end
     end
     
