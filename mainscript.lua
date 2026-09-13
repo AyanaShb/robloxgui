@@ -8,32 +8,27 @@ local SilentAimSettings = {
     TeamCheck = false,
     VisibleCheck = false, 
     TargetPart = "HumanoidRootPart",
-    SilentAimMethod = "Raycast",
-    FOVRadius = 130,
-    FOVVisible = false,
+    FOVRadius = 150,
     HitChance = 100
 }
 
 local Camera = workspace.CurrentCamera
 local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-local UserInputService = game:GetService("UserInputService")
 local CoreGui = game:GetService("CoreGui")
 
 local LocalPlayer = Players.LocalPlayer
 local WorldToScreen = Camera.WorldToScreenPoint
-local WorldToViewportPoint = Camera.WorldToViewportPoint
 local GetPartsObscuringTarget = Camera.GetPartsObscuringTarget
 local FindFirstChild = game.FindFirstChild
 
--- Hapus GUI lama jika ada
-if CoreGui:FindFirstChild("AndroidSilentAim") then
-    CoreGui.AndroidSilentAim:Destroy()
+-- Hapus GUI lama agar tidak duplikat
+if CoreGui:FindFirstChild("FixedAndroidSilentAim") then
+    CoreGui.FixedAndroidSilentAim:Destroy()
 end
 
 -- UI Mobile (ScreenGui)
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "AndroidSilentAim"
+ScreenGui.Name = "FixedAndroidSilentAim"
 ScreenGui.Parent = CoreGui
 ScreenGui.ResetOnSpawn = false
 
@@ -53,7 +48,7 @@ UICorner.Parent = MainFrame
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, 0, 0, 35)
 Title.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
-Title.Text = "Silent Aim [Android Mobile]"
+Title.Text = "Silent Aim [Fixed Mobile]"
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
 Title.TextSize, Title.Font = 12, Enum.Font.GothamBold
 Title.Parent = MainFrame
@@ -124,23 +119,19 @@ OpenBtn.MouseButton1Click:Connect(function()
     OpenBtn.Visible = false
 end)
 
--- Logika Inti Silent Aim
+-- Logika Inti Silent Aim (Dioptimalkan agar tidak freeze karakter)
 local function CalculateChance(Percentage)
     Percentage = math.floor(Percentage)
     local chance = math.floor(Random.new().NextNumber(Random.new(), 0, 1) * 100) / 100
     return chance <= Percentage / 100
 end
 
-local function getDirection(Origin, Position)
-    return (Position - Origin).Unit * 1000
-end
-
 local function IsPlayerVisible(Player)
     local PlayerCharacter = Player.Character
     local LocalPlayerCharacter = LocalPlayer.Character
-    if not (PlayerCharacter or LocalPlayerCharacter) then return end 
+    if not (PlayerCharacter or LocalPlayerCharacter) then return false end 
     local PlayerRoot = FindFirstChild(PlayerCharacter, SilentAimSettings.TargetPart) or FindFirstChild(PlayerCharacter, "HumanoidRootPart")
-    if not PlayerRoot then return end 
+    if not PlayerRoot then return false end 
     local CastPoints, IgnoreList = {PlayerRoot.Position, LocalPlayerCharacter, PlayerCharacter}, {LocalPlayerCharacter, PlayerCharacter}
     local ObscuringObjects = #GetPartsObscuringTarget(Camera, CastPoints, IgnoreList)
     return ObscuringObjects == 0
@@ -169,44 +160,37 @@ local function getClosestPlayer()
 
         local Distance = (ScreenCenter - Vector2.new(ScreenPosition.X, ScreenPosition.Y)).Magnitude
         if Distance <= DistanceToMouse and Distance <= SilentAimSettings.FOVRadius then
-            Closest = Character[SilentAimSettings.TargetPart] or HumanoidRootPart
+            Closest = HumanoidRootPart
             DistanceToMouse = Distance
         end
     end
     return Closest
 end
 
-local ExpectedArguments = {
-    Raycast = { ArgCountRequired = 3, Args = { "Instance", "Vector3", "Vector3", "RaycastParams" } }
-}
-
-local function ValidateArguments(Args, RayMethod)
-    if #Args < RayMethod.ArgCountRequired then return false end
-    for Pos, Argument in next, Args do
-        if typeof(Argument) ~= RayMethod.Args[Pos] then return false end
-    end
-    return true
-end
-
--- Hook Metamethod Raycast
+-- Hook Metamethod Raycast yang Aman (Tanpa Validasi Kaku)
 local oldNamecall
-oldNamecall = hookmetamethod(game, "__namecall", newcclosure(function(...)
+oldNamecall = hookmetamethod(game, "__namecall", newcclosure(function(self, ...)
     local Method = getnamecallmethod()
     local Arguments = {...}
-    local self = Arguments[1]
-    local chance = CalculateChance(SilentAimSettings.HitChance)
     
-    if SilentAimSettings.Enabled and self == workspace and not checkcaller() and chance then
-        if Method == "Raycast" then
-            if ValidateArguments(Arguments, ExpectedArguments.Raycast) then
-                local A_Origin = Arguments[2]
-                local HitPart = getClosestPlayer()
-                if HitPart then
-                    Arguments[3] = getDirection(A_Origin, HitPart.Position)
-                    return oldNamecall(unpack(Arguments))
+    if SilentAimSettings.Enabled and not checkcaller() then
+        if Method == "Raycast" and self == workspace then
+            local Origin = Arguments[1]
+            local Direction = Arguments[2]
+            
+            if typeof(Origin) == "Vector3" and typeof(Direction) == "Vector3" then
+                if CalculateChance(SilentAimSettings.HitChance) then
+                    local HitPart = getClosestPlayer()
+                    if HitPart then
+                        -- Menyesuaikan arah vektor ke target tanpa merusak jarak asli
+                        local mag = Direction.Magnitude
+                        Arguments[2] = (HitPart.Position - Origin).Unit * mag
+                        return oldNamecall(self, unpack(Arguments))
+                    end
                 end
             end
         end
     end
-    return oldNamecall(...)
+    
+    return oldNamecall(self, ...)
 end))
