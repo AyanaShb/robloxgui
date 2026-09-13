@@ -1,29 +1,28 @@
 local Players = game:GetService("Players")
 local CoreGui = game:GetService("CoreGui")
-local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
 local LocalPlayer = Players.LocalPlayer
 
--- Bersihkan GUI lama jika ada
-if CoreGui:FindFirstChild("CustomImGuiMenu") then
-    CoreGui.CustomImGuiMenu:Destroy()
+if CoreGui:FindFirstChild("MultiMethodAimMenu") then
+    CoreGui.MultiMethodAimMenu:Destroy()
 end
 
 local Settings = {
-    BulletTrack = false,
+    Method1 = false, -- Metamethod Hooking
+    Method2 = false, -- Raycast / Vector Overwriting
+    Method3 = false, -- Character Property / Camera ViewDirection Hook
     TeamCheck = true
 }
 
--- ScreenGui Utama
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "CustomImGuiMenu"
+ScreenGui.Name = "MultiMethodAimMenu"
 ScreenGui.Parent = CoreGui
 ScreenGui.ResetOnSpawn = false
 
--- Main Window (Gaya ImGui)
 local Window = Instance.new("Frame")
 Window.Name = "MainWindow"
-Window.Size = UDim2.new(0, 260, 0, 190)
-Window.Position = UDim2.new(0.5, -130, 0.4, -95)
+Window.Size = UDim2.new(0, 280, 0, 260)
+Window.Position = UDim2.new(0.5, -140, 0.35, -130)
 Window.BackgroundColor3 = Color3.fromRGB(18, 18, 18)
 Window.BorderSizePixel = 0
 Window.Active = true
@@ -34,7 +33,6 @@ local WindowCorner = Instance.new("UICorner")
 WindowCorner.CornerRadius = UDim.new(0, 6)
 WindowCorner.Parent = Window
 
--- Top Bar / Header Window
 local TopBar = Instance.new("Frame")
 TopBar.Size = UDim2.new(1, 0, 0, 30)
 TopBar.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
@@ -45,18 +43,16 @@ local TopBarCorner = Instance.new("UICorner")
 TopBarCorner.CornerRadius = UDim.new(0, 6)
 TopBarCorner.Parent = TopBar
 
--- Judul
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(0.7, 0, 1, 0)
 Title.Position = UDim2.new(0.05, 0, 0, 0)
 Title.BackgroundTransparency = 1
-Title.Text = "Bullet Track 360° [ImGui]"
+Title.Text = "3-Method Aim [Android ImGui]"
 Title.TextColor3 = Color3.fromRGB(220, 220, 220)
 Title.TextSize, Title.Font = 12, Enum.Font.GothamBold
 Title.TextXAlignment = Enum.TextXAlignment.Left
 Title.Parent = TopBar
 
--- Tombol Hide (-) di TopBar
 local HideBtn = Instance.new("TextButton")
 HideBtn.Size = UDim2.new(0, 30, 0, 20)
 HideBtn.Position = UDim2.new(0.85, 0, 0.15, 0)
@@ -70,7 +66,6 @@ local HideBtnCorner = Instance.new("UICorner")
 HideBtnCorner.CornerRadius = UDim.new(0, 4)
 HideBtnCorner.Parent = HideBtn
 
--- Tombol Floating kecil untuk Unhide (Muncul saat menu di-hide)
 local OpenBtn = Instance.new("TextButton")
 OpenBtn.Size = UDim2.new(0, 45, 0, 45)
 OpenBtn.Position = UDim2.new(0.02, 0, 0.15, 0)
@@ -87,7 +82,6 @@ local OpenBtnCorner = Instance.new("UICorner")
 OpenBtnCorner.CornerRadius = UDim.new(0, 8)
 OpenBtnCorner.Parent = OpenBtn
 
--- Fungsi Hide & Unhide
 HideBtn.MouseButton1Click:Connect(function()
     Window.Visible = false
     OpenBtn.Visible = true
@@ -98,73 +92,53 @@ OpenBtn.MouseButton1Click:Connect(function()
     OpenBtn.Visible = false
 end)
 
--- Konten Menu (Container)
 local Content = Instance.new("ScrollingFrame")
 Content.Size = UDim2.new(1, -16, 1, -45)
 Content.Position = UDim2.new(0, 8, 0, 38)
 Content.BackgroundTransparency = 1
 Content.BorderSizePixel = 0
-Content.CanvasSize = UDim2.new(0, 0, 0, 150)
+Content.CanvasSize = UDim2.new(0, 0, 0, 220)
 Content.ScrollBarThickness = 3
 Content.Parent = Window
 
--- Toggle 1: Bullet Track 360
-local BTBtn = Instance.new("TextButton")
-BTBtn.Size = UDim2.new(1, 0, 0, 35)
-BTBtn.Position = UDim2.new(0, 0, 0, 10)
-BTBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-BTBtn.Text = "  Bullet Track 360°: [ OFF ]"
-BTBtn.TextColor3 = Color3.fromRGB(220, 220, 220)
-BTBtn.TextSize, BTBtn.Font = 11, Enum.Font.Gotham
-BTBtn.TextXAlignment = Enum.TextXAlignment.Left
-BTBtn.Parent = Content
+local function CreateToggleButton(name, yPos, callback)
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(1, 0, 0, 35)
+    btn.Position = UDim2.new(0, 0, 0, yPos)
+    btn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+    btn.Text = "  " .. name .. ": [ OFF ]"
+    btn.TextColor3 = Color3.fromRGB(220, 220, 220)
+    btn.TextSize, btn.Font = 11, Enum.Font.Gotham
+    btn.TextXAlignment = Enum.TextXAlignment.Left
+    btn.Parent = Content
 
-local BTC = Instance.new("UICorner")
-BTC.CornerRadius = UDim.new(0, 4)
-BTC.Parent = BTBtn
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 4)
+    corner.Parent = btn
 
-BTBtn.MouseButton1Click:Connect(function()
-    Settings.BulletTrack = not Settings.BulletTrack
-    if Settings.BulletTrack then
-        BTBtn.Text = "  Bullet Track 360°: [ ON ]"
-        BTBtn.BackgroundColor3 = Color3.fromRGB(0, 110, 50)
-    else
-        BTBtn.Text = "  Bullet Track 360°: [ OFF ]"
-        BTBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-    end
-end)
+    local state = false
+    btn.MouseButton1Click:Connect(function()
+        state = not state
+        if state then
+            btn.Text = "  " .. name .. ": [ ON ]"
+            btn.BackgroundColor3 = Color3.fromRGB(0, 110, 50)
+        else
+            btn.Text = "  " .. name .. ": [ OFF ]"
+            btn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+        end
+        callback(state)
+    end)
+    return btn
+end
 
--- Toggle 2: Team Check
-local TMBtn = Instance.new("TextButton")
-TMBtn.Size = UDim2.new(1, 0, 0, 35)
-TMBtn.Position = UDim2.new(0, 0, 0, 55)
-TMBtn.BackgroundColor3 = Color3.fromRGB(0, 110, 50)
-TMBtn.Text = "  Team Check: [ ON ]"
-TMBtn.TextColor3 = Color3.fromRGB(220, 220, 220)
-TMBtn.TextSize, TMBtn.Font = 11, Enum.Font.Gotham
-TMBtn.TextXAlignment = Enum.TextXAlignment.Left
-TMBtn.Parent = Content
+CreateToggleButton("1. Namecall Hook", 10, function(v) Settings.Method1 = v end)
+CreateToggleButton("2. Vector Intercept", 55, function(v) Settings.Method2 = v end)
+CreateToggleButton("3. Camera/CFrame Redirect", 100, function(v) Settings.Method3 = v end)
+CreateToggleButton("Team Check", 145, function(v) Settings.TeamCheck = v end)
 
-local TMC = Instance.new("UICorner")
-TMC.CornerRadius = UDim.new(0, 4)
-TMC.Parent = TMBtn
-
-TMBtn.MouseButton1Click:Connect(function()
-    Settings.TeamCheck = not Settings.TeamCheck
-    if Settings.TeamCheck then
-        TMBtn.Text = "  Team Check: [ ON ]"
-        TMBtn.BackgroundColor3 = Color3.fromRGB(0, 110, 50)
-    else
-        TMBtn.Text = "  Team Check: [ OFF ]"
-        TMBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-    end
-end)
-
--- Logika Utama Bullet Track 360°
 local function GetClosestEnemy()
     local target = nil
     local shortestDist = math.huge
-
     for _, v in pairs(Players:GetPlayers()) do
         if v ~= LocalPlayer then
             if not Settings.TeamCheck or v.Team ~= LocalPlayer.Team then
@@ -185,22 +159,45 @@ local function GetClosestEnemy()
     return target
 end
 
+-- Metode 1: Hook Metamethod Namecall (__namecall)
 local oldNamecall
 oldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
     local method = getnamecallmethod()
     local args = {...}
-    
-    if Settings.BulletTrack and (method == "FireServer" or method == "InvokeServer") then
-        local targetPart = GetClosestEnemy()
-        if targetPart then
-            for i, v in ipairs(args) do
-                if typeof(v) == "Vector3" then
-                    args[i] = targetPart.Position
+    if Settings.Method1 and (method == "FireServer" or method == "InvokeServer") then
+        local target = GetClosestEnemy()
+        if target then
+            for i, arg in ipairs(args) do
+                if typeof(arg) == "Vector3" then
+                    args[i] = target.Position
                 end
             end
             return oldNamecall(self, unpack(args))
         end
     end
-    
     return oldNamecall(self, ...)
+end)
+
+-- Metode 2: Vector Intercept / Raycast parameter manipulation
+local oldIndex
+oldIndex = hookmetamethod(game, "__index", function(self, k)
+    if Settings.Method2 and k == "Hit" then
+        local target = GetClosestEnemy()
+        if target then
+            return target.CFrame
+        end
+    end
+    return oldIndex(self, k)
+end)
+
+-- Metode 3: Camera / ViewDirection CFrame Redirection
+RunService.RenderStepped:Connect(function()
+    if Settings.Method3 then
+        local target = GetClosestEnemy()
+        local camera = workspace.CurrentCamera
+        if target and camera then
+            local direction = (target.Position - camera.CFrame.Position).Unit
+            camera.CFrame = CFrame.new(camera.CFrame.Position, camera.CFrame.Position + direction)
+        end
+    end
 end)
