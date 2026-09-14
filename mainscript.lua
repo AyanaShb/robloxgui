@@ -1,25 +1,139 @@
--- Salin dan jalankan skrip ini lewat Executor Anda untuk membelokkan peluru secara otomatis
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
+--[[ Better script dumper (Modified to save as .txt)
+Original by fyz#7690 
+]]
 
-task.spawn(function()
-    pcall(function()
-        local ugcFolder = ReplicatedStorage:FindFirstChild("Ugc") or ReplicatedStorage
-        local projectileManagerModule = ugcFolder:FindFirstChild("ProjectileManager", true)
+local ignore_empty_scripts = true 
+local randomize_name = false 
+local prefix = "scripts_"..tostring(game.PlaceId) 
+local CoreGui = game.CoreGui 
+local CorePackages = game.CorePackages 
+local decomp_idx = 0 
+local scriptslen = 0 
+local scripts = {} 
+local tree = {} 
+local invalid_chars = {string.char(127), "\\", ":", "*", "?", "\"", "<", ">", "|"} 
+
+for i=0 , 32 do table.insert(invalid_chars, string.char(i)) end 
+for i=128, 255 do table.insert(invalid_chars, string.char(i)) end 
+
+local function gatherscripts(inst) 
+    if (inst.ClassName == "LocalScript" or inst.ClassName == "ModuleScript") and not (inst:IsDescendantOf(CoreGui) or inst:IsDescendantOf(CorePackages)) then 
+        table.insert(scripts, inst) 
+    end 
+    for _,v in next, inst:GetChildren() do 
+        gatherscripts(v) 
+    end 
+end 
+
+for _, v in next, getnilinstances() do 
+    gatherscripts(v) 
+end 
+
+gatherscripts(settings()) 
+
+for _,v in next, scripts do 
+    local split = string.split(v:GetFullName(), ".") 
+    local slen = #split 
+    local top_parent = nil 
+    
+    -- Ubah ekstensi di sini menjadi .txt
+    local filename = v.Name.."."..v.ClassName..".txt"
+    local debug_filename = v:GetDebugId().."_"..v.Name.."."..v.ClassName..".txt"
+
+    if #split > 1 then 
+        local parent_tmp = v 
+        repeat 
+            top_parent = parent_tmp 
+            parent_tmp = parent_tmp.Parent 
+        until parent_tmp == nil 
         
-        if projectileManagerModule then
-            local ProjectileManager = require(projectileManagerModule)
-            if ProjectileManager and rawget(ProjectileManager, "CreateProjectile") then
-                local oldCreate = ProjectileManager.CreateProjectile
-                ProjectileManager.CreateProjectile = function(self, p41, ...)
-                    if p41 and p41.direction and typeof(p41.direction) == "Vector3" then
-                        -- Membelokkan arah vektor peluru ke kanan
-                        local rotCFrame = CFrame.new(Vector3.zero, p41.direction) * CFrame.Angles(0, math.rad(-30), 0)
-                        p41.direction = rotCFrame.LookVector
-                    end
-                    return oldCreate(self, p41, ...)
-                end
-                print("Auto-hook peluru belok ke kanan berhasil!")
-            end
-        end
-    end)
-end)
+        if not tree[top_parent.Name] then 
+            tree[top_parent.Name] = {} 
+        end 
+        
+        local ct = tree[top_parent.Name] 
+        for idx, s in next, split do 
+            if idx == slen then break end 
+            if not ct[s] then 
+                ct[s] = {} 
+            end 
+            ct = ct[s] 
+        end 
+        
+        if randomize_name then 
+            ct[debug_filename] = v; 
+        else 
+            if ct[filename] then 
+                warn("Duplicate script name found, ignoring:", v:GetFullName()) 
+            end 
+            ct[filename] = v; 
+        end 
+    else 
+        if randomize_name then 
+            tree[debug_filename] = v 
+        else 
+            if tree[filename] then 
+                warn("Duplicate script name in nil found, ignoring:", v:GetFullName()) 
+            end 
+            tree[filename] = v; 
+        end 
+    end 
+end 
+
+local function makevalid(str) 
+    for _, c in next, invalid_chars do 
+        str = str.gsub(str, c, "") 
+    end 
+    return str 
+end 
+
+scriptslen = #scripts 
+
+local function walk_tree(t, path) 
+    for i,v in next, t do 
+        i = makevalid(i) 
+        local p = path 
+        if typeof(v) == "table" then 
+            walk_tree(v, p.."/"..i) 
+        elseif typeof(v) == "Instance" then 
+            if p == "" then p = "/" end 
+            decomp_idx = decomp_idx+1 
+            print("Decompiling "..decomp_idx.."/"..scriptslen) 
+            
+            local stat, src = pcall(decompile, v) 
+            if not stat then 
+                print("Script with no bytecode", v:GetFullName()) 
+                continue 
+            end 
+            
+            if ignore_empty_scripts and #src < 200 then 
+                local is_not_comment_only = false 
+                for _,y in next, string.split(src, "\n") do 
+                    if string.sub(y, 1, 2) ~= "--" then 
+                        is_not_comment_only = true 
+                        break 
+                    end 
+                end 
+                if not is_not_comment_only then 
+                    print("Empty script not saved", v:GetFullName()) 
+                    continue 
+                end 
+            end 
+            
+            p = prefix..p 
+            if not isfolder(p) then 
+                makefolder(p) 
+            end 
+            
+            if not pcall(function() 
+                writefile(p.."/"..i, src); 
+            end) then 
+                print(p.."/"..i) 
+                error() 
+            end 
+        end 
+    end 
+end 
+
+walk_tree(tree, "")
+print("Script dumping finished! Saved as .txt files.")
