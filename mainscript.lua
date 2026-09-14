@@ -36,7 +36,7 @@ end
 -- Jika game menggunakan server-authoritative, client harus mengirim request ke server.
 
 local character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
-local transparencyLevel = 0.5 -- 0.5 = Setengah transparan, 1 = Hilang total
+local transparencyLevel = 1 -- 0.5 = Setengah transparan, 1 = Hilang total
 
 -- Menerapkan langsung ke karakter lokal
 applyTransparencyToCharacter(character, transparencyLevel)
