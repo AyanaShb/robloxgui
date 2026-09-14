@@ -1,4 +1,4 @@
--- v3.9.3 -
+-- v3.9.4 -
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local Lighting = game:GetService("Lighting")
@@ -83,7 +83,7 @@ pcall(function()
 end)
 
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "D3D_Ultimate_Android_V3_9_3"
+ScreenGui.Name = "D3D_Ultimate_Android_V3_9_4"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
@@ -157,7 +157,6 @@ local OriginalLighting = {
     FogEnd = Lighting.FogEnd
 }
 
--- Diperbarui: Hanya menyisakan Enemy ESP, Player ESP, dan 1 RGB Color Picker universal
 local VisualsConfig = {
     EnemyESP = false,
     PlayerESP = false,
@@ -178,6 +177,7 @@ local WorldConfig = {
 local HackConfig = {
     AntiAdminAktif = false,
     AimbotAktif = false,
+    AimPredictionAktif = false, -- Fitur Baru
     AimbotMode = "POV Kamera (FOV)",
     AimTargetMode = "Head",
     AimbotSmoothness = 15,
@@ -275,7 +275,7 @@ end)
 local TitleLabel = Instance.new("TextLabel")
 TitleLabel.Size = UDim2.new(1, 0, 0, 36)
 TitleLabel.BackgroundTransparency = 1
-TitleLabel.Text = "× D3D MENU: PLAYER & BOT v3.9.3 ×"
+TitleLabel.Text = "× D3D MENU: PLAYER & BOT v3.9.4 ×"
 TitleLabel.TextColor3 = Color3.fromRGB(240, 240, 255)
 TitleLabel.TextSize = 11.5
 TitleLabel.Font = Enum.Font.GothamBold
@@ -657,6 +657,19 @@ local function GetAllTargetableEntities()
     return list
 end
 
+local function GetPredictedPosition(targetPart)
+    if not targetPart then return Vector3.new(0, 0, 0) end
+    local basePos = targetPart.Position
+    if HackConfig.AimPredictionAktif then
+        local velocity = targetPart.AssemblyLinearVelocity or Vector3.new(0, 0, 0)
+        local distance = (Camera.CFrame.Position - basePos).Magnitude
+        local bulletSpeed = 1200 -- Standar kecepatan peluru prediksi
+        local timeToTarget = distance / bulletSpeed
+        return basePos + (velocity * timeToTarget)
+    end
+    return basePos
+end
+
 local function GetNewTarget3D()
     local closest, shortestDist = nil, math.huge
     for _, entity in ipairs(GetAllTargetableEntities()) do
@@ -665,7 +678,8 @@ local function GetNewTarget3D()
             local targetPart = GetDynamicTargetPart(char)
             if targetPart then
                 if not HackConfig.WallCheck or IsVisible(targetPart) then
-                    local dist = (Camera.CFrame.Position - targetPart.Position).Magnitude
+                    local predictedPos = GetPredictedPosition(targetPart)
+                    local dist = (Camera.CFrame.Position - predictedPos).Magnitude
                     if dist < shortestDist then
                         shortestDist = dist
                         closest = char
@@ -686,7 +700,8 @@ local function GetClosestEnemy2D()
             local targetPart = GetDynamicTargetPart(char)
             if targetPart then
                 if not HackConfig.WallCheck or IsVisible(targetPart) then
-                    local pos, onScreen = Camera:WorldToViewportPoint(targetPart.Position)
+                    local predictedPos = GetPredictedPosition(targetPart)
+                    local pos, onScreen = Camera:WorldToViewportPoint(predictedPos)
                     if onScreen then
                         local dist = (center - Vector2.new(pos.X, pos.Y)).Magnitude
                         if dist < shortestDist then
@@ -791,7 +806,6 @@ local function CreateEntityESP(key)
     ESPCache[key] = espData
 end
 
--- Tab Visual yang sudah diperbarui: 2 Toggle utama + 1 Universal RGB Color Picker
 CreateToggle(TabContentFrames["Visual"], "Enemy ESP", false, function(v) 
     VisualsConfig.EnemyESP = v 
 end)
@@ -825,7 +839,7 @@ CreateToggle(TabContentFrames["Player"], "Lompat Tinggi", false, function(v)
     ShowPopupNotification(v and "Lompat Tinggi Diaktifkan" or "Lompat Tinggi Dimatikan")
 end)
 CreateSlider(TabContentFrames["Player"], "Set Power", 50, 250, 100, function(val) HackConfig.CustomJump = val end)
--- v3.9.3 - Part 2
+
 CreateToggle(TabContentFrames["World"], "Night Mode", false, function(v)
     WorldConfig.NightMode = v
     if v then WorldConfig.Daylight = false else
@@ -924,6 +938,11 @@ CreateToggle(TabContentFrames["Skill"], "Aktifkan Auto Aim (Kunci Layar)", false
     HackConfig.AimbotAktif = v 
     ShowPopupNotification(v and "Auto Aim Diaktifkan" or "Auto Aim Dimatikan")
 end)
+-- Fitur Baru Ditambahkan Di Sini
+CreateToggle(TabContentFrames["Skill"], "Aim Prediction (Velocity Calc)", false, function(v) 
+    HackConfig.AimPredictionAktif = v 
+    ShowPopupNotification(v and "Aim Prediction Diaktifkan" or "Aim Prediction Dimatikan")
+end)
 CreateToggle(TabContentFrames["Skill"], "Auto Aim Wall Check", false, function(v)
     HackConfig.WallCheck = v
     ShowPopupNotification(v and "Wall Check Diaktifkan" or "Wall Check Dimatikan")
@@ -1016,7 +1035,7 @@ Players.PlayerAdded:Connect(function(p)
     if HackConfig.AntiAdminAktif and CheckIfAdmin(p) then
         TitleLabel.Text = "⚠️ ADMIN TERDETEKSI: " .. p.Name
         ShowPopupNotification("⚠️ ADMIN TERDETEKSI: " .. p.Name)
-        task.delay(5, function() TitleLabel.Text = "× D3D MENU: PLAYER & BOT v3.9.3 ×" end)
+        task.delay(5, function() TitleLabel.Text = "× D3D MENU: PLAYER & BOT v3.9.4 ×" end)
     end
 end)
 
@@ -1052,14 +1071,16 @@ RunService.RenderStepped:Connect(function()
     if HackConfig.AimbotAktif then
         local targetValid = false
         local partToAim = nil
+        local predictedAimPos = nil
 
         if LockedTarget and LockedTarget.Parent then
             if IsValidCharacter(LockedTarget) and IsEnemyEntity(LockedTarget) then
                 partToAim = GetDynamicTargetPart(LockedTarget)
                 if partToAim then
                     if not HackConfig.WallCheck or IsVisible(partToAim) then
+                        predictedAimPos = GetPredictedPosition(partToAim)
                         if HackConfig.AimbotMode == "POV Kamera (FOV)" then
-                            local pos, onScreen = Camera:WorldToViewportPoint(partToAim.Position)
+                            local pos, onScreen = Camera:WorldToViewportPoint(predictedAimPos)
                             local center = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
                             local dist = (center - Vector2.new(pos.X, pos.Y)).Magnitude
                             if onScreen and dist <= HackConfig.FOVRadius then
@@ -1081,15 +1102,18 @@ RunService.RenderStepped:Connect(function()
             end
             if LockedTarget then
                 partToAim = GetDynamicTargetPart(LockedTarget)
+                if partToAim then
+                    predictedAimPos = GetPredictedPosition(partToAim)
+                end
             end
         end
 
-        if LockedTarget and partToAim then
+        if LockedTarget and partToAim and predictedAimPos then
             if HackConfig.AimbotMode == "360° (Brutal)" then
-                Camera.CFrame = CFrame.lookAt(Camera.CFrame.Position, partToAim.Position)
+                Camera.CFrame = CFrame.lookAt(Camera.CFrame.Position, predictedAimPos)
             else
                 local smoothFactor = HackConfig.AimbotSmoothness / 100
-                Camera.CFrame = Camera.CFrame:Lerp(CFrame.lookAt(Camera.CFrame.Position, partToAim.Position), smoothFactor)
+                Camera.CFrame = Camera.CFrame:Lerp(CFrame.lookAt(Camera.CFrame.Position, predictedAimPos), smoothFactor)
             end
         else
             LockedTarget = nil
@@ -1118,10 +1142,6 @@ RunService.RenderStepped:Connect(function()
 
             local esp = ESPCache[char]
             local isEnemy = IsEnemyEntity(entity)
-            
-            -- Logika filter ESP sesuai permintaan:
-            -- Player ESP aktif untuk semua user & bot.
-            -- Enemy ESP aktif hanya untuk musuh sejati (mengabaikan tim/lobby).
             local shouldDraw = (VisualsConfig.PlayerESP) or (VisualsConfig.EnemyESP and isEnemy)
 
             local primaryPart = char:FindFirstChild("HumanoidRootPart") or char:FindFirstChild("Torso") or char:FindFirstChild("UpperTorso") or char:FindFirstChild("Head") or char.PrimaryPart or char:FindFirstChildOfClass("BasePart")
@@ -1134,7 +1154,6 @@ RunService.RenderStepped:Connect(function()
                     local distance = (Camera.CFrame.Position - primaryPart.Position).Magnitude
                     local currentESPColor = VisualsConfig.ESPColor
 
-                    -- Skeleton & Head Circle Sempurna
                     local head = char:FindFirstChild("Head")
                     local upperTorso = char:FindFirstChild("UpperTorso") or char:FindFirstChild("Torso") or primaryPart
                     local lowerTorso = char:FindFirstChild("LowerTorso") or upperTorso
@@ -1185,13 +1204,11 @@ RunService.RenderStepped:Connect(function()
                     drawBone(esp.Skeleton.LeftLeg, ltPos, llPos)
                     drawBone(esp.Skeleton.RightLeg, ltPos, rlPos)
 
-                    -- Line ESP
                     esp.Line.From = Vector2.new(Camera.ViewportSize.X / 2, 0)
                     esp.Line.To = Vector2.new(vector.X, vector.Y)
                     esp.Line.Color = currentESPColor
                     esp.Line.Visible = true
 
-                    -- Name ESP
                     local entityName = char.Name
                     if typeof(entity) == "Instance" and entity:IsA("Player") then
                         entityName = entity.Name
@@ -1201,13 +1218,11 @@ RunService.RenderStepped:Connect(function()
                     esp.Name.Color = currentESPColor
                     esp.Name.Visible = true
 
-                    -- Distance ESP
                     esp.Distance.Text = string.format("[%dM]", math.floor(distance))
                     esp.Distance.Position = Vector2.new(vector.X, vector.Y + 22)
                     esp.Distance.Color = currentESPColor
                     esp.Distance.Visible = true
 
-                    -- Gender ESP
                     local genderText = "[Cowo]"
                     local isPlayer = false
                     for _, p in ipairs(Players:GetPlayers()) do
@@ -1228,7 +1243,6 @@ RunService.RenderStepped:Connect(function()
                     esp.Gender.Color = currentESPColor
                     esp.Gender.Visible = true
 
-                    -- Status (Bot / Player)
                     local statusText = "[Bot]"
                     for _, p in ipairs(Players:GetPlayers()) do
                         if p.Character == char then
@@ -1241,7 +1255,6 @@ RunService.RenderStepped:Connect(function()
                     esp.Status.Color = currentESPColor
                     esp.Status.Visible = true
 
-                    -- Health Bar
                     if hum then
                         local healthPct = math.clamp(hum.Health / hum.MaxHealth, 0, 1)
                         local barHeight = 40
