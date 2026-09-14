@@ -1395,8 +1395,8 @@ task.spawn(function()
                     if type(v) == "table" then
                         pcall(function()
                             if rawget(v, "AtkSpeed") or rawget(v, "FireSpeedRate") or rawget(v, "RPM") then
-                                if rawget(v, "AtkSpeed") then v.AtkSpeed = 5 end
-                                if rawget(v, "FireSpeedRate") then v.FireSpeedRate = 5 end
+                                if rawget(v, "AtkSpeed") then v.AtkSpeed = 999 end
+                                if rawget(v, "FireSpeedRate") then v.FireSpeedRate = 999 end
                                 if rawget(v, "RPM") then v.RPM = 2500 end
                             end
                         end)
