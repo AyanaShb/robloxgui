@@ -2,7 +2,7 @@
 local player = game.Players.LocalPlayer
 
 getgenv().RapidFire = true
-getgenv().Delay = 0.05 -- Sesuaikan kecepatan (jangan terlalu kecil agar tidak terdeteksi)
+getgenv().Delay = 0 -- Sesuaikan kecepatan (jangan terlalu kecil agar tidak terdeteksi)
 
 local function getWeaponRemote()
     if player.Character then
