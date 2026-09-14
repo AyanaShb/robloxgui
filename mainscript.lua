@@ -1,139 +1,38 @@
---[[ Better script dumper (Modified to save as .txt)
-Original by fyz#7690 
-]]
+-- Script untuk mendump seluruh struktur hirarki LocalPlayer hingga ke akar terdalam ke file .txt
+local OutputFile = "LocalPlayer_Deep_Dump.txt"
 
-local ignore_empty_scripts = true 
-local randomize_name = false 
-local prefix = "scripts_"..tostring(game.PlaceId) 
-local CoreGui = game.CoreGui 
-local CorePackages = game.CorePackages 
-local decomp_idx = 0 
-local scriptslen = 0 
-local scripts = {} 
-local tree = {} 
-local invalid_chars = {string.char(127), "\\", ":", "*", "?", "\"", "<", ">", "|"} 
+if not writefile then
+    warn("Fungsi writefile tidak didukung oleh executor ini.")
+    return
+end
 
-for i=0 , 32 do table.insert(invalid_chars, string.char(i)) end 
-for i=128, 255 do table.insert(invalid_chars, string.char(i)) end 
+local player = game.Players.LocalPlayer
+local dumpLines = {}
 
-local function gatherscripts(inst) 
-    if (inst.ClassName == "LocalScript" or inst.ClassName == "ModuleScript") and not (inst:IsDescendantOf(CoreGui) or inst:IsDescendantOf(CorePackages)) then 
-        table.insert(scripts, inst) 
-    end 
-    for _,v in next, inst:GetChildren() do 
-        gatherscripts(v) 
-    end 
-end 
-
-for _, v in next, getnilinstances() do 
-    gatherscripts(v) 
-end 
-
-gatherscripts(settings()) 
-
-for _,v in next, scripts do 
-    local split = string.split(v:GetFullName(), ".") 
-    local slen = #split 
-    local top_parent = nil 
-    
-    -- Ubah ekstensi di sini menjadi .txt
-    local filename = v.Name.."."..v.ClassName..".txt"
-    local debug_filename = v:GetDebugId().."_"..v.Name.."."..v.ClassName..".txt"
-
-    if #split > 1 then 
-        local parent_tmp = v 
-        repeat 
-            top_parent = parent_tmp 
-            parent_tmp = parent_tmp.Parent 
-        until parent_tmp == nil 
+-- Fungsi rekursif untuk menelusuri setiap objek hingga ke akar terdalam
+local function recursiveScan(parent, indentLevel)
+    local indent = string.rep("    ", indentLevel)
+    for _, child in ipairs(parent:GetChildren()) do
+        local line = indent .. "- " .. child.Name .. " (" .. child.ClassName .. ")"
+        table.insert(dumpLines, line)
         
-        if not tree[top_parent.Name] then 
-            tree[top_parent.Name] = {} 
-        end 
-        
-        local ct = tree[top_parent.Name] 
-        for idx, s in next, split do 
-            if idx == slen then break end 
-            if not ct[s] then 
-                ct[s] = {} 
-            end 
-            ct = ct[s] 
-        end 
-        
-        if randomize_name then 
-            ct[debug_filename] = v; 
-        else 
-            if ct[filename] then 
-                warn("Duplicate script name found, ignoring:", v:GetFullName()) 
-            end 
-            ct[filename] = v; 
-        end 
-    else 
-        if randomize_name then 
-            tree[debug_filename] = v 
-        else 
-            if tree[filename] then 
-                warn("Duplicate script name in nil found, ignoring:", v:GetFullName()) 
-            end 
-            tree[filename] = v; 
-        end 
-    end 
-end 
+        -- Lanjutkan rekursi jika objek memiliki anak (children)
+        if #child:GetChildren() > 0 then
+            recursiveScan(child, indentLevel + 1)
+        end
+    end
+end
 
-local function makevalid(str) 
-    for _, c in next, invalid_chars do 
-        str = str.gsub(str, c, "") 
-    end 
-    return str 
-end 
+table.insert(dumpLines, "=== DEEP DUMP STRUKTUR: " .. player.Name .. " ===")
+recursiveScan(player, 0)
 
-scriptslen = #scripts 
+-- Simpan hasil dump ke dalam file txt di folder workspace executor
+local success, err = pcall(function()
+    writefile(OutputFile, table.concat(dumpLines, "\n"))
+end)
 
-local function walk_tree(t, path) 
-    for i,v in next, t do 
-        i = makevalid(i) 
-        local p = path 
-        if typeof(v) == "table" then 
-            walk_tree(v, p.."/"..i) 
-        elseif typeof(v) == "Instance" then 
-            if p == "" then p = "/" end 
-            decomp_idx = decomp_idx+1 
-            print("Decompiling "..decomp_idx.."/"..scriptslen) 
-            
-            local stat, src = pcall(decompile, v) 
-            if not stat then 
-                print("Script with no bytecode", v:GetFullName()) 
-                continue 
-            end 
-            
-            if ignore_empty_scripts and #src < 200 then 
-                local is_not_comment_only = false 
-                for _,y in next, string.split(src, "\n") do 
-                    if string.sub(y, 1, 2) ~= "--" then 
-                        is_not_comment_only = true 
-                        break 
-                    end 
-                end 
-                if not is_not_comment_only then 
-                    print("Empty script not saved", v:GetFullName()) 
-                    continue 
-                end 
-            end 
-            
-            p = prefix..p 
-            if not isfolder(p) then 
-                makefolder(p) 
-            end 
-            
-            if not pcall(function() 
-                writefile(p.."/"..i, src); 
-            end) then 
-                print(p.."/"..i) 
-                error() 
-            end 
-        end 
-    end 
-end 
-
-walk_tree(tree, "")
-print("Script dumping finished! Saved as .txt files.")
+if success then
+    print("Berhasil! Struktur LocalPlayer tersimpan di workspace/" .. OutputFile)
+else
+    warn("Gagal menyimpan file: " .. tostring(err))
+end
