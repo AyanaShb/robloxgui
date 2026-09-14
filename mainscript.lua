@@ -191,9 +191,7 @@ local HackConfig = {
     JumpAktif = false,
     CustomJump = 100,
     GunModsAktif = false,
-    CustomFireRate = 800,
-    RapidFireAktif = false,
-    NoReloadAktif = false
+    CustomFireRate = 1500
 }
 
 local ESPCache = {}
@@ -629,32 +627,24 @@ end
 
 local function GetAllTargetableEntities()
     local list = {}
-    
     for _, p in ipairs(Players:GetPlayers()) do
         if p ~= LocalPlayer and p.Character and IsValidCharacter(p.Character) then
             table.insert(list, p)
         end
     end
-    
     local function scanFolder(parentObj)
         for _, obj in ipairs(parentObj:GetChildren()) do
             if obj:IsA("Model") and obj ~= LocalPlayer.Character and IsValidCharacter(obj) then
                 local isPlayerChar = false
                 for _, p in ipairs(Players:GetPlayers()) do
-                    if p.Character == obj then
-                        isPlayerChar = true
-                        break
-                    end
+                    if p.Character == obj then isPlayerChar = true break end
                 end
-                if not isPlayerChar then
-                    table.insert(list, obj)
-                end
+                if not isPlayerChar then table.insert(list, obj) end
             elseif obj:IsA("Folder") or obj:IsA("Model") then
                 scanFolder(obj)
             end
         end
     end
-    
     scanFolder(Workspace)
     return list
 end
@@ -752,7 +742,6 @@ end
 
 local function CreateEntityESP(key)
     RemoveEntityESP(key)
-
     local espData = {
         Line = Drawing.new("Line"),
         Name = Drawing.new("Text"),
@@ -770,32 +759,26 @@ local function CreateEntityESP(key)
             RightLeg = Drawing.new("Line")
         }
     }
-
     espData.Line.Thickness = 1.5
     espData.Line.Transparency = 0.7
     espData.Line.Visible = false
-
     espData.HealthBarBg.Thickness = 3
     espData.HealthBarBg.Color = Color3.fromRGB(40, 40, 40)
     espData.HealthBarBg.Transparency = 0.8
     espData.HealthBarBg.Visible = false
-
     espData.HealthBar.Thickness = 1.5
     espData.HealthBar.Transparency = 1
     espData.HealthBar.Visible = false
-
     espData.HeadCircle.Thickness = 1.5
     espData.HeadCircle.NumSides = 12
     espData.HeadCircle.Filled = false
     espData.HeadCircle.Transparency = 0.8
     espData.HeadCircle.Visible = false
-
     for _, bone in pairs(espData.Skeleton) do
         bone.Thickness = 1.5
         bone.Transparency = 0.8
         bone.Visible = false
     end
-
     for _, textObj in ipairs({espData.Name, espData.Distance, espData.Gender, espData.Status}) do
         textObj.Size = 13
         textObj.Center = true
@@ -804,21 +787,12 @@ local function CreateEntityESP(key)
         textObj.Font = Drawing.Fonts.UI
         textObj.Visible = false
     end
-
     ESPCache[key] = espData
 end
 
-CreateToggle(TabContentFrames["Visual"], "Enemy ESP", false, function(v) 
-    VisualsConfig.EnemyESP = v 
-end)
-
-CreateToggle(TabContentFrames["Visual"], "Player ESP", false, function(v) 
-    VisualsConfig.PlayerESP = v 
-end)
-
-CreateColorPicker(TabContentFrames["Visual"], "ESP Color (All)", Color3.fromRGB(0, 240, 255), function(c) 
-    VisualsConfig.ESPColor = c 
-end)
+CreateToggle(TabContentFrames["Visual"], "Enemy ESP", false, function(v) VisualsConfig.EnemyESP = v end)
+CreateToggle(TabContentFrames["Visual"], "Player ESP", false, function(v) VisualsConfig.PlayerESP = v end)
+CreateColorPicker(TabContentFrames["Visual"], "ESP Color (All)", Color3.fromRGB(0, 240, 255), function(c) VisualsConfig.ESPColor = c end)
 
 CreateToggle(TabContentFrames["Player"], "No Fall Damage", false, function(v) 
     HackConfig.AntiFallDamageAktif = v 
@@ -867,20 +841,16 @@ CreateToggle(TabContentFrames["World"], "Daylight (Indoor/Outdoor)", false, func
     end
     ShowPopupNotification(v and "Daylight Diaktifkan" or "Daylight Dimatikan")
 end)
-
 CreateSlider(TabContentFrames["World"], "Daylight Brightness", 1, 10, 3, function(val) WorldConfig.DaylightBrightness = val end)
 CreateSlider(TabContentFrames["World"], "Daylight Time (Clock)", 0, 24, 14, function(val) WorldConfig.DaylightClock = val end)
-
 CreateToggle(TabContentFrames["World"], "Wall Hack (Noclip)", false, function(v)
     WorldConfig.WallHack = v
     ShowPopupNotification(v and "Wall Hack Diaktifkan" or "Wall Hack Dimatikan")
 end)
-
 CreateToggle(TabContentFrames["World"], "No Fog", false, function(v)
     WorldConfig.NoFog = v
     ShowPopupNotification(v and "No Fog Diaktifkan" or "No Fog Dimatikan")
 end)
-
 CreateToggle(TabContentFrames["World"], "Fly (Tahan Tombol Lompat)", false, function(v)
     WorldConfig.FlyAktif = v
     ShowPopupNotification(v and "Fly Diaktifkan" or "Fly Dimatikan")
@@ -892,9 +862,7 @@ local function GetPlayerNamesList()
         local char = GetEntityModel(entity)
         if char then
             local name = char.Name
-            if typeof(entity) == "Instance" and entity:IsA("Player") then
-                name = entity.Name
-            end
+            if typeof(entity) == "Instance" and entity:IsA("Player") then name = entity.Name end
             table.insert(names, name)
         end
     end
@@ -914,9 +882,7 @@ CreateButton(TabContentFrames["World"], "Mulai Teleport", function()
             local char = GetEntityModel(entity)
             if char then
                 local name = char.Name
-                if typeof(entity) == "Instance" and entity:IsA("Player") then
-                    name = entity.Name
-                end
+                if typeof(entity) == "Instance" and entity:IsA("Player") then name = entity.Name end
                 if name == targetName then
                     foundRoot = char:FindFirstChild("HumanoidRootPart") or char:FindFirstChild("Torso") or char:FindFirstChild("UpperTorso") or char.PrimaryPart
                     break
@@ -953,22 +919,13 @@ CreateDropdown(TabContentFrames["Skill"], "Target Bagian Tubuh", {"Head", "Neck"
 CreateSlider(TabContentFrames["Skill"], "Kelengketan Aim POV (Smoothness)", 1, 100, 15, function(val) HackConfig.AimbotSmoothness = val end)
 CreateToggle(TabContentFrames["Skill"], "Tampilkan Lingkaran FOV", false, function(v) HackConfig.ShowFOV = v end)
 CreateSlider(TabContentFrames["Skill"], "Lebar Lingkaran FOV", 10, 600, 150, function(val) HackConfig.FOVRadius = val end)
-CreateToggle(TabContentFrames["Skill"], "Gun Mods (Infinite Ammo & RPM)", false, function(v) 
+
+-- Fitur Diperbarui: Rapid Fire & Instant No Reload
+CreateToggle(TabContentFrames["Skill"], "Rapid Fire & No Reload (Extreme)", false, function(v) 
     HackConfig.GunModsAktif = v 
-    ShowPopupNotification(v and "Gun Mods Diaktifkan" or "Gun Mods Dimatikan")
+    ShowPopupNotification(v and "Rapid Fire & No Reload Diaktifkan" or "Dimatikan")
 end)
-CreateSlider(TabContentFrames["Skill"], "RPM Fire Rate", 400, 2500, 800, function(val) HackConfig.CustomFireRate = val end)
-
--- Fitur Baru: Rapid Fire & No Reload
-CreateToggle(TabContentFrames["Skill"], "Rapid Fire", false, function(v)
-    HackConfig.RapidFireAktif = v
-    ShowPopupNotification(v and "Rapid Fire Diaktifkan" or "Rapid Fire Dimatikan")
-end)
-
-CreateToggle(TabContentFrames["Skill"], "No Reload", false, function(v)
-    HackConfig.NoReloadAktif = v
-    ShowPopupNotification(v and "No Reload Diaktifkan" or "No Reload Dimatikan")
-end)
+CreateSlider(TabContentFrames["Skill"], "RPM Fire Rate", 400, 3000, 1500, function(val) HackConfig.CustomFireRate = val end)
 
 CreateDropdown(TabContentFrames["Configuration"], "UI Theme Mode", {"Dark", "Light"}, "Dark", function(mode)
     AppTheme = mode
@@ -994,12 +951,7 @@ end)
 CreateButton(TabContentFrames["Configuration"], "Save Settings", function()
     pcall(function()
         if writefile then
-            local data = {
-                Visuals = VisualsConfig,
-                World = WorldConfig,
-                Hacks = HackConfig,
-                Theme = AppTheme
-            }
+            local data = { Visuals = VisualsConfig, World = WorldConfig, Hacks = HackConfig, Theme = AppTheme }
             writefile("D3D_Settings.json", HttpService:JSONEncode(data))
             ShowPopupNotification("Settings berhasil disimpan!")
         else
@@ -1036,21 +988,6 @@ CreateButton(TabContentFrames["Configuration"], "Delete Settings", function()
     end)
 end)
 
-local function CheckIfAdmin(p)
-    if p == LocalPlayer then return false end
-    local nameRaw = string.upper(p.Name .. " " .. p.DisplayName)
-    if string.find(nameRaw, "%[GM%]") or string.find(nameRaw, "%[MOD%]") or string.find(nameRaw, "GAME MASTER") or string.find(nameRaw, "MODERATOR") then return true end
-    return false
-end
-
-Players.PlayerAdded:Connect(function(p)
-    if HackConfig.AntiAdminAktif and CheckIfAdmin(p) then
-        TitleLabel.Text = "⚠️ ADMIN TERDETEKSI: " .. p.Name
-        ShowPopupNotification("⚠️ ADMIN TERDETEKSI: " .. p.Name)
-        task.delay(5, function() TitleLabel.Text = "× D3D MENU: PLAYER & BOT v3.9.5 ×" end)
-    end
-end)
-
 RunService.RenderStepped:Connect(function()
     if WorldConfig.NightMode then
         Lighting.ClockTime = 0
@@ -1068,9 +1005,7 @@ RunService.RenderStepped:Connect(function()
         Lighting.FogEnd = 999999
         pcall(function()
             for _, v in pairs(Lighting:GetChildren()) do
-                if v:IsA("Atmosphere") or v:IsA("Sky") then
-                    v.Parent = nil
-                end
+                if v:IsA("Atmosphere") or v:IsA("Sky") then v.Parent = nil end
             end
         end)
     end
@@ -1095,9 +1030,7 @@ RunService.RenderStepped:Connect(function()
                             local pos, onScreen = Camera:WorldToViewportPoint(predictedAimPos)
                             local center = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
                             local dist = (center - Vector2.new(pos.X, pos.Y)).Magnitude
-                            if onScreen and dist <= HackConfig.FOVRadius then
-                                targetValid = true
-                            end
+                            if onScreen and dist <= HackConfig.FOVRadius then targetValid = true end
                         else
                             targetValid = true
                         end
@@ -1114,9 +1047,7 @@ RunService.RenderStepped:Connect(function()
             end
             if LockedTarget then
                 partToAim = GetDynamicTargetPart(LockedTarget)
-                if partToAim then
-                    predictedAimPos = GetPredictedPosition(partToAim)
-                end
+                if partToAim then predictedAimPos = GetPredictedPosition(partToAim) end
             end
         end
 
@@ -1135,7 +1066,6 @@ RunService.RenderStepped:Connect(function()
     end
 
     local activeEntities = GetAllTargetableEntities()
-    
     for key, _ in pairs(ESPCache) do
         local found = false
         for _, ent in ipairs(activeEntities) do
@@ -1148,14 +1078,10 @@ RunService.RenderStepped:Connect(function()
     for _, entity in ipairs(activeEntities) do
         local char = GetEntityModel(entity)
         if IsValidCharacter(char) then
-            if not ESPCache[char] then
-                CreateEntityESP(char)
-            end
-
+            if not ESPCache[char] then CreateEntityESP(char) end
             local esp = ESPCache[char]
             local isEnemy = IsEnemyEntity(entity)
             local shouldDraw = (VisualsConfig.PlayerESP) or (VisualsConfig.EnemyESP and isEnemy)
-
             local primaryPart = char:FindFirstChild("HumanoidRootPart") or char:FindFirstChild("Torso") or char:FindFirstChild("UpperTorso") or char:FindFirstChild("Head") or char.PrimaryPart or char:FindFirstChildOfClass("BasePart")
             local hum = char:FindFirstChildOfClass("Humanoid")
             local active = shouldDraw and primaryPart and (not hum or hum.Health > 0)
@@ -1165,7 +1091,6 @@ RunService.RenderStepped:Connect(function()
                 if onScreen then
                     local distance = (Camera.CFrame.Position - primaryPart.Position).Magnitude
                     local currentESPColor = VisualsConfig.ESPColor
-
                     local head = char:FindFirstChild("Head")
                     local upperTorso = char:FindFirstChild("UpperTorso") or char:FindFirstChild("Torso") or primaryPart
                     local lowerTorso = char:FindFirstChild("LowerTorso") or upperTorso
@@ -1222,9 +1147,7 @@ RunService.RenderStepped:Connect(function()
                     esp.Line.Visible = true
 
                     local entityName = char.Name
-                    if typeof(entity) == "Instance" and entity:IsA("Player") then
-                        entityName = entity.Name
-                    end
+                    if typeof(entity) == "Instance" and entity:IsA("Player") then entityName = entity.Name end
                     esp.Name.Text = entityName
                     esp.Name.Position = Vector2.new(vector.X, vector.Y - 38)
                     esp.Name.Color = currentESPColor
@@ -1240,7 +1163,6 @@ RunService.RenderStepped:Connect(function()
                     for _, p in ipairs(Players:GetPlayers()) do
                         if p.Character == char then isPlayer = true break end
                     end
-
                     if isPlayer then
                         if not EntityGenderCache[char] then
                             EntityGenderCache[char] = (math.random(1, 2) == 1) and "[Cowo]" or "[Cewe]"
@@ -1249,7 +1171,6 @@ RunService.RenderStepped:Connect(function()
                     else
                         genderText = "[Gay]"
                     end
-
                     esp.Gender.Text = genderText
                     esp.Gender.Position = Vector2.new(vector.X, vector.Y + 36)
                     esp.Gender.Color = currentESPColor
@@ -1257,10 +1178,7 @@ RunService.RenderStepped:Connect(function()
 
                     local statusText = "[Bot]"
                     for _, p in ipairs(Players:GetPlayers()) do
-                        if p.Character == char then
-                            statusText = "[Player]"
-                            break
-                        end
+                        if p.Character == char then statusText = "[Player]" break end
                     end
                     esp.Status.Text = statusText
                     esp.Status.Position = Vector2.new(vector.X, vector.Y + 50)
@@ -1272,11 +1190,9 @@ RunService.RenderStepped:Connect(function()
                         local barHeight = 40
                         local barX = vector.X + 24
                         local barY = vector.Y - 20
-
                         esp.HealthBarBg.From = Vector2.new(barX, barY)
                         esp.HealthBarBg.To = Vector2.new(barX, barY + barHeight)
                         esp.HealthBarBg.Visible = true
-
                         local currentHeight = barHeight * healthPct
                         esp.HealthBar.From = Vector2.new(barX, barY + (barHeight - currentHeight))
                         esp.HealthBar.To = Vector2.new(barX, barY + barHeight)
@@ -1311,9 +1227,7 @@ RunService.Stepped:Connect(function()
 
         if WorldConfig.WallHack then
             for _, part in pairs(LocalPlayer.Character:GetDescendants()) do
-                if part:IsA("BasePart") then
-                    part.CanCollide = false
-                end
+                if part:IsA("BasePart") then part.CanCollide = false end
             end
         end
 
@@ -1321,101 +1235,32 @@ RunService.Stepped:Connect(function()
             if UserInputService:IsKeyDown(Enum.KeyCode.Space) or hum.Jump then
                 hrp.Velocity = Vector3.new(hrp.Velocity.X, 50, hrp.Velocity.Z)
             else
-                if hrp.Velocity.Y < -5 then
-                    hrp.Velocity = Vector3.new(hrp.Velocity.X, -5, hrp.Velocity.Z)
-                end
+                if hrp.Velocity.Y < -5 then hrp.Velocity = Vector3.new(hrp.Velocity.X, -5, hrp.Velocity.Z) end
             end
         end
     end
 end)
 
-local function ScanValueMods(tool)
-    pcall(function()
-        local function SetSafe(attr, value)
-            if tool:GetAttribute(attr) ~= nil then tool:SetAttribute(attr, value) end
-        end
-        SetSafe("TotalAmmo", 999999)
-        SetSafe("NewMax", 999999)
-        SetSafe("magazineSize", 999999)
-        SetSafe("spread", 0)
-        SetSafe("recoilMax", 0)
-        SetSafe("reloadTime", 0.05)
-        SetSafe("rateOfFire", HackConfig.CustomFireRate)
-        for _, obj in pairs(tool:GetDescendants()) do
-            if obj:IsA("IntValue") or obj:IsA("NumberValue") then
-                local name = obj.Name:lower()
-                if name:find("ammo") or name:find("clip") or name:find("mag") then
-                    obj.Value = 999999
-                elseif name:find("firerate") or name:find("rpm") then
-                    obj.Value = HackConfig.CustomFireRate
-                end
-            end
-        end
-    end)
-end
-
-RunService.RenderStepped:Connect(function()
-    if HackConfig.GunModsAktif then
-        if LocalPlayer.Character then
-            for _, t in pairs(LocalPlayer.Character:GetChildren()) do
-                if t:IsA("Tool") or t:IsA("Model") then ScanValueMods(t) end
-            end
-        end
-        for _, v in pairs(Camera:GetChildren()) do
-            if v:IsA("Model") then ScanValueMods(v) end
-       end
-    end
-end)
-
+-- Modifikasi Memori Senjata (Rapid Fire & True No Reload / Infinite Ammo Instant)
 task.spawn(function()
-    while task.wait(1) do
+    while task.wait(0.5) do
         if HackConfig.GunModsAktif and getgc then
             pcall(function()
                 for _, v in pairs(getgc(true)) do
                     if type(v) == "table" then
-                        if rawget(v, "Ammo") or rawget(v, "MaxAmmo") or rawget(v, "RPM") or rawget(v, "FireRate") then
-                            if rawget(v, "Ammo") then v.Ammo = 999999 end
-                            if rawget(v, "MaxAmmo") then v.MaxAmmo = 999999 end
+                        pcall(function()
+                            -- Ubah nilai kecepatan tembak (Rapid Fire)
                             if rawget(v, "RPM") then v.RPM = HackConfig.CustomFireRate end
                             if rawget(v, "FireRate") then v.FireRate = HackConfig.CustomFireRate end
-                        end
-                    end
-                end
-            end)
-        end
-    end
-end)
+                            if rawget(v, "FireSpeedRate") then v.FireSpeedRate = 10 end
+                            if rawget(v, "AtkSpeed") then v.AtkSpeed = 10 end
 
--- Loop Background untuk Rapid Fire & No Reload
-task.spawn(function()
-    while task.wait(0.5) do
-        if HackConfig.RapidFireAktif and getgc then
-            pcall(function()
-                for _, v in pairs(getgc(true)) do
-                    if type(v) == "table" then
-                        pcall(function()
-                            if rawget(v, "AtkSpeed") or rawget(v, "FireSpeedRate") or rawget(v, "RPM") then
-                                if rawget(v, "AtkSpeed") then v.AtkSpeed = 999 end
-                                if rawget(v, "FireSpeedRate") then v.FireSpeedRate = 999 end
-                                if rawget(v, "RPM") then v.RPM = 2500 end
-                            end
-                        end)
-                    end
-                end
-            end)
-        end
-        if HackConfig.NoReloadAktif and getgc then
-            pcall(function()
-                for _, v in pairs(getgc(true)) do
-                    if type(v) == "table" then
-                        pcall(function()
-                            if rawget(v, "ConsumeAmmo") or rawget(v, "IsConsumeAmmo") or rawget(v, "__NO_AMMO_CD__") then
-                                if rawget(v, "IsConsumeAmmo") then v.IsConsumeAmmo = false end
-                                if rawget(v, "ConsumeAmmo") then 
-                                    v.ConsumeAmmo = function() return end
-                                end
-                                if rawget(v, "__NO_AMMO_CD__") then v.__NO_AMMO_CD__ = true end
-                            end
+                            -- Paksa peluru penuh dan hentikan konsumsi/reload (True No Reload)
+                            if rawget(v, "Ammo") then v.Ammo = 999999 end
+                            if rawget(v, "MaxAmmo") then v.MaxAmmo = 999999 end
+                            if rawget(v, "currentAmmo") then v.currentAmmo = 999999 end
+                            if rawget(v, "IsConsumeAmmo") then v.IsConsumeAmmo = false end
+                            if rawget(v, "__NO_AMMO_CD__") then v.__NO_AMMO_CD__ = true end
                         end)
                     end
                 end
