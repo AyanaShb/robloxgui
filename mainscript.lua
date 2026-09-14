@@ -1,27 +1,43 @@
-local fileName = "HookLog_" .. math.random(1000, 9999) .. ".txt"
-local logData = "--- LOG PEMANGGILAN REMOTE/FIRESERVER ---\n\n"
+local fileName = "TableLog_" .. math.random(1000, 9999) .. ".txt"
+writefile(fileName, "--- DETAIL ISI TABEL FIRESERVER ---\n\n")
 
--- Buat file awal agar siap diisi
-writefile(fileName, logData)
+-- Fungsi pembantu untuk membaca isi tabel secara mendalam (recursive)
+local function dumpTable(tbl, indent)
+    indent = indent or ""
+    local result = ""
+    for k, v in pairs(tbl) do
+        if type(v) == "table" then
+            result = result .. indent .. tostring(k) .. " = Table: \n"
+            result = result .. dumpTable(v, indent .. "  ")
+        else
+            result = result .. indent .. tostring(k) .. " = " .. tostring(v) .. " (" .. type(v) .. ")\n"
+        end
+    end
+    return result
+end
 
 local oldNamecall
 oldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
     local method = getnamecallmethod()
     local args = {...}
     
-    if method == "FireServer" then
+    if method == "FireServer" and self.Name == "Main" then
         local textEntry = string.format("[FireServer] Remote: %s\n", tostring(self.Name))
         
         for i, v in ipairs(args) do
-            textEntry = textEntry .. string.format("   Arg %d: %s (%s)\n", i, tostring(v), typeof(v))
+            if type(v) == "table" then
+                textEntry = textEntry .. string.format("   Arg %d (Table):\n", i)
+                textEntry = textEntry .. dumpTable(v, "      ")
+            else
+                textEntry = textEntry .. string.format("   Arg %d: %s (%s)\n", i, tostring(v), type(v))
+            end
         end
-        textEntry = textEntry .. "----------------------------------------\n"
+        textEntry = textEntry + "----------------------------------------\n"
         
-        -- Tambahkan data secara otomatis ke file txt di folder executor
         appendfile(fileName, textEntry)
     end
     
     return oldNamecall(self, ...)
 end)
 
-print("Berhasil! File log tersimpan dengan nama: " .. fileName)
+print("Logger tabel aktif! Cek file: " .. fileName)
