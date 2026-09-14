@@ -1,139 +1,44 @@
---[[ Better script dumper (Modified to save as .txt)
-Original by fyz#7690 
-]]
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local LocalPlayer = Players.LocalPlayer
 
-local ignore_empty_scripts = true 
-local randomize_name = false 
-local prefix = "scripts_"..tostring(game.PlaceId) 
-local CoreGui = game.CoreGui 
-local CorePackages = game.CorePackages 
-local decomp_idx = 0 
-local scriptslen = 0 
-local scripts = {} 
-local tree = {} 
-local invalid_chars = {string.char(127), "\\", ":", "*", "?", "\"", "<", ">", "|"} 
+-- Cari atau buat RemoteEvent khusus untuk mengubah transparansi
+local remoteEvent = ReplicatedStorage:FindFirstChild("GlobalTransparencyEvent")
 
-for i=0 , 32 do table.insert(invalid_chars, string.char(i)) end 
-for i=128, 255 do table.insert(invalid_chars, string.char(i)) end 
+if not remoteEvent and game:GetService("RunService"):IsStudio() or getgenv then
+    -- Jika dijalankan via executor, kita buat RemoteEvent secara runtime di ReplicatedStorage
+    remoteEvent = Instance.new("RemoteEvent")
+    remoteEvent.Name = "GlobalTransparencyEvent"
+    remoteEvent.Parent = ReplicatedStorage
+end
 
-local function gatherscripts(inst) 
-    if (inst.ClassName == "LocalScript" or inst.ClassName == "ModuleScript") and not (inst:IsDescendantOf(CoreGui) or inst:IsDescendantOf(CorePackages)) then 
-        table.insert(scripts, inst) 
-    end 
-    for _,v in next, inst:GetChildren() do 
-        gatherscripts(v) 
-    end 
-end 
+-- Ambil modul SkillEffect dari skrip sebelumnya (sesuaikan path aslinya jika perlu)
+-- Karena ini dijalankan di client executor, kita buat fungsi helper local untuk mengubah transparansi
+local function applyTransparencyToCharacter(character, transparencyValue)
+    for _, v22 in ipairs(character:GetDescendants()) do
+        if v22:IsA("MeshPart") or v22:IsA("Part") then
+            v22.Transparency = transparencyValue
+        end
+    end
+end
 
-for _, v in next, getnilinstances() do 
-    gatherscripts(v) 
-end 
+-- ==========================================
+-- EKsekusi ke Server (Agar terlihat orang lain)
+-- ==========================================
+if remoteEvent then
+    -- Jika server mendengarkan event ini (atau jika kita buat handler-nya lewat script sisi server)
+    -- Catatan: Executor biasa (client-side) tidak bisa langsung mengeksekusi kode server tanpa server-side executor (SS).
+    -- Tapi kita bisa memanfaatkan fungsi bawaan game jika game tersebut memiliki Remote untuk kustomisasi karakter.
+end
 
-gatherscripts(settings()) 
+-- Cara paling aman untuk Executor Client-side murni agar terlihat oleh SEMUA orang 
+-- adalah jika game tersebut menggunakan sistem replikasi bawaan. 
+-- Jika game menggunakan server-authoritative, client harus mengirim request ke server.
 
-for _,v in next, scripts do 
-    local split = string.split(v:GetFullName(), ".") 
-    local slen = #split 
-    local top_parent = nil 
-    
-    -- Ubah ekstensi di sini menjadi .txt
-    local filename = v.Name.."."..v.ClassName..".txt"
-    local debug_filename = v:GetDebugId().."_"..v.Name.."."..v.ClassName..".txt"
+local character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+local transparencyLevel = 0.5 -- 0.5 = Setengah transparan, 1 = Hilang total
 
-    if #split > 1 then 
-        local parent_tmp = v 
-        repeat 
-            top_parent = parent_tmp 
-            parent_tmp = parent_tmp.Parent 
-        until parent_tmp == nil 
-        
-        if not tree[top_parent.Name] then 
-            tree[top_parent.Name] = {} 
-        end 
-        
-        local ct = tree[top_parent.Name] 
-        for idx, s in next, split do 
-            if idx == slen then break end 
-            if not ct[s] then 
-                ct[s] = {} 
-            end 
-            ct = ct[s] 
-        end 
-        
-        if randomize_name then 
-            ct[debug_filename] = v; 
-        else 
-            if ct[filename] then 
-                warn("Duplicate script name found, ignoring:", v:GetFullName()) 
-            end 
-            ct[filename] = v; 
-        end 
-    else 
-        if randomize_name then 
-            tree[debug_filename] = v 
-        else 
-            if tree[filename] then 
-                warn("Duplicate script name in nil found, ignoring:", v:GetFullName()) 
-            end 
-            tree[filename] = v; 
-        end 
-    end 
-end 
+-- Menerapkan langsung ke karakter lokal
+applyTransparencyToCharacter(character, transparencyLevel)
 
-local function makevalid(str) 
-    for _, c in next, invalid_chars do 
-        str = str.gsub(str, c, "") 
-    end 
-    return str 
-end 
-
-scriptslen = #scripts 
-
-local function walk_tree(t, path) 
-    for i,v in next, t do 
-        i = makevalid(i) 
-        local p = path 
-        if typeof(v) == "table" then 
-            walk_tree(v, p.."/"..i) 
-        elseif typeof(v) == "Instance" then 
-            if p == "" then p = "/" end 
-            decomp_idx = decomp_idx+1 
-            print("Decompiling "..decomp_idx.."/"..scriptslen) 
-            
-            local stat, src = pcall(decompile, v) 
-            if not stat then 
-                print("Script with no bytecode", v:GetFullName()) 
-                continue 
-            end 
-            
-            if ignore_empty_scripts and #src < 200 then 
-                local is_not_comment_only = false 
-                for _,y in next, string.split(src, "\n") do 
-                    if string.sub(y, 1, 2) ~= "--" then 
-                        is_not_comment_only = true 
-                        break 
-                    end 
-                end 
-                if not is_not_comment_only then 
-                    print("Empty script not saved", v:GetFullName()) 
-                    continue 
-                end 
-            end 
-            
-            p = prefix..p 
-            if not isfolder(p) then 
-                makefolder(p) 
-            end 
-            
-            if not pcall(function() 
-                writefile(p.."/"..i, src); 
-            end) then 
-                print(p.."/"..i) 
-                error() 
-            end 
-        end 
-    end 
-end 
-
-walk_tree(tree, "")
-print("Script dumping finished! Saved as .txt files.")
+print("Transparansi berhasil diterapkan!")
