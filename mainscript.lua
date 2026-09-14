@@ -1,34 +1,29 @@
--- Universal Rapid Fire Script for Roblox Android
+-- Roblox Android RemoteEvent Rapid Fire Script
 local player = game.Players.LocalPlayer
-local userInputService = game:GetService("UserInputService")
 
--- Konfigurasi Pengaturan
-getgenv().Config = {
-    RapidFireEnabled = true,
-    FireDelay = 0.05 -- Jeda waktu antar tembakan (semakin kecil semakin cepat)
-}
+getgenv().RapidFire = true
+getgenv().Delay = 0.05 -- Sesuaikan kecepatan (jangan terlalu kecil agar tidak terdeteksi)
 
-local function getEquippedWeapon()
+local function getWeaponRemote()
     if player.Character then
-        for _, tool in ipairs(player.Character:GetChildren()) do
-            if tool:IsA("Tool") then
-                return tool
+        for _, v in ipairs(player.Character:GetDescendants()) do
+            -- Mencari RemoteEvent di dalam senjata yang sedang dipegang
+            if v:IsA("RemoteEvent") and (v.Name:lower():find("fire") or v.Name:lower():find("shoot") or v.Name:lower():find("gun")) then
+                return v
             end
         end
     end
     return nil
 end
 
--- Loop utama untuk mengeksekusi rapid fire saat tool aktif
 task.spawn(function()
-    while true do
-        task.wait(getgenv().Config.FireDelay)
-        if getgenv().Config.RapidFireEnabled then
-            local weapon = getEquippedWeapon()
-            if weapon then
+    while task.wait(getgenv().Delay) do
+        if getgenv().RapidFire then
+            local remote = getWeaponRemote()
+            if remote then
                 pcall(function()
-                    -- Memaksa tool untuk aktif secara terus-menerus
-                    weapon:Activate()
+                    -- Parameter tembakan biasanya membutuhkan posisi atau arah (bisa disesuaikan dengan game)
+                    remote:FireServer()
                 end)
             end
         end
