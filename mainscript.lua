@@ -1,23 +1,20 @@
--- Script Rapid Fire berdasarkan key yang ditemukan di dump (AtkSpeed / FireSpeedRate)
-local function setRapidFire()
-    gg.clearResults()
-    gg.setRanges(gg.REGION_ANONYMOUS | gg.REGION_CODE_APP)
-    
-    -- Cari nilai terkait kecepatan tembak (AtkSpeed atau FireSpeedRate)
-    -- Ubah tipe data sesuai dengan struktur game (biasanya Float)
-    gg.searchNumber("1.0", gg.TYPE_FLOAT)
-    gg.refineNumber("1.0", gg.TYPE_FLOAT)
-    
-    local results = gg.getResults(100)
-    print("Ditemukan " .. #results .. " potensi offset AtkSpeed / FireSpeedRate.")
-    
-    -- Modifikasi nilai untuk mempercepat rate of fire (contoh ubah ke 2.0 atau lebih tinggi)
-    for i, v in ipairs(results) do
-        v.value = "2.0"
-        v.freeze = true
+-- Contoh format script Luau untuk eksekutor seperti Delta (berbasis manipulasi instance game)
+local player = game.Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+
+-- Fungsi untuk mencari tool/senjata yang sedang dipegang dan memodifikasi properti rate/amunisi
+local function applyRapidFire()
+    local tool = character:FindFirstChildOfClass("Tool")
+    if tool then
+        -- Mencari nilai konfigurasi senjata di dalam objek (misal: FireRate / Cooldown)
+        for _, v in ipairs(tool:GetDescendants()) do
+            if v.Name == "FireRate" or v.Name == "Cooldown" or v.Name == "AtkSpeed" then
+                if v:IsA("NumberValue") or v:IsA("IntValue") then
+                    v.Value = 0.01 -- Mempercepat tembakan
+                end
+            end
+        end
     end
-    gg.setValues(results)
-    print("Fitur Rapid Fire aktif dan nilai telah dibekukan.")
 end
 
-setRapidFire()
+applyRapidFire()
