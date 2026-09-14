@@ -1,51 +1,59 @@
-local fileName = "weapon_dump.txt"
-writefile(fileName, "=== WEAPON CONFIG DUMP START ===\n\n")
+-- Script Map Dumper untuk Delta Executor
+local function dumpMapFeatures()
+    local results = {}
+    local counts = {}
 
-local function appendLog(text)
-    appendfile(fileName, text .. "\n")
-end
-
--- Fokuskan pencarian ke area penyimpanan script/modul game
-local targets = {
-    {name = "ReplicatedStorage", service = game:GetService("ReplicatedStorage")},
-    {name = "ReplicatedFirst", service = game:GetService("ReplicatedFirst")},
-    {name = "Players (LocalPlayer Tools)", service = game:GetService("Players").LocalPlayer}
-}
-
-local function scanModules(parent, indent)
-    indent = indent or ""
-    local success, children = pcall(function() return parent:GetChildren() end)
-    if not success then return end
-    
-    for _, child in ipairs(children) do
-        -- Cari yang berpotensi menyimpan data senjata (ModuleScript, LocalScript, RemoteEvent, Folder senjata)
-        local className = child.ClassName
-        if className == "ModuleScript" or className == "LocalScript" or className == "RemoteEvent" or className == "Folder" then
-            local line = string.format("%s- [%s] %s", indent, className, child.Name)
-            appendLog(line)
+    -- Fungsi rekursif untuk membaca isi map
+    local function scan(parent)
+        for _, child in ipairs(parent:GetChildren()) do
+            local className = child.ClassName
             
-            -- Jika namanya mencurigakan (mengandung kata weapon, gun, ammo, combat, config), beri tanda khusus
-            local lowerName = child.Name:lower()
-            if lowerName:find("weapon") or lowerName:find("gun") or lowerName:find("ammo") or lowerName:find("config") or lowerName:find("combat") or lowerName:find("shoot") then
-                appendLog(indent .. "   ^ [TARGET POTENSIAL]")
+            -- Hitung jumlah dan simpan nama objek unik
+            counts[className] = (counts[className] or 0) + 1
+            
+            if not results[className] then
+                results[className] = {}
+            end
+            
+            -- Batasi maksimal 50 sampel nama objek per kategori agar file tidak terlalu besar
+            if #results[className] < 50 then
+                table.insert(results[className], child.Name)
+            end
+            
+            -- Lanjut scan anak dari objek ini (jika ada)
+            if #child:GetChildren() > 0 then
+                scan(child)
             end
         end
-        
-        if #indent < 15 then
-            scanModules(child, indent .. "  ")
-        end
+    end
+
+    -- Mulai scan dari Workspace
+    scan(workspace)
+
+    -- Format hasil ke dalam teks
+    local output = "=== LAPORAN FITUR & OBJEK MAP ROBLOX ===\n\n"
+    
+    output ..= "REKAPITULASI JUMLAH:\n"
+    for class, count in pairs(counts) do
+        output ..= string.format("- %s: %d objek\n", class, count)
+    end
+    
+    output ..= "\n\nDETAIL CONTOH OBJEK:\n"
+    for class, names in pairs(results) do
+        output ..= string.format("\n[%s]\n", class)
+        output ..= table.concat(names, ", ") .. "\n"
+    end
+
+    -- Simpan ke file nono.txt menggunakan fungsi executor (Delta support writefile)
+    local success, err = pcall(function()
+        writefile("nono.txt", output)
+    end)
+
+    if success then
+        print("Berhasil! Cek file nono.txt di folder workspace executor kamu.")
+    else
+        warn("Gagal menyimpan file: " .. tostring(err))
     end
 end
 
-for _, target in ipairs(targets) do
-    appendLog("========================================")
-    appendLog("SERVICE: " .. target.name)
-    appendLog("========================================")
-    pcall(function()
-        scanModules(target.service, "")
-    end)
-    appendLog("\n")
-end
-
-appendfile(fileName, "=== DUMP SELESAI ===")
-print("Selesai! Cek file " .. fileName .. " di folder workspace executor.")
+dumpMapFeatures()
