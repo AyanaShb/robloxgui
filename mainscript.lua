@@ -1,31 +1,23 @@
--- Script untuk Membuat Karakter Kebal Permanen (God Mode Client-Side)
-local Players = game:GetService("Players")
-local LocalPlayer = Players.LocalPlayer
+-- Script No Recoil (Menghilangkan Sentakan dan Getaran Senjata)
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
--- Fungsi untuk mengunci atau mencegah karakter menerima damage/status mati lokal
-local function enableGodMode()
-	local character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
-	local humanoid = character:FindFirstChildOfClass("Humanoid")
-	
-	if humanoid then
-		-- Cara 1: Mengunci Health agar tidak bisa berkurang lewat perubahan manual
-		humanoid.HealthChanged:Connect(function(health)
-			if health < humanoid.MaxHealth then
-				humanoid.Health = humanoid.MaxHealth
-			end
-		end)
-		
-		-- Memastikan HP selalu penuh
-		humanoid.Health = humanoid.MaxHealth
-		print("God Mode (Kebal Permanen) berhasil diaktifkan untuk: " .. LocalPlayer.Name)
-	end
+-- Mencari modul yang mengatur recoil berdasarkan isinya
+for _, v in ipairs(ReplicatedStorage:GetDescendants()) do
+    if v:IsA("ModuleScript") and string.match(v.Name:lower(), "recoil") or string.match(v.Name:lower(), "camera") then
+        local success, data = pcall(require, v)
+        if success and type(data) == "table" and data.isApplyRecoil ~= nil then
+            -- Ubah parameter recoil menjadi 0 atau nonaktif
+            data.isApplyRecoil = false
+            data.AimMultiplier = 0
+            data.Backward_KickAmount = 0
+            data.Pitch_Kick_Amount_Min_Deg = 0
+            data.Pitch_Kick_Amount_Max_Deg = 0
+            data.Yaw_Kick_Amount_Min_Deg = 0
+            data.Yaw_Kick_Amount_Max_Deg = 0
+            data.HipLift_Kick_Amount_Min_Deg = 0
+            data.HipLift_Kick_Amount_Max_Deg = 0
+            
+            print("Berhasil menonaktifkan recoil pada modul: " .. v.Name)
+        end
+    end
 end
-
--- Jalankan saat pertama kali dieksekusi
-enableGodMode()
-
--- Otomatis pasang ulang jika karakter respawn (mati lalu hidup lagi)
-LocalPlayer.CharacterAdded:Connect(function(newCharacter)
-	task.wait(1) -- Tunggu karakter selesai dimuat
-	enableGodMode()
-end)
