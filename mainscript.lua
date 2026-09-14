@@ -158,9 +158,9 @@ local OriginalLighting = {
 }
 
 local VisualsConfig = {
-    EnemyESP = false,
     PlayerESP = false,
-    UniversalColor = Color3.fromRGB(0, 240, 255)
+    EnemyESP = false,
+    UniversalESPColor = Color3.fromRGB(0, 240, 255)
 }
 
 local WorldConfig = {
@@ -581,14 +581,9 @@ local function GetEntityModel(target)
     return nil
 end
 
-local function IsPlayerEntity(entity)
-    if typeof(entity) == "Instance" and entity:IsA("Player") then
-        return true
-    end
-    for _, p in ipairs(Players:GetPlayers()) do
-        if p.Character == GetEntityModel(entity) then
-            return true
-        end
+local function IsPlayerEntity(target)
+    if typeof(target) == "Instance" and target:IsA("Player") then
+        return target ~= LocalPlayer
     end
     return false
 end
@@ -766,6 +761,7 @@ local function CreateEntityESP(key)
     }
 
     espData.Line.Thickness = 1.5
+    espData.Line.Color = VisualsConfig.UniversalESPColor
     espData.Line.Transparency = 0.7
     espData.Line.Visible = false
 
@@ -782,11 +778,13 @@ local function CreateEntityESP(key)
     espData.HeadCircle.Thickness = 1.5
     espData.HeadCircle.NumSides = 12
     espData.HeadCircle.Filled = false
+    espData.HeadCircle.Color = VisualsConfig.UniversalESPColor
     espData.HeadCircle.Transparency = 0.8
     espData.HeadCircle.Visible = false
 
     for _, bone in pairs(espData.Skeleton) do
         bone.Thickness = 1.5
+        bone.Color = VisualsConfig.UniversalESPColor
         bone.Transparency = 0.8
         bone.Visible = false
     end
@@ -803,14 +801,6 @@ local function CreateEntityESP(key)
     ESPCache[key] = espData
 end
 
-CreateToggle(TabContentFrames["Visual"], "Enemy ESP", false, function(v) 
-    VisualsConfig.EnemyESP = v 
-    if not v then
-        for _, esp in pairs(ESPCache) do
-            HideESPObject(esp)
-        end
-    end
-end)
 CreateToggle(TabContentFrames["Visual"], "Player ESP", false, function(v) 
     VisualsConfig.PlayerESP = v 
     if not v then
@@ -819,15 +809,21 @@ CreateToggle(TabContentFrames["Visual"], "Player ESP", false, function(v)
         end
     end
 end)
-CreateColorPicker(TabContentFrames["Visual"], "ESP Color (Universal)", Color3.fromRGB(0, 240, 255), function(c) 
-    VisualsConfig.UniversalColor = c 
+
+CreateToggle(TabContentFrames["Visual"], "Enemy ESP", false, function(v) 
+    VisualsConfig.EnemyESP = v 
+    if not v then
+        for _, esp in pairs(ESPCache) do
+            HideESPObject(esp)
+        end
+    end
+end)
+
+CreateColorPicker(TabContentFrames["Visual"], "ESP Color", Color3.fromRGB(0, 240, 255), function(c) 
+    VisualsConfig.UniversalESPColor = c 
     for _, esp in pairs(ESPCache) do 
         if esp.HeadCircle then esp.HeadCircle.Color = c end
         if esp.Line then esp.Line.Color = c end
-        if esp.Name then esp.Name.Color = c end
-        if esp.Distance then esp.Distance.Color = c end
-        if esp.Gender then esp.Gender.Color = c end
-        if esp.Status then esp.Status.Color = c end
         if esp.Skeleton then
             for _, bone in pairs(esp.Skeleton) do bone.Color = c end
         end
@@ -1142,137 +1138,153 @@ RunService.RenderStepped:Connect(function()
     for _, entity in ipairs(activeEntities) do
         local char = GetEntityModel(entity)
         if IsValidCharacter(char) then
-            if not ESPCache[char] then
-                CreateEntityESP(char)
+            local isPlayer = IsPlayerEntity(entity)
+            local isEnemy = IsEnemyEntity(entity)
+
+            local shouldShow = false
+            if VisualsConfig.PlayerESP and isPlayer then
+                shouldShow = true
+            end
+            if VisualsConfig.EnemyESP and isEnemy then
+                shouldShow = true
             end
 
-            local esp = ESPCache[char]
-            local isPlayer = IsPlayerEntity(entity)
-            local shouldShow = (isPlayer and VisualsConfig.PlayerESP) or (not isPlayer and VisualsConfig.EnemyESP)
-            local primaryPart = char:FindFirstChild("HumanoidRootPart") or char:FindFirstChild("Torso") or char:FindFirstChild("UpperTorso") or char:FindFirstChild("Head") or char.PrimaryPart or char:FindFirstChildOfClass("BasePart")
-            local hum = char:FindFirstChildOfClass("Humanoid")
-            local active = shouldShow and primaryPart and (not hum or hum.Health > 0)
+            if shouldShow then
+                if not ESPCache[char] then
+                    CreateEntityESP(char)
+                end
 
-            if active then
-                local vector, onScreen = Camera:WorldToViewportPoint(primaryPart.Position)
-                if onScreen then
-                    local distance = (Camera.CFrame.Position - primaryPart.Position).Magnitude
-                    local currentUniversalColor = VisualsConfig.UniversalColor
+                local esp = ESPCache[char]
+                local primaryPart = char:FindFirstChild("HumanoidRootPart") or char:FindFirstChild("Torso") or char:FindFirstChild("UpperTorso") or char:FindFirstChild("Head") or char.PrimaryPart or char:FindFirstChildOfClass("BasePart")
+                local hum = char:FindFirstChildOfClass("Humanoid")
+                local active = primaryPart and (not hum or hum.Health > 0)
 
-                    local head = char:FindFirstChild("Head")
-                    local upperTorso = char:FindFirstChild("UpperTorso") or char:FindFirstChild("Torso") or primaryPart
-                    local lowerTorso = char:FindFirstChild("LowerTorso") or upperTorso
-                    local lArm = char:FindFirstChild("LeftUpperArm") or char:FindFirstChild("Left Arm") or char:FindFirstChild("LeftHand") or primaryPart
-                    local rArm = char:FindFirstChild("RightUpperArm") or char:FindFirstChild("Right Arm") or char:FindFirstChild("RightHand") or primaryPart
-                    local lLeg = char:FindFirstChild("LeftUpperLeg") or char:FindFirstChild("Left Leg") or char:FindFirstChild("LeftFoot") or primaryPart
-                    local rLeg = char:FindFirstChild("RightUpperLeg") or char:FindFirstChild("Right Leg") or char:FindFirstChild("RightFoot") or primaryPart
+                if active then
+                    local vector, onScreen = Camera:WorldToViewportPoint(primaryPart.Position)
+                    if onScreen then
+                        local distance = (Camera.CFrame.Position - primaryPart.Position).Magnitude
 
-                    local function getPos(part)
-                        if not part then return nil end
-                        local p, visible = Camera:WorldToViewportPoint(part.Position)
-                        if visible then return Vector2.new(p.X, p.Y) end
-                        return nil
-                    end
+                        local head = char:FindFirstChild("Head")
+                        local upperTorso = char:FindFirstChild("UpperTorso") or char:FindFirstChild("Torso") or primaryPart
+                        local lowerTorso = char:FindFirstChild("LowerTorso") or upperTorso
+                        local lArm = char:FindFirstChild("LeftUpperArm") or char:FindFirstChild("Left Arm") or char:FindFirstChild("LeftHand") or primaryPart
+                        local rArm = char:FindFirstChild("RightUpperArm") or char:FindFirstChild("Right Arm") or char:FindFirstChild("RightHand") or primaryPart
+                        local lLeg = char:FindFirstChild("LeftUpperLeg") or char:FindFirstChild("Left Leg") or char:FindFirstChild("LeftFoot") or primaryPart
+                        local rLeg = char:FindFirstChild("RightUpperLeg") or char:FindFirstChild("Right Leg") or char:FindFirstChild("RightFoot") or primaryPart
 
-                    local hPos = getPos(head)
-                    local utPos = getPos(upperTorso)
-                    local ltPos = getPos(lowerTorso)
-                    local laPos = getPos(lArm)
-                    local raPos = getPos(rArm)
-                    local llPos = getPos(lLeg)
-                    local rlPos = getPos(rLeg)
+                        local function getPos(part)
+                            if not part then return nil end
+                            local p, visible = Camera:WorldToViewportPoint(part.Position)
+                            if visible then return Vector2.new(p.X, p.Y) end
+                            return nil
+                        end
 
-                    local function drawBone(boneObj, p1, p2)
-                        if p1 and p2 then
-                            boneObj.From = p1
-                            boneObj.To = p2
-                            boneObj.Color = currentUniversalColor
-                            boneObj.Visible = true
+                        local hPos = getPos(head)
+                        local utPos = getPos(upperTorso)
+                        local ltPos = getPos(lowerTorso)
+                        local laPos = getPos(lArm)
+                        local raPos = getPos(rArm)
+                        local llPos = getPos(lLeg)
+                        local rlPos = getPos(rLeg)
+
+                        local function drawBone(boneObj, p1, p2)
+                            if p1 and p2 then
+                                boneObj.From = p1
+                                boneObj.To = p2
+                                boneObj.Visible = true
+                            else
+                                boneObj.Visible = false
+                            end
+                        end
+
+                        if hPos then
+                            esp.HeadCircle.Position = hPos
+                            local headSize = head and (Camera:WorldToViewportPoint((head.Position + Vector3.new(0, 1, 0))).Y - Camera:WorldToViewportPoint(head.Position).Y) or 10
+                            esp.HeadCircle.Radius = math.clamp(math.abs(headSize) * 1.2, 6, 25)
+                            esp.HeadCircle.Color = VisualsConfig.UniversalESPColor
+                            esp.HeadCircle.Visible = true
                         else
-                            boneObj.Visible = false
+                            esp.HeadCircle.Visible = false
                         end
-                    end
 
-                    if hPos then
-                        esp.HeadCircle.Position = hPos
-                        local headSize = head and (Camera:WorldToViewportPoint((head.Position + Vector3.new(0, 1, 0))).Y - Camera:WorldToViewportPoint(head.Position).Y) or 10
-                        esp.HeadCircle.Radius = math.clamp(math.abs(headSize) * 1.2, 6, 25)
-                        esp.HeadCircle.Color = currentUniversalColor
-                        esp.HeadCircle.Visible = true
-                    else
-                        esp.HeadCircle.Visible = false
-                    end
+                        drawBone(esp.Skeleton.Spine, hPos or utPos, utPos)
+                        drawBone(esp.Skeleton.LeftArm, utPos, laPos)
+                        drawBone(esp.Skeleton.RightArm, utPos, raPos)
+                        drawBone(esp.Skeleton.LeftLeg, ltPos, llPos)
+                        drawBone(esp.Skeleton.RightLeg, ltPos, rlPos)
 
-                    drawBone(esp.Skeleton.Spine, hPos or utPos, utPos)
-                    drawBone(esp.Skeleton.LeftArm, utPos, laPos)
-                    drawBone(esp.Skeleton.RightArm, utPos, raPos)
-                    drawBone(esp.Skeleton.LeftLeg, ltPos, llPos)
-                    drawBone(esp.Skeleton.RightLeg, ltPos, rlPos)
+                        esp.Line.From = Vector2.new(Camera.ViewportSize.X / 2, 0)
+                        esp.Line.To = Vector2.new(vector.X, vector.Y)
+                        esp.Line.Color = VisualsConfig.UniversalESPColor
+                        esp.Line.Visible = true
 
-                    esp.Line.From = Vector2.new(Camera.ViewportSize.X / 2, 0)
-                    esp.Line.To = Vector2.new(vector.X, vector.Y)
-                    esp.Line.Color = currentUniversalColor
-                    esp.Line.Visible = true
-
-                    local entityName = char.Name
-                    if typeof(entity) == "Instance" and entity:IsA("Player") then
-                        entityName = entity.Name
-                    end
-                    esp.Name.Text = entityName
-                    esp.Name.Position = Vector2.new(vector.X, vector.Y - 38)
-                    esp.Name.Color = currentUniversalColor
-                    esp.Name.Visible = true
-
-                    esp.Distance.Text = string.format("[%dM]", math.floor(distance))
-                    esp.Distance.Position = Vector2.new(vector.X, vector.Y + 22)
-                    esp.Distance.Color = currentUniversalColor
-                    esp.Distance.Visible = true
-
-                    local genderText = "[Cowo]"
-                    if isPlayer then
-                        if not EntityGenderCache[char] then
-                            EntityGenderCache[char] = (math.random(1, 2) == 1) and "[Cowo]" or "[Cewe]"
+                        local entityName = char.Name
+                        if typeof(entity) == "Instance" and entity:IsA("Player") then
+                            entityName = entity.Name
                         end
-                        genderText = EntityGenderCache[char]
+                        esp.Name.Text = entityName
+                        esp.Name.Position = Vector2.new(vector.X, vector.Y - 38)
+                        esp.Name.Color = VisualsConfig.UniversalESPColor
+                        esp.Name.Visible = true
+
+                        esp.Distance.Text = string.format("[%dM]", math.floor(distance))
+                        esp.Distance.Position = Vector2.new(vector.X, vector.Y + 22)
+                        esp.Distance.Color = VisualsConfig.UniversalESPColor
+                        esp.Distance.Visible = true
+
+                        local genderText = "[Cowo]"
+                        if isPlayer then
+                            if not EntityGenderCache[char] then
+                                EntityGenderCache[char] = (math.random(1, 2) == 1) and "[Cowo]" or "[Cewe]"
+                            end
+                            genderText = EntityGenderCache[char]
+                        else
+                            genderText = "[Gay]"
+                        end
+
+                        esp.Gender.Text = genderText
+                        esp.Gender.Position = Vector2.new(vector.X, vector.Y + 36)
+                        esp.Gender.Color = VisualsConfig.UniversalESPColor
+                        esp.Gender.Visible = true
+
+                        local statusText = "[Bot]"
+                        if isPlayer then
+                            statusText = "[Player]"
+                        end
+                        esp.Status.Text = statusText
+                        esp.Status.Position = Vector2.new(vector.X, vector.Y + 50)
+                        esp.Status.Color = VisualsConfig.UniversalESPColor
+                        esp.Status.Visible = true
+
+                        if hum then
+                            local healthPct = math.clamp(hum.Health / hum.MaxHealth, 0, 1)
+                            local barHeight = 40
+                            local barX = vector.X + 24
+                            local barY = vector.Y - 20
+
+                            esp.HealthBarBg.From = Vector2.new(barX, barY)
+                            esp.HealthBarBg.To = Vector2.new(barX, barY + barHeight)
+                            esp.HealthBarBg.Visible = true
+
+                            local currentHeight = barHeight * healthPct
+                            esp.HealthBar.From = Vector2.new(barX, barY + (barHeight - currentHeight))
+                            esp.HealthBar.To = Vector2.new(barX, barY + barHeight)
+                            esp.HealthBar.Color = Color3.fromRGB(0, 255, 128)
+                            esp.HealthBar.Visible = true
+                        else
+                            esp.HealthBarBg.Visible = false
+                            esp.HealthBar.Visible = false
+                        end
                     else
-                        genderText = "[Gay]"
-                    end
-
-                    esp.Gender.Text = genderText
-                    esp.Gender.Position = Vector2.new(vector.X, vector.Y + 36)
-                    esp.Gender.Color = currentUniversalColor
-                    esp.Gender.Visible = true
-
-                    local statusText = isPlayer and "[Player]" or "[Bot]"
-                    esp.Status.Text = statusText
-                    esp.Status.Position = Vector2.new(vector.X, vector.Y + 50)
-                    esp.Status.Color = currentUniversalColor
-                    esp.Status.Visible = true
-
-                    if hum then
-                        local healthPct = math.clamp(hum.Health / hum.MaxHealth, 0, 1)
-                        local barHeight = 40
-                        local barX = vector.X + 24
-                        local barY = vector.Y - 20
-
-                        esp.HealthBarBg.From = Vector2.new(barX, barY)
-                        esp.HealthBarBg.To = Vector2.new(barX, barY + barHeight)
-                        esp.HealthBarBg.Visible = true
-
-                        local currentHeight = barHeight * healthPct
-                        esp.HealthBar.From = Vector2.new(barX, barY + (barHeight - currentHeight))
-                        esp.HealthBar.To = Vector2.new(barX, barY + barHeight)
-                        esp.HealthBar.Color = currentUniversalColor
-                        esp.HealthBar.Visible = true
-                    else
-                        esp.HealthBarBg.Visible = false
-                        esp.HealthBar.Visible = false
+                        HideESPObject(ESPCache[char])
                     end
                 else
-                    HideESPObject(esp)
+                    HideESPObject(ESPCache[char])
                 end
             else
-                HideESPObject(esp)
+                if ESPCache[char] then
+                    HideESPObject(ESPCache[char])
+                end
             end
         end
     end
