@@ -1,4 +1,4 @@
--- v3.9.5 -
+-- v3.9.6 -
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local Lighting = game:GetService("Lighting")
@@ -83,7 +83,7 @@ pcall(function()
 end)
 
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "D3D_Ultimate_Android_V3_9_5"
+ScreenGui.Name = "D3D_Ultimate_Android_V3_9_6"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
@@ -275,7 +275,7 @@ end)
 local TitleLabel = Instance.new("TextLabel")
 TitleLabel.Size = UDim2.new(1, 0, 0, 36)
 TitleLabel.BackgroundTransparency = 1
-TitleLabel.Text = "× D3D MENU: PLAYER & BOT v3.9.5 ×"
+TitleLabel.Text = "× D3D MENU: PLAYER & BOT v3.9.6 ×"
 TitleLabel.TextColor3 = Color3.fromRGB(240, 240, 255)
 TitleLabel.TextSize = 11.5
 TitleLabel.Font = Enum.Font.GothamBold
@@ -891,7 +891,7 @@ CreateButton(TabContentFrames["World"], "Mulai Teleport", function()
         end
         if foundRoot and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
             LocalPlayer.Character.HumanoidRootPart.CFrame = foundRoot.CFrame + Vector3.new(0, 3, 0)
-            ShowPopupNotification("Berhasil Teleport ke: " .. targetName)
+            ShowPopupNotification("Berhasil Teleport ke: " + targetName)
         else
             ShowPopupNotification("Target teleport tidak ditemukan!")
         end
@@ -920,12 +920,12 @@ CreateSlider(TabContentFrames["Skill"], "Kelengketan Aim POV (Smoothness)", 1, 1
 CreateToggle(TabContentFrames["Skill"], "Tampilkan Lingkaran FOV", false, function(v) HackConfig.ShowFOV = v end)
 CreateSlider(TabContentFrames["Skill"], "Lebar Lingkaran FOV", 10, 600, 150, function(val) HackConfig.FOVRadius = val end)
 
--- Fitur Diperbarui: Rapid Fire & Instant No Reload
+-- Fitur Senjata Baru (Direct GC Table Mutation)
 CreateToggle(TabContentFrames["Skill"], "Rapid Fire & No Reload (Extreme)", false, function(v) 
     HackConfig.GunModsAktif = v 
     ShowPopupNotification(v and "Rapid Fire & No Reload Diaktifkan" or "Dimatikan")
 end)
-CreateSlider(TabContentFrames["Skill"], "RPM Fire Rate", 400, 3000, 1500, function(val) HackConfig.CustomFireRate = val end)
+CreateSlider(TabContentFrames["Skill"], "RPM Fire Rate", 400, 5000, 2500, function(val) HackConfig.CustomFireRate = val end)
 
 CreateDropdown(TabContentFrames["Configuration"], "UI Theme Mode", {"Dark", "Light"}, "Dark", function(mode)
     AppTheme = mode
@@ -1241,26 +1241,28 @@ RunService.Stepped:Connect(function()
     end
 end)
 
--- Modifikasi Memori Senjata (Rapid Fire & True No Reload / Infinite Ammo Instant)
+-- SISTEM REVISI: Rapid Fire & True No Reload (Direct Injection ke Tabel Senjata Aktif)
 task.spawn(function()
-    while task.wait(0.5) do
+    while task.wait(0.2) do
         if HackConfig.GunModsAktif and getgc then
             pcall(function()
-                for _, v in pairs(getgc(true)) do
-                    if type(v) == "table" then
+                for _, obj in pairs(getgc(true)) do
+                    if type(obj) == "table" then
                         pcall(function()
-                            -- Ubah nilai kecepatan tembak (Rapid Fire)
-                            if rawget(v, "RPM") then v.RPM = HackConfig.CustomFireRate end
-                            if rawget(v, "FireRate") then v.FireRate = HackConfig.CustomFireRate end
-                            if rawget(v, "FireSpeedRate") then v.FireSpeedRate = 10 end
-                            if rawget(v, "AtkSpeed") then v.AtkSpeed = 10 end
+                            -- Paksa percepat tembakan menggunakan semua kunci speed yang ditemukan
+                            if rawget(obj, "RPM") then obj.RPM = HackConfig.CustomFireRate end
+                            if rawget(obj, "FireRate") then obj.FireRate = HackConfig.CustomFireRate end
+                            if rawget(obj, "FireSpeedRate") then obj.FireSpeedRate = 20 end
+                            if rawget(obj, "AtkSpeed") then obj.AtkSpeed = 20 end
+                            if rawget(obj, "AnimationSpeed") then obj.AnimationSpeed = 10 end
 
-                            -- Paksa peluru penuh dan hentikan konsumsi/reload (True No Reload)
-                            if rawget(v, "Ammo") then v.Ammo = 999999 end
-                            if rawget(v, "MaxAmmo") then v.MaxAmmo = 999999 end
-                            if rawget(v, "currentAmmo") then v.currentAmmo = 999999 end
-                            if rawget(v, "IsConsumeAmmo") then v.IsConsumeAmmo = false end
-                            if rawget(v, "__NO_AMMO_CD__") then v.__NO_AMMO_CD__ = true end
+                            -- Paksa isi peluru mentah tanpa memicu fungsi pengurangan atau animasi reload
+                            if rawget(obj, "Ammo") then obj.Ammo = 99999 end
+                            if rawget(obj, "MaxAmmo") then obj.MaxAmmo = 99999 end
+                            if rawget(obj, "currentAmmo") then obj.currentAmmo = 99999 end
+                            if rawget(obj, "spareAmmo") then obj.spareAmmo = 99999 end
+                            if rawget(obj, "IsConsumeAmmo") then obj.IsConsumeAmmo = false end
+                            if rawget(obj, "__NO_AMMO_CD__") then obj.__NO_AMMO_CD__ = true end
                         end)
                     end
                 end
@@ -1268,3 +1270,4 @@ task.spawn(function()
         end
     end
 end)
+
