@@ -1,50 +1,44 @@
--- Script Universal Safe Dumper (Tanpa Require() agar tidak Crash)
-local success, result = pcall(function()
-    local output = "=== SAFE MAP & SERVICE DUMP ===\n\n"
-    
-    local function deepScan(parent, depth)
-        if depth > 4 then return end -- Batasi kedalaman agar tidak infinite loop
-        local successChildren, children = pcall(function()
-            return parent:GetChildren()
-        end)
-        
-        if not successChildren or not children then return end
+-- Letakkan skrip ini di ServerScriptService atau jalankan melalui Command Bar Roblox Studio
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-        for _, child in ipairs(children) do
-            local indent = string.rep("  ", depth)
-            local className = "Unknown"
-            pcall(function() className = child.ClassName end)
-            
-            output ..= string.format("%s- %s [%s]\n", indent, child.Name, className)
-            
-            -- Jika menemukan Remote atau Folder penting, intip lebih dalam
-            if child:IsA("Folder") or child:IsA("Model") or child:IsA("RemoteEvent") or child:IsA("RemoteFunction") or child:IsA("ModuleScript") then
-                deepScan(child, depth + 1)
+local searchKeywords = {
+    "firerate", "rate", "cooldown", "delay", "rpm", 
+    "automatic", "speed", "shoot", "interval"
+}
+
+local function searchTable(tbl, path)
+    for key, value in pairs(tbl) do
+        local currentPath = path .. "." .. tostring(key)
+        local keyLower = string.lower(tostring(key))
+        
+        -- Cek apakah nama key mengandung kata kunci pencarian
+        for _, keyword in ipairs(searchKeywords) do
+            if string.find(keyLower, keyword) then
+                print(string.format("[DUMP FOUND] Path: %s | Nilai: %s (Tipe: %s)", currentPath, tostring(value), typeof(value)))
+                break
             end
         end
+        
+        -- Rekursif jika value berupa table/ModuleScript yang mereturn table
+        if type(value) == "table" then
+            searchTable(value, currentPath)
+        end
     end
-
-    output ..= "[REPLICATED STORAGE]\n"
-    deepScan(game:GetService("ReplicatedStorage"), 1)
-    
-    output ..= "\n[WORKSPACE TARGET]\n"
-    deepScan(workspace, 1)
-
-    return output
-end)
-
-if success and result then
-    if writefile then
-        pcall(function()
-            writefile("dump.txt", result)
-        end)
-    end
-    if setclipboard then
-        setclipboard(result)
-    end
-    print("Dump aman selesai! Cek file dump.txt atau clipboard.")
-else
-    local errText = "Error: " .. tostring(result)
-    if setclipboard then setclipboard(errText) end
-    warn(errText)
 end
+
+-- Cari di dalam folder Scripts atau ReplicatedStorage
+local targetFolder = ReplicatedStorage:FindFirstChild("Scripts") or ReplicatedStorage
+
+print("--- MEMULAI PENCARIAN VARIABEL FIRE RATE ---")
+for _, obj in ipairs(targetFolder:GetDescendants()) do
+    if obj:IsA("ModuleScript") then
+        local success, data = pcall(function()
+            return require(obj)
+        end)
+        
+        if success and type(data) == "table" then
+            searchTable(data, obj.Name)
+        end
+    end
+end
+print("--- PENCARIAN SELESAI ---")
