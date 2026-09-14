@@ -1,31 +1,27 @@
+local fileName = "HookLog_" .. math.random(1000, 9999) .. ".txt"
+local logData = "--- LOG PEMANGGILAN REMOTE/FIRESERVER ---\n\n"
 
-            if (TargetPartTemp and ValiantAimHacks.checkHealth(Player)) then
-                -- // Team Check
-                if (ValiantAimHacks.TeamCheck and not ValiantAimHacks.checkTeam(Player, LocalPlayer)) then continue end
+-- Buat file awal agar siap diisi
+writefile(fileName, logData)
 
-                -- // Check if is in FOV
-                if (circle.Radius > Magnitude and Magnitude < ShortestDistance) then
-                    -- // Check if Visible
-                    if (ValiantAimHacks.VisibleCheck and not ValiantAimHacks.isPartVisible(TargetPartTemp, Character)) then continue end
-
-                    -- //
-                    ClosestPlayer = Player
-                    ShortestDistance = Magnitude
-                    TargetPart = TargetPartTemp
-                end
-            end
+local oldNamecall
+oldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
+    local method = getnamecallmethod()
+    local args = {...}
+    
+    if method == "FireServer" then
+        local textEntry = string.format("[FireServer] Remote: %s\n", tostring(self.Name))
+        
+        for i, v in ipairs(args) do
+            textEntry = textEntry .. string.format("   Arg %d: %s (%s)\n", i, tostring(v), typeof(v))
         end
+        textEntry = textEntry .. "----------------------------------------\n"
+        
+        -- Tambahkan data secara otomatis ke file txt di folder executor
+        appendfile(fileName, textEntry)
     end
-
-    -- // End
-    ValiantAimHacks.Selected = ClosestPlayer
-    ValiantAimHacks.SelectedPart = TargetPart
-end
-
--- // Heartbeat Function
-Heartbeat:Connect(function()
-    ValiantAimHacks.updateCircle()
-    ValiantAimHacks.getClosestPlayerToCursor()
+    
+    return oldNamecall(self, ...)
 end)
 
-return ValiantAimHacks
+print("Berhasil! File log tersimpan dengan nama: " .. fileName)
