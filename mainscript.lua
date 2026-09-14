@@ -1,20 +1,36 @@
--- Contoh format script Luau untuk eksekutor seperti Delta (berbasis manipulasi instance game)
+-- Universal Rapid Fire Script for Roblox Android
 local player = game.Players.LocalPlayer
-local character = player.Character or player.CharacterAdded:Wait()
+local userInputService = game:GetService("UserInputService")
 
--- Fungsi untuk mencari tool/senjata yang sedang dipegang dan memodifikasi properti rate/amunisi
-local function applyRapidFire()
-    local tool = character:FindFirstChildOfClass("Tool")
-    if tool then
-        -- Mencari nilai konfigurasi senjata di dalam objek (misal: FireRate / Cooldown)
-        for _, v in ipairs(tool:GetDescendants()) do
-            if v.Name == "FireRate" or v.Name == "Cooldown" or v.Name == "AtkSpeed" then
-                if v:IsA("NumberValue") or v:IsA("IntValue") then
-                    v.Value = 0.01 -- Mempercepat tembakan
-                end
+-- Konfigurasi Pengaturan
+getgenv().Config = {
+    RapidFireEnabled = true,
+    FireDelay = 0.05 -- Jeda waktu antar tembakan (semakin kecil semakin cepat)
+}
+
+local function getEquippedWeapon()
+    if player.Character then
+        for _, tool in ipairs(player.Character:GetChildren()) do
+            if tool:IsA("Tool") then
+                return tool
             end
         end
     end
+    return nil
 end
 
-applyRapidFire()
+-- Loop utama untuk mengeksekusi rapid fire saat tool aktif
+task.spawn(function()
+    while true do
+        task.wait(getgenv().Config.FireDelay)
+        if getgenv().Config.RapidFireEnabled then
+            local weapon = getEquippedWeapon()
+            if weapon then
+                pcall(function()
+                    -- Memaksa tool untuk aktif secara terus-menerus
+                    weapon:Activate()
+                end)
+            end
+        end
+    end
+end)
