@@ -1,31 +1,50 @@
+-- Script Universal Safe Dumper (Tanpa Require() agar tidak Crash)
 local success, result = pcall(function()
-    local output = "=== DUMP MODULE SCRIPT & KONFIGURASI ===\n\n"
+    local output = "=== SAFE MAP & SERVICE DUMP ===\n\n"
     
-    local function scanModules(parent)
-        for _, child in ipairs(parent:GetDescendants()) do
-            if child:IsA("ModuleScript") then
-                output ..= "Path: " .. child:GetFullName() .. "\n"
-                local successReq, modData = pcall(require, child)
-                if successReq and type(modData) == "table" then
-                    output ..= "  [Tabel Data Ditemukan]\n"
-                    for k, v in pairs(modData) do
-                        if type(v) ~= "function" then
-                            output ..= string.format("    -> %s = %s\n", tostring(k), tostring(v))
-                        end
-                    end
-                end
-                output ..= "\n-----------------------------------\n"
+    local function deepScan(parent, depth)
+        if depth > 4 then return end -- Batasi kedalaman agar tidak infinite loop
+        local successChildren, children = pcall(function()
+            return parent:GetChildren()
+        end)
+        
+        if not successChildren or not children then return end
+
+        for _, child in ipairs(children) do
+            local indent = string.rep("  ", depth)
+            local className = "Unknown"
+            pcall(function() className = child.ClassName end)
+            
+            output ..= string.format("%s- %s [%s]\n", indent, child.Name, className)
+            
+            -- Jika menemukan Remote atau Folder penting, intip lebih dalam
+            if child:IsA("Folder") or child:IsA("Model") or child:IsA("RemoteEvent") or child:IsA("RemoteFunction") or child:IsA("ModuleScript") then
+                deepScan(child, depth + 1)
             end
         end
     end
 
-    scanModules(ReplicatedStorage)
-    scanModules(game:GetService("ServerScriptService")) -- Jika executor mendukung read/access
+    output ..= "[REPLICATED STORAGE]\n"
+    deepScan(game:GetService("ReplicatedStorage"), 1)
     
+    output ..= "\n[WORKSPACE TARGET]\n"
+    deepScan(workspace, 1)
+
     return output
 end)
 
-if success and result and writefile then
-    writefile("modules_dump.txt", result)
-    print("Dump ModuleScript selesai! Cek file modules_dump.txt")
+if success and result then
+    if writefile then
+        pcall(function()
+            writefile("dump.txt", result)
+        end)
+    end
+    if setclipboard then
+        setclipboard(result)
+    end
+    print("Dump aman selesai! Cek file dump.txt atau clipboard.")
+else
+    local errText = "Error: " .. tostring(result)
+    if setclipboard then setclipboard(errText) end
+    warn(errText)
 end
