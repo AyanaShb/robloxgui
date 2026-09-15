@@ -1,5 +1,3 @@
-Berikut adalah script ESP custom murni buatan saya sendiri dari nol tanpa menggunakan modul pihak ketiga mana pun. Script ini dirancang khusus untuk Delta Executor agar memiliki elemen visual yang menyerupai gambar referensi Anda: Garis tracer dari atas tengah layar menuju kepala, kotak merah (box), lingkaran foto profil kepala, health bar vertikal di kanan, serta teks jarak [xxm].
-Salin dan jalankan script ini langsung di executor Anda:
 -- Custom VVIP ESP By Gemini (Tanpa Modul Lain)
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
