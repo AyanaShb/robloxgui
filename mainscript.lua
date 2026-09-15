@@ -1,62 +1,59 @@
 local Players = game:GetService("Players")
 local localPlayer = Players.LocalPlayer
+local character = script.Parent
+local head = character:WaitForChild("Head")
 
--- Fungsi untuk membuat ESP foto profil di kepala player
-local function setupPlayerHeadESP(player)
-    if player == localPlayer then return end
+-- Konfigurasi ESP
+local config = {
+    -- Ukuran BillboardGui (dalam Studs). Harus cukup besar untuk menutupi kepala.
+    Size = UDim2.new(0, 4, 0, 4),
+    -- Offset agar pas di tengah kepala. Sesuaikan jika avatar Anda memiliki bentuk kepala/topi yang aneh.
+    StudsOffset = Vector3.new(0, 0.5, 0),
+    -- Ukuran thumbnail yang diambil (makin besar makin tajam)
+    ThumbnailSize = Enum.ThumbnailSize.Size420x420,
+    -- Transparency lingkaran (0 = tidak transparan, 1 = transparan)
+    ImageTransparency = 0.1
+}
 
-    local function onCharacterAdded(character)
-        local head = character:WaitForChild("Head", 5)
-        if not head then return end
+-- 1. Buat BillboardGui
+local billboard = Instance.new("BillboardGui")
+billboard.Name = "HeadCircleESP"
+billboard.Adornee = head
+billboard.Size = config.Size
+billboard.StudsOffset = config.StudsOffset
+billboard.AlwaysOnTop = true -- Agar terlihat menembus dinding
+billboard.Parent = head
 
-        -- Cek apakah BillboardGui sudah ada agar tidak duplikat
-        if head:FindFirstChild("HeadThumbnailESP") then return end
+-- 2. Buat ImageLabel (Wadah Gambar)
+local imageLabel = Instance.new("ImageLabel")
+imageLabel.Name = "PlayerThumbnail"
+imageLabel.Size = UDim2.new(1, 0, 1, 0) -- Mengisi penuh BillboardGui
+imageLabel.BackgroundTransparency = 1 -- Latar belakang transparan
+imageLabel.ImageTransparency = config.ImageTransparency
+imageLabel.Parent = billboard
 
-        -- Buat BillboardGui di atas kepala
-        local billboard = Instance.new("BillboardGui")
-        billboard.Name = "HeadThumbnailESP"
-        billboard.Size = UDim2.new(0, 100, 0, 100) -- Ukuran dasar (diperbesar 2x dari standar kecil)
-        billboard.StudsOffset = Vector3.new(0, 2.5, 0) -- Posisi sedikit di atas kepala
-        billboard.AlwaysOnTop = true
-        billboard.Adornee = head
+-- 3. Buat UICorner (Untuk membuat gambar menjadi lingkaran)
+local uiCorner = Instance.new("UICorner")
+uiCorner.CornerRadius = UDim.new(1, 0) -- Nilai 1 membuat lingkaran sempurna jika parent kotak
+uiCorner.Parent = imageLabel
 
-        -- Buat ImageLabel untuk menampilkan foto profil
-        local imageLabel = Instance.new("ImageLabel")
-        imageLabel.Name = "ThumbnailImage"
-        imageLabel.Size = UDim2.new(1, 0, 1, 0)
-        imageLabel.BackgroundTransparency = 1
-        imageLabel.Image = ""
-        imageLabel.Parent = billboard
+-- 4. Ambil dan Terapkan Thumbnail
+local userId = localPlayer.UserId
+local thumbType = Enum.ThumbnailType.HeadShot
+local thumbContent = ""
 
-        -- Ambil Thumbnail HeadShot Player (Ukuran 420x420 agar tetap jernih saat diperbesar)
-        task.spawn(function()
-            local success, content = pcall(function()
-                return Players:GetUserThumbnailAsync(player.UserId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size420x420)
-            end)
+local success, content = pcall(function()
+    return Players:GetUserThumbnailAsync(userId, thumbType, config.ThumbnailSize)
+end)
 
-            if success and imageLabel and imageLabel.Parent then
-                imageLabel.Image = content
-            end
-        end)
-
-        billboard.Parent = head
-    end
-
-    -- Jika karakter sudah ada (bergabung lebih dulu)
-    if player.Character then
-        task.spawn(function()
-            onCharacterAdded(player.Character)
-        end)
-    end
-
-    -- Event saat player respawn
-    player.CharacterAdded:Connect(onCharacterAdded)
+if success then
+    imageLabel.Image = content
+else
+    warn("Gagal memuat thumbnail untuk:", localPlayer.Name)
+    -- Opsional: Pasang gambar default jika gagal
+    -- imageLabel.Image = "rbxassetid://[ID_GAMBAR_DEFAULT_DISINI]"
 end
 
--- Terapkan ke semua player yang ada di game
-for _, player in ipairs(Players:GetPlayers()) do
-    setupPlayerHeadESP(player)
-end
-
--- Terapkan ke player baru yang masuk
-Players.PlayerAdded:Connect(setupPlayerHeadESP)
+-- Catatan: Karena skrip ini berada di StarterCharacterScripts, 
+-- skrip akan otomatis hancur dan dibuat ulang saat player respawn.
+-- Tidak perlu menangani event CharacterAdded.
