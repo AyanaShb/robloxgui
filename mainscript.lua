@@ -1,157 +1,170 @@
--- Delta Executor ESP - Corner Box Lebih Lebar, Tebal, & Health Bar di Atas Kepala
+-- Delta Executor ESP - 100% Sesuai Gambar Referensi VVIP Mods
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local LocalPlayer = Players.LocalPlayer
+local CoreGui = game:GetService("CoreGui")
 local Camera = workspace.CurrentCamera
+
+-- Hapus instance lama jika dijalankan ulang
+if CoreGui:FindFirstChild("VVIP_ExactESP") then
+    CoreGui.VVIP_ExactESP:Destroy()
+end
+
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "VVIP_ExactESP"
+ScreenGui.Parent = CoreGui
 
 local espCache = {}
 
 local function createESP(player)
-    local esp = {}
+    if player == LocalPlayer then return end
     
-    -- 1. Garis Tracer (Merah dari atas tengah layar ke musuh)
-    esp.Tracer = Drawing.new("Line")
-    esp.Tracer.Visible = false
-    esp.Tracer.Color = Color3.fromRGB(255, 30, 30)
-    esp.Tracer.Thickness = 1.2
+    -- Wadah Utama Menempel di Kepala Musuh
+    local billboard = Instance.new("BillboardGui")
+    billboard.Name = player.Name .. "_ESP"
+    billboard.Size = UDim2.new(0, 140, 0, 160)
+    billboard.StudsOffset = Vector3.new(0, 0.5, 0)
+    billboard.AlwaysOnTop = true
+    billboard.Parent = ScreenGui
     
-    -- 2. Corner Box (16 garis untuk 4 sudut dengan ketebalan ditingkatkan)
-    esp.Lines = {}
-    for i = 1, 16 do
-        local line = Drawing.new("Line")
-        line.Visible = false
-        line.Color = Color3.fromRGB(255, 30, 30)
-        line.Thickness = 2.0 -- Dipertebal agar lebih jelas
-        table.insert(esp.Lines, line)
-    end
+    -- 1. FOTO PROFIL BULAT KECIL (Di bagian atas, lengkap dengan border putih)
+    local avatarFrame = Instance.new("Frame")
+    avatarFrame.Size = UDim2.new(0, 32, 0, 32)
+    avatarFrame.Position = UDim2.new(0.5, -16, 0, -45)
+    avatarFrame.BackgroundTransparency = 1
+    avatarFrame.Parent = billboard
 
-    -- 3. Health Bar di Atas Kepala (Background Hitam)
-    esp.HealthBg = Drawing.new("Line")
-    esp.HealthBg.Visible = false
-    esp.HealthBg.Color = Color3.fromRGB(0, 0, 0)
-    esp.HealthBg.Thickness = 3.5
+    local avatar = Instance.new("ImageLabel")
+    avatar.Size = UDim2.new(1, 0, 1, 0)
+    avatar.BackgroundTransparency = 1
+    avatar.Image = "rbxassetid://6034293636" -- Default placeholder
+    avatar.Parent = avatarFrame
 
-    -- 4. Health Bar di Atas Kepala (Bar Utama yang Dinamis)
-    esp.HealthFill = Drawing.new("Line")
-    esp.HealthFill.Visible = false
-    esp.HealthFill.Thickness = 2.5
+    local avatarCorner = Instance.new("UICorner")
+    avatarCorner.CornerRadius = UDim.new(1, 0)
+    avatarCorner.Parent = avatar
 
-    -- 5. Teks Nama & Jarak
-    esp.Text = Drawing.new("Text")
-    esp.Text.Visible = false
-    esp.Text.Color = Color3.fromRGB(255, 255, 255)
-    esp.Text.Size = 13
-    esp.Text.Center = true
-    esp.Text.Outline = true
+    local avatarStroke = Instance.new("UIStroke")
+    avatarStroke.Thickness = 1.5
+    avatarStroke.Color = Color3.fromRGB(255, 255, 255)
+    avatarStroke.Parent = avatarFrame
 
-    espCache[player] = esp
+    -- 2. TEKS NAMA (Di bawah foto profil / di atas box)
+    local nameText = Instance.new("TextLabel")
+    nameText.Size = UDim2.new(0, 140, 0, 16)
+    nameText.Position = UDim2.new(0.5, -70, 0, -10)
+    nameText.BackgroundTransparency = 1
+    nameText.TextColor3 = Color3.fromRGB(255, 255, 255)
+    nameText.TextStrokeTransparency = 0 -- Outline hitam khas cheat
+    nameText.TextSize = 12
+    nameText.Font = Enum.Font.SourceSansBold
+    nameText.Text = player.Name
+    nameText.Parent = billboard
+
+    -- 3. KOTAK UTAMA (Container Corner Box)
+    local box = Instance.new("Frame")
+    box.Size = UDim2.new(0, 50, 0, 80)
+    box.Position = UDim2.new(0.5, -25, 0, 12)
+    box.BackgroundTransparency = 1
+    box.Parent = billboard
+
+    -- Border Kotak Merah Menyala
+    local boxStroke = Instance.new("UIStroke")
+    boxStroke.Thickness = 1.8
+    boxStroke.Color = Color3.fromRGB(255, 30, 30)
+    boxStroke.Parent = box
+
+    -- 4. HEALTH BAR VERTIKAL (Di dalam/samping box, hijau dinamis)
+    local healthBg = Instance.new("Frame")
+    healthBg.Size = UDim2.new(0, 4, 0, 80)
+    healthBg.Position = UDim2.new(1, 4, 0, 0)
+    healthBg.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+    healthBg.BorderSizePixel = 0
+    healthBg.Parent = box
+
+    local healthFill = Instance.new("Frame")
+    healthFill.Size = UDim2.new(1, 0, 1, 0)
+    healthFill.Position = UDim2.new(0, 0, 0, 0)
+    healthFill.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
+    healthFill.BorderSizePixel = 0
+    healthFill.Parent = healthBg
+
+    -- 5. TEKS JARAK (Di bawah box, contoh: [18m])
+    local distText = Instance.new("TextLabel")
+    distText.Size = UDim2.new(0, 140, 0, 16)
+    distText.Position = UDim2.new(0.5, -70, 0, 96)
+    distText.BackgroundTransparency = 1
+    distText.TextColor3 = Color3.fromRGB(255, 255, 255)
+    distText.TextStrokeTransparency = 0
+    distText.TextSize = 12
+    distText.Font = Enum.Font.SourceSansBold
+    distText.Text = "[0m]"
+    distText.Parent = billboard
+
+    -- Ambil Foto Kepala Pemain Asli
+    task.spawn(function()
+        pcall(function()
+            local content, isReady = Players:GetUserThumbnailAsync(player.UserId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size150x150)
+            if isReady and content then
+                avatar.Image = content
+            end
+        end)
+    end)
+
+    espCache[player] = {
+        Billboard = billboard,
+        HealthFill = healthFill,
+        DistText = distText
+    }
 end
 
 local function removeESP(player)
     if espCache[player] then
-        for _, obj in pairs(espCache[player]) do
-            if type(obj) == "table" then
-                for _, line in ipairs(obj) do line:Remove() end
-            else
-                obj:Remove()
-            end
-        end
+        espCache[player].Billboard:Destroy()
         espCache[player] = nil
     end
 end
 
-for _, player in ipairs(Players:GetPlayers()) do
-    if player ~= LocalPlayer then createESP(player) end
+for _, p in ipairs(Players:GetPlayers()) do
+    createESP(p)
 end
 
 Players.PlayerAdded:Connect(createESP)
 Players.PlayerRemoving:Connect(removeESP)
 
+-- LOOP UTAMA UPDATE POSISI & REALTIME DATA
 RunService.RenderStepped:Connect(function()
-    for player, esp in pairs(espCache) do
-        local character = player.Character
-        local rootPart = character and character:FindFirstChild("HumanoidRootPart")
-        local head = character and character:FindFirstChild("Head")
-        local humanoid = character and character:FindFirstChild("Humanoid")
+    for player, cache in pairs(espCache) do
+        local char = player.Character
+        local head = char and char:FindFirstChild("Head")
+        local root = char and char:FindFirstChild("HumanoidRootPart")
+        local hum = char and char:FindFirstChild("Humanoid")
         
-        if character and rootPart and head and humanoid and humanoid.Health > 0 and player ~= LocalPlayer then
-            local headPos, headOnScreen = Camera:WorldToViewportPoint(head.Position + Vector3.new(0, 0.6, 0))
-            local legPos, legOnScreen = Camera:WorldToViewportPoint(rootPart.Position - Vector3.new(0, 3.2, 0))
+        if char and head and root and hum and hum.Health > 0 then
+            cache.Billboard.Adornee = head
+            cache.Billboard.Enabled = true
             
-            if headOnScreen or legOnScreen then
-                local distance = (rootPart.Position - Camera.CFrame.Position).Magnitude
-                
-                -- Ukuran kotak diperlebar sedikit agar tidak terlalu rapat ke body
-                local height = math.abs(headPos.Y - legPos.Y)
-                local width = (height / 1.8) + 6 
-                local pos = Vector2.new(headPos.X - width / 2, headPos.Y)
-                
-                -- A. Tracer Line dari atas tengah layar
-                esp.Tracer.Visible = true
-                esp.Tracer.From = Vector2.new(Camera.ViewportSize.X / 2, 0)
-                esp.Tracer.To = Vector2.new(headPos.X, headPos.Y)
-                
-                -- B. Corner Box (Sudut Terputus-putus)
-                local l = esp.Lines
-                local sw, sh = width / 3.5, height / 3.5
-                
-                -- Kiri Atas
-                l[1].From = pos; l[1].To = Vector2.new(pos.X + sw, pos.Y)
-                l[2].From = pos; l[2].To = Vector2.new(pos.X, pos.Y + sh)
-                -- Kanan Atas
-                l[3].From = Vector2.new(pos.X + width, pos.Y); l[3].To = Vector2.new(pos.X + width - sw, pos.Y)
-                l[4].From = Vector2.new(pos.X + width, pos.Y); l[4].To = Vector2.new(pos.X + width, pos.Y + sh)
-                -- Kiri Bawah
-                l[5].From = Vector2.new(pos.X, pos.Y + height); l[5].To = Vector2.new(pos.X + sw, pos.Y + height)
-                l[6].From = Vector2.new(pos.X, pos.Y + height); l[6].To = Vector2.new(pos.X, pos.Y + height - sh)
-                -- Kanan Bawah
-                l[7].From = Vector2.new(pos.X + width, pos.Y + height); l[7].To = Vector2.new(pos.X + width - sw, pos.Y + height)
-                l[8].From = Vector2.new(pos.X + width, pos.Y + height); l[8].To = Vector2.new(pos.X + width, pos.Y + height - sh)
-                
-                for i = 1, 8 do l[i].Visible = true end
-
-                -- C. Health Bar Horizontal di Atas Kepala (Dinamis & Berubah Warna)
-                local healthPercent = math.clamp(humanoid.Health / humanoid.MaxHealth, 0, 1)
-                local barY = pos.Y - 6
-                local barStartX = pos.X
-                local barEndX = pos.X + width
-                
-                esp.HealthBg.Visible = true
-                esp.HealthBg.From = Vector2.new(barStartX, barY)
-                esp.HealthBg.To = Vector2.new(barEndX, barY)
-                
-                esp.HealthFill.Visible = true
-                esp.HealthFill.From = Vector2.new(barStartX, barY)
-                esp.HealthFill.To = Vector2.new(barStartX + (width * healthPercent), barY)
-                
-                -- Warna Health Bar Dinamis (Hijau -> Kuning -> Merah)
-                if healthPercent > 0.5 then
-                    esp.HealthFill.Color = Color3.fromRGB(0, 255, 0)
-                elseif healthPercent > 0.25 then
-                    esp.HealthFill.Color = Color3.fromRGB(255, 255, 0)
-                else
-                    esp.HealthFill.Color = Color3.fromRGB(255, 0, 0)
-                end
-
-                -- D. Teks Nama & Jarak (Nama di atas health bar, Jarak di bawah box)
-                esp.Text.Visible = true
-                esp.Text.Text = string.format("%s\n[%dm]", player.Name, math.floor(distance))
-                esp.Text.Position = Vector2.new(headPos.X, pos.Y - 24)
+            -- Hitung Jarak Realtime
+            local dist = (root.Position - Camera.CFrame.Position).Magnitude
+            cache.DistText.Text = string.format("[%dm]", math.floor(dist))
+            
+            -- Update Ukuran & Warna Health Bar Sesuai Sisa Darah
+            local healthPercent = math.clamp(hum.Health / hum.MaxHealth, 0, 1)
+            cache.HealthFill.Size = UDim2.new(1, 0, healthPercent, 0)
+            cache.HealthFill.Position = UDim2.new(0, 0, 1 - healthPercent, 0)
+            
+            if healthPercent > 0.5 then
+                cache.HealthFill.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
+            elseif healthPercent > 0.25 then
+                cache.HealthFill.BackgroundColor3 = Color3.fromRGB(255, 255, 0)
             else
-                esp.Tracer.Visible = false
-                for _, line in ipairs(esp.Lines) do line.Visible = false end
-                esp.HealthBg.Visible = false
-                esp.HealthFill.Visible = false
-                esp.Text.Visible = false
+                cache.HealthFill.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
             end
         else
-            esp.Tracer.Visible = false
-            for _, line in ipairs(esp.Lines) do line.Visible = false end
-            esp.HealthBg.Visible = false
-            esp.HealthFill.Visible = false
-            esp.Text.Visible = false
+            cache.Billboard.Adornee = nil
+            cache.Billboard.Enabled = false
         end
     end
 end)
 
-print("ESP Corner Box Tebal & Top HealthBar Berhasil Dijalankan!")
+print("ESP VVIP Style 100% Mirip Gambar Berhasil Dijalankan!")
