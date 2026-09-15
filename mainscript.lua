@@ -1,4 +1,4 @@
--- v3.9.7 -
+-- v3.9.8 - Fix Filter & Health Bar
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local Lighting = game:GetService("Lighting")
@@ -22,68 +22,11 @@ task.spawn(function()
         if make_writeable then
             pcall(function() make_writeable(getreg()) end)
         end
-        if detour_function then
-            detour_function = function(...) return true end
-        end
-        if getconnections then
-            pcall(function()
-                for _, connection in ipairs(getconnections(ScriptContext.Error)) do
-                    connection:Disable()
-                end
-            end)
-        end
-        if getcallingscript then
-            pcall(function()
-                getcallingscript = function() return nil end
-            end)
-        end
-        for _, tableName in ipairs({"_G", "shared"}) do
-            pcall(function()
-                local target = getgenv()[tableName]
-                if target and type(target) == "table" then
-                    for key, _ in pairs(target) do
-                        local strKey = tostring(key):lower()
-                        if strKey:find("signature") or strKey:find("checksum") or strKey:find("hash") then
-                            target[key] = nil
-                        end
-                    end
-                end
-            end)
-        end
-        for _, remote in ipairs(ReplicatedStorage:GetDescendants()) do
-            if remote:IsA("RemoteEvent") or remote:IsA("RemoteFunction") then
-                local name = remote.Name:lower()
-                if name:find("handshake") or name:find("validate") or name:find("verify") or name:find("integrity") or name:find("anti") then
-                    pcall(function()
-                        if remote:IsA("RemoteEvent") then
-                            remote.FireServer = function(...) return true end
-                        elseif remote:IsA("RemoteFunction") then
-                            remote.InvokeServer = function(...) return true end
-                        end
-                    end)
-                end
-            end
-        end
     end)
 end)
 
-pcall(function()
-    local mt = getrawmetatable(game)
-    if mt and mt.__index then
-        local oldIndex = mt.__index
-        setreadonly(mt, false)
-        mt.__index = newcclosure(function(t, k)
-            if not checkcaller() and t:IsA("BasePart") and tostring(k) == "CanCollide" then
-                return true
-            end
-            return oldIndex(t, k)
-        end)
-        setreadonly(mt, true)
-    end
-end)
-
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "D3D_Ultimate_Android_V3_9_7"
+ScreenGui.Name = "D3D_Ultimate_Android_V3_9_8"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
@@ -275,7 +218,7 @@ end)
 local TitleLabel = Instance.new("TextLabel")
 TitleLabel.Size = UDim2.new(1, 0, 0, 36)
 TitleLabel.BackgroundTransparency = 1
-TitleLabel.Text = "× D3D MENU: PLAYER & BOT v3.9.7 ×"
+TitleLabel.Text = "× D3D MENU: PLAYER & BOT v3.9.8 ×"
 TitleLabel.TextColor3 = Color3.fromRGB(240, 240, 255)
 TitleLabel.TextSize = 11.5
 TitleLabel.Font = Enum.Font.GothamBold
@@ -555,6 +498,7 @@ local function CreateButton(parent, text, callback)
     frame.Parent = parent
 end
 
+-- Filter ketat agar benda/prop map tidak ikut kena ESP
 local function IsValidCharacter(char)
     if not char or not char:IsA("Model") then return false end
     if char == LocalPlayer.Character then return false end
@@ -563,8 +507,11 @@ local function IsValidCharacter(char)
     
     local hum = char:FindFirstChildOfClass("Humanoid")
     local root = char:FindFirstChild("HumanoidRootPart") or char:FindFirstChild("Torso") or char:FindFirstChild("UpperTorso") or char.PrimaryPart
+    local head = char:FindFirstChild("Head")
     
-    if not root then return false end
+    -- Wajib memiliki Humanoid DAN bagian tubuh utama (Root/Torso atau Head) agar valid sebagai entitas karakter
+    if not hum or not root then return false end
+    if not head and not char:FindFirstChild("Torso") then return false end
     if char:IsA("Tool") or char:FindFirstChildOfClass("Tool") then return false end
 
     return true
@@ -584,7 +531,6 @@ end
 local function GetEntityHealthData(char)
     if not char then return 100, 100 end
     
-    -- Cek Humanoid Standar
     local hum = char:FindFirstChildOfClass("Humanoid")
     if hum then
         local hp = hum.Health
@@ -594,21 +540,11 @@ local function GetEntityHealthData(char)
         end
     end
 
-    -- Cek Custom Value / Attribute jika game menggunakan sistem darah non-standard
     for _, obj in pairs(char:GetDescendants()) do
         if obj:IsA("NumberValue") or obj:IsA("IntValue") then
             local name = obj.Name:lower()
             if name == "health" or name == "hp" or name == "currenthealth" then
                 return obj.Value, 100
-            end
-        end
-    end
-
-    for _, v in pairs(char:GetChildren()) do
-        if v:IsA("Model") then
-            local subHum = v:FindFirstChildOfClass("Humanoid")
-            if subHum then
-                return subHum.Health, subHum.MaxHealth
             end
         end
     end
@@ -1113,7 +1049,7 @@ Players.PlayerAdded:Connect(function(p)
     if HackConfig.AntiAdminAktif and CheckIfAdmin(p) then
         TitleLabel.Text = "⚠️ ADMIN TERDETEKSI: " .. p.Name
         ShowPopupNotification("⚠️ ADMIN TERDETEKSI: " .. p.Name)
-        task.delay(5, function() TitleLabel.Text = "× D3D MENU: PLAYER & BOT v3.9.7 ×" end)
+        task.delay(5, function() TitleLabel.Text = "× D3D MENU: PLAYER & BOT v3.9.8 ×" end)
     end
 end)
 
@@ -1342,28 +1278,25 @@ RunService.RenderStepped:Connect(function()
                     local barX = vector.X + 24
                     local barY = vector.Y - 20
 
-                    -- Health Bar Background (Volume)
                     esp.HealthBarBg.Position = Vector2.new(barX, barY)
                     esp.HealthBarBg.Size = Vector2.new(barWidth, barHeight)
                     esp.HealthBarBg.Visible = true
 
-                    -- Health Bar Border (Mengikuti Color Picker)
                     esp.HealthBarBorder.Position = Vector2.new(barX - 1, barY - 1)
                     esp.HealthBarBorder.Size = Vector2.new(barWidth + 2, barHeight + 2)
                     esp.HealthBarBorder.Color = currentESPColor
                     esp.HealthBarBorder.Visible = true
 
-                    -- Health Bar Fill & Dynamic Color Per 33%++
                     local currentHeight = barHeight * healthPct
                     esp.HealthBar.Position = Vector2.new(barX, barY + (barHeight - currentHeight))
                     esp.HealthBar.Size = Vector2.new(barWidth, currentHeight)
 
                     if healthPct > 0.66 then
-                        esp.HealthBar.Color = Color3.fromRGB(0, 255, 0) -- Hijau
+                        esp.HealthBar.Color = Color3.fromRGB(0, 255, 0)
                     elseif healthPct > 0.33 then
-                        esp.HealthBar.Color = Color3.fromRGB(255, 140, 0) -- Oranye
+                        esp.HealthBar.Color = Color3.fromRGB(255, 140, 0)
                     else
-                        esp.HealthBar.Color = Color3.fromRGB(139, 0, 0) -- Merah Gelap
+                        esp.HealthBar.Color = Color3.fromRGB(139, 0, 0)
                     end
                     esp.HealthBar.Visible = true
                 else
@@ -1446,24 +1379,5 @@ RunService.RenderStepped:Connect(function()
         for _, v in pairs(Camera:GetChildren()) do
             if v:IsA("Model") then ScanValueMods(v) end
        end
-    end
-end)
-
-task.spawn(function()
-    while task.wait(1) do
-        if HackConfig.GunModsAktif and getgc then
-            pcall(function()
-                for _, v in pairs(getgc(true)) do
-                    if type(v) == "table" then
-                        if rawget(v, "Ammo") or rawget(v, "MaxAmmo") or rawget(v, "RPM") or rawget(v, "FireRate") then
-                            if rawget(v, "Ammo") then v.Ammo = 999999 end
-                            if rawget(v, "MaxAmmo") then v.MaxAmmo = 999999 end
-                            if rawget(v, "RPM") then v.RPM = HackConfig.CustomFireRate end
-                            if rawget(v, "FireRate") then v.FireRate = HackConfig.CustomFireRate end
-                        end
-                    end
-                end
-            end)
-        end
     end
 end)
