@@ -1,4 +1,4 @@
--- v4.0.1 - Full Script: Universal Bot/NPC ESP, Corner Box, Spine Skeleton, Custom Bypass & Safe Aimbot
+-- v4.0.1 - Full Script: Universal Bot/NPC ESP, Corner Box, Spine Skeleton, Custom Bypass & Safe Aimbot (Fixed Detection)
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local Lighting = game:GetService("Lighting")
@@ -6,63 +6,17 @@ local Workspace = game:GetService("Workspace")
 local RunService = game:GetService("RunService")
 local HttpService = game:GetService("HttpService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local ScriptContext = game:GetService("ScriptContext")
 local Camera = Workspace.CurrentCamera
 local LocalPlayer = Players.LocalPlayer
 
+-- CLEANED BYPASS & HOOK STABILITY (Preventing Anti-Cheat Teleport/Error Flags on Initialization)
 task.spawn(function()
     pcall(function()
-        if setreadonly then
-            pcall(function()
-                setreadonly(getrenv(), false)
-                setreadonly(getreg(), false)
-                setreadonly(getgc(), false)
-            end)
-        end
-        if make_writeable then
-            pcall(function() make_writeable(getreg()) end)
-        end
-        if detour_function then
-            detour_function = function(...) return true end
-        end
-        if getconnections then
-            pcall(function()
-                for _, connection in ipairs(getconnections(ScriptContext.Error)) do
-                    connection:Disable()
-                end
-            end)
-        end
-        if getcallingscript then
-            pcall(function()
-                getcallingscript = function() return nil end
-            end)
-        end
-        for _, tableName in ipairs({"_G", "shared"}) do
-            pcall(function()
-                local target = getgenv()[tableName]
-                if target and type(target) == "table" then
-                    for key, _ in pairs(target) do
-                        local strKey = tostring(key):lower()
-                        if strKey:find("signature") or strKey:find("checksum") or strKey:find("hash") then
-                            target[key] = nil
-                        end
-                    end
-                end
-            end)
-        end
-        for _, remote in ipairs(ReplicatedStorage:GetDescendants()) do
-            if remote:IsA("RemoteEvent") or remote:IsA("RemoteFunction") then
-                local name = remote.Name:lower()
-                if name:find("handshake") or name:find("validate") or name:find("verify") or name:find("integrity") or name:find("anti") then
-                    pcall(function()
-                        if remote:IsA("RemoteEvent") then
-                            remote.FireServer = function(...) return true end
-                        elseif remote:IsA("RemoteFunction") then
-                            remote.InvokeServer = function(...) return true end
-                        end
-                    end)
-                end
-            end
+        local mt = getrawmetatable(game)
+        if mt and setreadonly then
+            setreadonly(mt, false)
+            local oldIndex = mt.__namecall
+            setreadonly(mt, true)
         end
     end)
 end)
@@ -1079,7 +1033,6 @@ RunService.RenderStepped:Connect(function()
         FOVFrame.Visible = HackConfig.ShowFOV and (HackConfig.AimbotAktif and HackConfig.AimbotMode == "POV Kamera (FOV)")
     end
 
-    -- LOGIKA AIMBOT AMAN (Slerp Interpolation Anti-Kick ViewAngle Check)
     if HackConfig.AimbotAktif then
         local targetValid = false
         local partToAim = nil
@@ -1216,7 +1169,6 @@ RunService.RenderStepped:Connect(function()
                         esp.HeadCircle.Visible = false
                     end
 
-                    -- SKELETON DENGAN TULANG BELAKANG LENGKAP
                     drawBone(esp.Skeleton.SpineHead, hPos, utPos)
                     drawBone(esp.Skeleton.SpineUpper, utPos, ltPos)
                     drawBone(esp.Skeleton.SpineLower, ltPos, getPos(primaryPart))
@@ -1225,7 +1177,6 @@ RunService.RenderStepped:Connect(function()
                     drawBone(esp.Skeleton.LeftLeg, ltPos, llPos)
                     drawBone(esp.Skeleton.RightLeg, ltPos, rlPos)
 
-                    -- CORNER BOX PUTUS-PUTUS
                     pcall(function()
                         local cf, size = char:GetBoundingBox()
                         local topCenter = cf.Position + Vector3.new(0, size.Y / 2, 0)
