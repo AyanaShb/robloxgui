@@ -1,5 +1,5 @@
 -- ==========================================
--- FULL ESP HEAD THUMBNAIL (SEMUA PLAYER)
+-- FULL ESP HEAD THUMBNAIL (SEMUA PLAYER) - STABLE SIZE
 -- Tempatkan di: StarterPlayer > StarterPlayerScripts (LocalScript)
 -- ==========================================
 
@@ -13,12 +13,12 @@ local function createHeadESP(character, player)
     -- Cek agar tidak duplikat ESP di kepala yang sama
     if head:FindFirstChild("HeadCircleESP") then return end
 
-    -- 1. Buat BillboardGui
+    -- 1. Buat BillboardGui menggunakan skala Studs (Agar ukurannya tidak membesar saat menjauh)
     local billboard = Instance.new("BillboardGui")
     billboard.Name = "HeadCircleESP"
     billboard.Adornee = head
-    -- Ukuran pixel (ubah angka 50 jika ingin lebih kecil atau besar)
-    billboard.Size = UDim2.new(0, 50, 0, 50) 
+    -- Ukuran 1.5 x 1.5 Studs (Proporsional mengikuti jarak kamera 3D)
+    billboard.Size = UDim2.new(1.5, 0, 1.5, 0) 
     -- Posisi sedikit di atas kepala
     billboard.StudsOffset = Vector3.new(0, 0.8, 0)
     billboard.AlwaysOnTop = true
@@ -50,7 +50,7 @@ end
 
 -- Fungsi untuk memantau player baru atau respawn
 local function setupPlayer(player)
-    if player == localPlayer then return end -- (Opsional: Kalau mau diri sendiri ikut keliatan, baris ini bisa dihapus)
+    if player == localPlayer then return end -- Ubah jika ingin foto karakter kamu sendiri ikut muncul
 
     if player.Character then
         task.spawn(function()
