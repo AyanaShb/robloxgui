@@ -1,11 +1,9 @@
--- v3.9.8 - Fix Filter & Health Bar
+-- v3.9.9 - Absolute Player-Only ESP & Multi-Source Health Fix
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local Lighting = game:GetService("Lighting")
 local Workspace = game:GetService("Workspace")
 local RunService = game:GetService("RunService")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local ScriptContext = game:GetService("ScriptContext")
 local HttpService = game:GetService("HttpService")
 local Camera = Workspace.CurrentCamera
 local LocalPlayer = Players.LocalPlayer
@@ -26,7 +24,7 @@ task.spawn(function()
 end)
 
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "D3D_Ultimate_Android_V3_9_8"
+ScreenGui.Name = "D3D_Ultimate_Android_V3_9_9"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
@@ -218,7 +216,7 @@ end)
 local TitleLabel = Instance.new("TextLabel")
 TitleLabel.Size = UDim2.new(1, 0, 0, 36)
 TitleLabel.BackgroundTransparency = 1
-TitleLabel.Text = "× D3D MENU: PLAYER & BOT v3.9.8 ×"
+TitleLabel.Text = "× D3D MENU: PURE PLAYER v3.9.9 ×"
 TitleLabel.TextColor3 = Color3.fromRGB(240, 240, 255)
 TitleLabel.TextSize = 11.5
 TitleLabel.Font = Enum.Font.GothamBold
@@ -463,7 +461,7 @@ local function CreateSlider(parent, text, min, max, default, callback)
             local pos = math.clamp((input.Position.X - sliderBar.AbsolutePosition.X) / sliderBar.AbsoluteSize.X, 0, 1)
             fill.Size = UDim2.new(pos, 0, 1, 0)
             local val = math.floor(min + ((max - min) * pos))
-            label.Text = text .. ": " .. tostring(val)
+            label.Text = text .. ": " + tostring(val)
             if callback then callback(val) end
         end
     end)
@@ -498,39 +496,27 @@ local function CreateButton(parent, text, callback)
     frame.Parent = parent
 end
 
--- Filter ketat agar benda/prop map tidak ikut kena ESP
-local function IsValidCharacter(char)
+-- FILTER MUTLAK: Hanya menerima player asli yang terdaftar di service Players
+local function IsValidPlayerCharacter(char)
     if not char or not char:IsA("Model") then return false end
     if char == LocalPlayer.Character then return false end
-    if char:IsDescendantOf(LocalPlayer) then return false end
-    if char:IsDescendantOf(Camera) then return false end
     
+    local playerInstance = Players:GetPlayerFromCharacter(char)
+    if not playerInstance then return false end -- Tolak semua objek non-player (bukan pemain asli)
+
     local hum = char:FindFirstChildOfClass("Humanoid")
     local root = char:FindFirstChild("HumanoidRootPart") or char:FindFirstChild("Torso") or char:FindFirstChild("UpperTorso") or char.PrimaryPart
     local head = char:FindFirstChild("Head")
     
-    -- Wajib memiliki Humanoid DAN bagian tubuh utama (Root/Torso atau Head) agar valid sebagai entitas karakter
-    if not hum or not root then return false end
-    if not head and not char:FindFirstChild("Torso") then return false end
-    if char:IsA("Tool") or char:FindFirstChildOfClass("Tool") then return false end
-
+    if not hum or not root or not head then return false end
     return true
 end
 
-local function GetEntityModel(target)
-    if typeof(target) == "Instance" then
-        if target:IsA("Player") then
-            return target.Character
-        elseif target:IsA("Model") then
-            return target
-        end
-    end
-    return nil
-end
-
+-- MULTI-SOURCE HEALTH READER: Mendeteksi darah dari Humanoid, Attributes, atau Value objek
 local function GetEntityHealthData(char)
     if not char then return 100, 100 end
     
+    -- 1. Cek dari Humanoid Standar
     local hum = char:FindFirstChildOfClass("Humanoid")
     if hum then
         local hp = hum.Health
@@ -540,6 +526,14 @@ local function GetEntityHealthData(char)
         end
     end
 
+    -- 2. Cek dari Model Attributes (Sering dipakai game custom)
+    local successAttrHp, attrHp = pcall(function() return char:GetAttribute("Health") or char:GetAttribute("HP") or char:GetAttribute("CurrentHealth") end)
+    local successAttrMax, attrMax = pcall(function() return char:GetAttribute("MaxHealth") or char:GetAttribute("MaxHP") or 100 end)
+    if successAttrHp and type(attrHp) == "number" then
+        return attrHp, (type(attrMax) == "number" and attrMax > 0) and attrMax or 100
+    end
+
+    -- 3. Cek dari IntValue / NumberValue di dalam karakter
     for _, obj in pairs(char:GetDescendants()) do
         if obj:IsA("NumberValue") or obj:IsA("IntValue") then
             local name = obj.Name:lower()
@@ -552,22 +546,13 @@ local function GetEntityHealthData(char)
     return 100, 100
 end
 
-local function IsEnemyEntity(target)
-    local char = GetEntityModel(target)
-    if not IsValidCharacter(char) then return false end
-    if char:FindFirstChildOfClass("ForceField") then return false end
-
-    if typeof(target) == "Instance" and target:IsA("Player") then
-        if target == LocalPlayer then return false end
-        if HackConfig.FFAModeAktif then return true end
-        if target.Team and LocalPlayer.Team then
-            if target.Team == LocalPlayer.Team then return false end
-        end
-        return true
-    elseif typeof(target) == "Instance" and target:IsA("Model") then
-        return true
+local function IsEnemyEntity(playerInstance)
+    if playerInstance == LocalPlayer then return false end
+    if HackConfig.FFAModeAktif then return true end
+    if playerInstance.Team and LocalPlayer.Team then
+        if playerInstance.Team == LocalPlayer.Team then return false end
     end
-    return false
+    return true
 end
 
 local function IsVisible(targetPart)
@@ -595,35 +580,13 @@ local function GetDynamicTargetPart(char)
     return body
 end
 
-local function GetAllTargetableEntities()
+local function GetAllTargetablePlayers()
     local list = {}
-    
     for _, p in ipairs(Players:GetPlayers()) do
-        if p ~= LocalPlayer and p.Character and IsValidCharacter(p.Character) then
+        if p ~= LocalPlayer and p.Character and IsValidPlayerCharacter(p.Character) then
             table.insert(list, p)
         end
     end
-    
-    local function scanFolder(parentObj)
-        for _, obj in ipairs(parentObj:GetChildren()) do
-            if obj:IsA("Model") and obj ~= LocalPlayer.Character and IsValidCharacter(obj) then
-                local isPlayerChar = false
-                for _, p in ipairs(Players:GetPlayers()) do
-                    if p.Character == obj then
-                        isPlayerChar = true
-                        break
-                    end
-                end
-                if not isPlayerChar then
-                    table.insert(list, obj)
-                end
-            elseif obj:IsA("Folder") or obj:IsA("Model") then
-                scanFolder(obj)
-            end
-        end
-    end
-    
-    scanFolder(Workspace)
     return list
 end
 
@@ -642,9 +605,9 @@ end
 
 local function GetNewTarget3D()
     local closest, shortestDist = nil, math.huge
-    for _, entity in ipairs(GetAllTargetableEntities()) do
-        if IsEnemyEntity(entity) then
-            local char = GetEntityModel(entity)
+    for _, p in ipairs(GetAllTargetablePlayers()) do
+        if IsEnemyEntity(p) then
+            local char = p.Character
             local targetPart = GetDynamicTargetPart(char)
             if targetPart then
                 if not HackConfig.WallCheck or IsVisible(targetPart) then
@@ -664,9 +627,9 @@ end
 local function GetClosestEnemy2D()
     local closest, shortestDist = nil, HackConfig.FOVRadius
     local center = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
-    for _, entity in ipairs(GetAllTargetableEntities()) do
-        if IsEnemyEntity(entity) then
-            local char = GetEntityModel(entity)
+    for _, p in ipairs(GetAllTargetablePlayers()) do
+        if IsEnemyEntity(p) then
+            local char = p.Character
             local targetPart = GetDynamicTargetPart(char)
             if targetPart then
                 if not HackConfig.WallCheck or IsVisible(targetPart) then
@@ -901,15 +864,8 @@ end)
 
 local function GetPlayerNamesList()
     local names = {}
-    for _, entity in ipairs(GetAllTargetableEntities()) do
-        local char = GetEntityModel(entity)
-        if char then
-            local name = char.Name
-            if typeof(entity) == "Instance" and entity:IsA("Player") then
-                name = entity.Name
-            end
-            table.insert(names, name)
-        end
+    for _, p in ipairs(GetAllTargetablePlayers()) do
+        if p.Character then table.insert(names, p.Name) end
     end
     if #names == 0 then table.insert(names, "Tidak Ada Target") end
     return names
@@ -923,17 +879,10 @@ CreateButton(TabContentFrames["World"], "Mulai Teleport", function()
     pcall(function()
         local targetName = WorldConfig.SelectedTeleportTarget
         local foundRoot = nil
-        for _, entity in ipairs(GetAllTargetableEntities()) do
-            local char = GetEntityModel(entity)
-            if char then
-                local name = char.Name
-                if typeof(entity) == "Instance" and entity:IsA("Player") then
-                    name = entity.Name
-                end
-                if name == targetName then
-                    foundRoot = char:FindFirstChild("HumanoidRootPart") or char:FindFirstChild("Torso") or char:FindFirstChild("UpperTorso") or char.PrimaryPart
-                    break
-                end
+        for _, p in ipairs(GetAllTargetablePlayers()) do
+            if p.Name == targetName and p.Character then
+                foundRoot = p.Character:FindFirstChild("HumanoidRootPart") or p.Character:FindFirstChild("Torso") or p.Character:FindFirstChild("UpperTorso") or p.Character.PrimaryPart
+                break
             end
         end
         if foundRoot and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
@@ -1038,21 +987,6 @@ CreateButton(TabContentFrames["Configuration"], "Delete Settings", function()
     end)
 end)
 
-local function CheckIfAdmin(p)
-    if p == LocalPlayer then return false end
-    local nameRaw = string.upper(p.Name .. " " .. p.DisplayName)
-    if string.find(nameRaw, "%[GM%]") or string.find(nameRaw, "%[MOD%]") or string.find(nameRaw, "GAME MASTER") or string.find(nameRaw, "MODERATOR") then return true end
-    return false
-end
-
-Players.PlayerAdded:Connect(function(p)
-    if HackConfig.AntiAdminAktif and CheckIfAdmin(p) then
-        TitleLabel.Text = "⚠️ ADMIN TERDETEKSI: " .. p.Name
-        ShowPopupNotification("⚠️ ADMIN TERDETEKSI: " .. p.Name)
-        task.delay(5, function() TitleLabel.Text = "× D3D MENU: PLAYER & BOT v3.9.8 ×" end)
-    end
-end)
-
 RunService.RenderStepped:Connect(function()
     if WorldConfig.NightMode then
         Lighting.ClockTime = 0
@@ -1088,7 +1022,8 @@ RunService.RenderStepped:Connect(function()
         local predictedAimPos = nil
 
         if LockedTarget and LockedTarget.Parent then
-            if IsValidCharacter(LockedTarget) and IsEnemyEntity(LockedTarget) then
+            local pInst = Players:GetPlayerFromCharacter(LockedTarget)
+            if pInst and IsValidPlayerCharacter(LockedTarget) and IsEnemyEntity(pInst) then
                 partToAim = GetDynamicTargetPart(LockedTarget)
                 if partToAim then
                     if not HackConfig.WallCheck or IsVisible(partToAim) then
@@ -1136,37 +1071,28 @@ RunService.RenderStepped:Connect(function()
         LockedTarget = nil
     end
 
-    local activeEntities = GetAllTargetableEntities()
+    local activePlayers = GetAllTargetablePlayers()
     
     for key, _ in pairs(ESPCache) do
         local found = false
-        for _, ent in ipairs(activeEntities) do
-            local char = GetEntityModel(ent)
-            if char == key and IsValidCharacter(char) then found = true break end
+        for _, p in ipairs(activePlayers) do
+            if p.Character == key and IsValidPlayerCharacter(key) then found = true break end
         end
         if not found then RemoveEntityESP(key) end
     end
 
-    for _, entity in ipairs(activeEntities) do
-        local char = GetEntityModel(entity)
-        if IsValidCharacter(char) then
-            local associatedPlayer = nil
-            for _, p in ipairs(Players:GetPlayers()) do
-                if p.Character == char then
-                    associatedPlayer = p
-                    break
-                end
-            end
-
+    for _, p in ipairs(activePlayers) do
+        local char = p.Character
+        if IsValidPlayerCharacter(char) then
             if not ESPCache[char] then
-                CreateEntityESP(char, associatedPlayer)
+                CreateEntityESP(char, p)
             end
 
             local esp = ESPCache[char]
-            local isEnemy = IsEnemyEntity(entity)
+            local isEnemy = IsEnemyEntity(p)
             local shouldDraw = (VisualsConfig.PlayerESP) or (VisualsConfig.EnemyESP and isEnemy)
 
-            local primaryPart = char:FindFirstChild("HumanoidRootPart") or char:FindFirstChild("Torso") or char:FindFirstChild("UpperTorso") or char:FindFirstChild("Head") or char.PrimaryPart or char:FindFirstChildOfClass("BasePart")
+            local primaryPart = char:FindFirstChild("HumanoidRootPart") or char:FindFirstChild("Torso") or char:FindFirstChild("UpperTorso") or char:FindFirstChild("Head") or char.PrimaryPart
             local health, maxHealth = GetEntityHealthData(char)
             local active = shouldDraw and primaryPart and (health > 0)
 
@@ -1190,8 +1116,8 @@ RunService.RenderStepped:Connect(function()
 
                     local function getPos(part)
                         if not part then return nil end
-                        local p, visible = Camera:WorldToViewportPoint(part.Position)
-                        if visible then return Vector2.new(p.X, p.Y) end
+                        local pPos, visible = Camera:WorldToViewportPoint(part.Position)
+                        if visible then return Vector2.new(pPos.X, pPos.Y) end
                         return nil
                     end
 
@@ -1235,11 +1161,7 @@ RunService.RenderStepped:Connect(function()
                     esp.Line.Color = currentESPColor
                     esp.Line.Visible = true
 
-                    local entityName = char.Name
-                    if typeof(entity) == "Instance" and entity:IsA("Player") then
-                        entityName = entity.Name
-                    end
-                    esp.Name.Text = entityName
+                    esp.Name.Text = p.Name
                     esp.Name.Position = Vector2.new(vector.X, vector.Y - 38)
                     esp.Name.Color = currentESPColor
                     esp.Name.Visible = true
@@ -1249,25 +1171,15 @@ RunService.RenderStepped:Connect(function()
                     esp.Distance.Color = currentESPColor
                     esp.Distance.Visible = true
 
-                    local genderText = "[Cowo]"
-                    local isPlayer = (associatedPlayer ~= nil)
-
-                    if isPlayer then
-                        if not EntityGenderCache[char] then
-                            EntityGenderCache[char] = (math.random(1, 2) == 1) and "[Cowo]" or "[Cewe]"
-                        end
-                        genderText = EntityGenderCache[char]
-                    else
-                        genderText = "[Gay]"
+                    if not EntityGenderCache[char] then
+                        EntityGenderCache[char] = (math.random(1, 2) == 1) and "[Cowo]" or "[Cewe]"
                     end
-
-                    esp.Gender.Text = genderText
+                    esp.Gender.Text = EntityGenderCache[char]
                     esp.Gender.Position = Vector2.new(vector.X, vector.Y + 36)
                     esp.Gender.Color = currentESPColor
                     esp.Gender.Visible = true
 
-                    local statusText = isPlayer and "[Player]" or "[Bot]"
-                    esp.Status.Text = statusText
+                    esp.Status.Text = "[Player]"
                     esp.Status.Position = Vector2.new(vector.X, vector.Y + 50)
                     esp.Status.Color = currentESPColor
                     esp.Status.Visible = true
