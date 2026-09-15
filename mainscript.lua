@@ -725,6 +725,7 @@ local function HideESPObject(esp)
         if esp.Gender then esp.Gender.Visible = false end
         if esp.Status then esp.Status.Visible = false end
         if esp.HealthBarBg then esp.HealthBarBg.Visible = false end
+        if esp.HealthBarBorder then esp.HealthBarBorder.Visible = false end
         if esp.HealthBar then esp.HealthBar.Visible = false end
         if esp.HeadCircle then esp.HeadCircle.Visible = false end
         if esp.HeadBillboard then esp.HeadBillboard.Enabled = false end
@@ -794,8 +795,9 @@ local function CreateEntityESP(key, playerInstance)
         Distance = Drawing.new("Text"),
         Gender = Drawing.new("Text"),
         Status = Drawing.new("Text"),
-        HealthBarBg = Drawing.new("Line"),
-        HealthBar = Drawing.new("Line"),
+        HealthBarBg = Drawing.new("Square"),
+        HealthBarBorder = Drawing.new("Square"),
+        HealthBar = Drawing.new("Square"),
         HeadCircle = Drawing.new("Circle"),
         HeadBillboard = headBillboard,
         Skeleton = {
@@ -811,12 +813,17 @@ local function CreateEntityESP(key, playerInstance)
     espData.Line.Transparency = 0.7
     espData.Line.Visible = false
 
-    espData.HealthBarBg.Thickness = 3
-    espData.HealthBarBg.Color = Color3.fromRGB(40, 40, 40)
-    espData.HealthBarBg.Transparency = 0.8
+    espData.HealthBarBg.Filled = true
+    espData.HealthBarBg.Color = Color3.fromRGB(20, 20, 20)
+    espData.HealthBarBg.Transparency = 0.6
     espData.HealthBarBg.Visible = false
 
-    espData.HealthBar.Thickness = 1.5
+    espData.HealthBarBorder.Filled = false
+    espData.HealthBarBorder.Thickness = 1.5
+    espData.HealthBarBorder.Transparency = 1
+    espData.HealthBarBorder.Visible = false
+
+    espData.HealthBar.Filled = true
     espData.HealthBar.Transparency = 1
     espData.HealthBar.Visible = false
 
@@ -1298,20 +1305,37 @@ RunService.RenderStepped:Connect(function()
                     if hum then
                         local healthPct = math.clamp(hum.Health / hum.MaxHealth, 0, 1)
                         local barHeight = 40
+                        local barWidth = 5
                         local barX = vector.X + 24
                         local barY = vector.Y - 20
 
-                        esp.HealthBarBg.From = Vector2.new(barX, barY)
-                        esp.HealthBarBg.To = Vector2.new(barX, barY + barHeight)
+                        -- Health Bar Background (Volume)
+                        esp.HealthBarBg.Position = Vector2.new(barX, barY)
+                        esp.HealthBarBg.Size = Vector2.new(barWidth, barHeight)
                         esp.HealthBarBg.Visible = true
 
+                        -- Health Bar Border (Mengikuti Color Picker)
+                        esp.HealthBarBorder.Position = Vector2.new(barX - 1, barY - 1)
+                        esp.HealthBarBorder.Size = Vector2.new(barWidth + 2, barHeight + 2)
+                        esp.HealthBarBorder.Color = currentESPColor
+                        esp.HealthBarBorder.Visible = true
+
+                        -- Health Bar Fill & Dynamic Color Per 33%++
                         local currentHeight = barHeight * healthPct
-                        esp.HealthBar.From = Vector2.new(barX, barY + (barHeight - currentHeight))
-                        esp.HealthBar.To = Vector2.new(barX, barY + barHeight)
-                        esp.HealthBar.Color = currentESPColor
+                        esp.HealthBar.Position = Vector2.new(barX, barY + (barHeight - currentHeight))
+                        esp.HealthBar.Size = Vector2.new(barWidth, currentHeight)
+
+                        if healthPct > 0.66 then
+                            esp.HealthBar.Color = Color3.fromRGB(0, 255, 0) -- Hijau
+                        elseif healthPct > 0.33 then
+                            esp.HealthBar.Color = Color3.fromRGB(255, 140, 0) -- Oranye
+                        else
+                            esp.HealthBar.Color = Color3.fromRGB(139, 0, 0) -- Merah Gelap
+                        end
                         esp.HealthBar.Visible = true
                     else
                         esp.HealthBarBg.Visible = false
+                        esp.HealthBarBorder.Visible = false
                         esp.HealthBar.Visible = false
                     end
                 else
