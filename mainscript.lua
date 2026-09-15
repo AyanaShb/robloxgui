@@ -1,97 +1,76 @@
--- Pastikan executor mendukung Drawing API
+-- Menggunakan Roblox GUI (BillboardGui & ImageLabel) untuk menampilkan Foto Profil Asli
 local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
 local LocalPlayer = Players.LocalPlayer
-local Camera = workspace.CurrentCamera
 
--- 1. Pengaturan Lingkaran FOV (Di tengah layar)
-local FOVCircle = Drawing.new("Circle")
-FOVCircle.Visible = true
-FOVCircle.Radius = 120 -- Ukuran lingkaran FOV
-FOVCircle.Color = Color3.fromRGB(255, 255, 255) -- Warna putih
-FOVCircle.Thickness = 1
-FOVCircle.Filled = false
-FOVCircle.Position = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
+local function setupBillboard(player)
+    if player == LocalPlayer then return end
 
--- Tabel untuk menyimpan objek ESP setiap pemain agar tidak menumpuk
-local espList = {}
+    -- Fungsi untuk memasang ESP saat karakter pemain muncul/respawn
+    local function onCharacterAdded(character)
+        local head = character:WaitForChild("Head", 5)
+        if not head then return end
 
-local function createESP(player)
-    local esp = {}
-    
-    -- Garis Tracer (Merah dari atas/tengah layar ke musuh)
-    esp.Tracer = Drawing.new("Line")
-    esp.Tracer.Visible = false
-    esp.Tracer.Color = Color3.fromRGB(255, 0, 0)
-    esp.Tracer.Thickness = 1.5
-    
-    -- Teks Nama dan Jarak
-    esp.Text = Drawing.new("Text")
-    esp.Text.Visible = false
-    esp.Text.Color = Color3.fromRGB(255, 255, 255)
-    esp.Text.Size = 14
-    esp.Text.Center = true
-    esp.Text.Outline = true
-
-    espList[player] = esp
-end
-
-local function removeESP(player)
-    if espList[player] then
-        for _, obj in pairs(espList[player]) do
-            obj:Remove()
+        -- Cek jika BillboardGui sudah ada sebelumnya, hapus agar tidak menumpuk
+        if head:FindFirstChild("RealPhotoESP") then
+            head.RealPhotoESP:Destroy()
         end
-        espList[player] = nil
-    end
-end
 
--- Inisialisasi pemain yang sudah ada
-for _, player in ipairs(Players:GetPlayers()) do
-    if player ~= LocalPlayer then
-        createESP(player)
-    end
-end
+        -- 1. Buat BillboardGui yang melayang di atas kepala
+        local billboard = Instance.new("BillboardGui")
+        billboard.Name = "RealPhotoESP"
+        billboard.Size = UDim2.new(0, 50, 0, 50) -- Ukuran kotak foto
+        billboard.StudsOffset = Vector3.new(0, 2.5, 0) -- Posisi persis di atas kepala
+        billboard.AlwaysOnTop = true
+        billboard.Parent = head
 
-Players.PlayerAdded:Connect(createESP)
-Players.PlayerRemoving:Connect(removeESP)
+        -- 2. Buat Bingkai Bulat / Kotak Foto Profil (ImageLabel)
+        local imageLabel = Instance.new("ImageLabel")
+        imageLabel.Size = UDim2.new(1, 0, 1, 0)
+        imageLabel.BackgroundTransparency = 1
+        imageLabel.Image = "" -- Akan diisi otomatis oleh Thumbnail API Roblox
+        imageLabel.Parent = billboard
 
--- Loop Utama (RenderStepped) untuk memperbarui posisi ESP secara *real-time*
-RunService.RenderStepped:Connect(function()
-    -- Update posisi FOV jika ukuran layar berubah
-    FOVCircle.Position = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
+        -- Membuat sudut gambar menjadi agak meluncur/lingkaran (opsional)
+        local uiCorner = Instance.new("UICorner")
+        uiCorner.CornerRadius = UDim.new(0.3, 0)
+        uiCorner.Parent = imageLabel
 
-    for player, esp in pairs(espList) do
-        local character = player.Character
-        local rootPart = character and character:FindFirstChild("HumanoidRootPart")
-        local humanoid = character and character:FindFirstChild("Humanoid")
+        -- 3. Ambil Foto Profil Asli (Headshot) dari Server Roblox berdasarkan UserId pemain
+        local success, imageUrl = pcall(function()
+            return Players:GetUserThumbnailAsync(player.UserId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size150x150)
+        end)
+
+        if success and imageUrl then
+            imageLabel.Image = imageUrl
+        end
         
-        -- Validasi apakah musuh hidup dan ada karakternya
-        if character and rootPart and humanoid and humanoid.Health > 0 and player ~= LocalPlayer then
-            -- Ubah posisi 3D dunia game ke 2D layar HP
-            local vector, onScreen = Camera:WorldToViewportPoint(rootPart.Position)
-            
-            if onScreen then
-                -- Hitung jarak dari Player ke Musuh (dalam meter)
-                local distance = (rootPart.Position - Camera.CFrame.Position).Magnitude
-                
-                -- A. Update Garis Tracer (Merah) dari atas layar (Y: 0) ke posisi musuh
-                esp.Tracer.Visible = true
-                esp.Tracer.From = Vector2.new(Camera.ViewportSize.X / 2, 0) -- Asal garis dari atas tengah
-                esp.Tracer.To = Vector2.new(vector.X, vector.Y)
-                
-                -- B. Update Teks Nama & Jarak (Contoh: "ArulAR07 [78m]")
-                esp.Text.Visible = true
-                esp.Text.Text = string.format("%s [%dm]", player.Name, math.floor(distance))
-                esp.Text.Position = Vector2.new(vector.X, vector.Y - 40) -- Posisi teks sedikit di atas kepala/badan musuh
-            else
-                esp.Tracer.Visible = false
-                esp.Text.Visible = false
-            end
-        else
-            esp.Tracer.Visible = false
-            esp.Text.Visible = false
-        end
+        -- 4. Tambahkan Teks Nama & Jarak di bawah foto profil
+        local textLabel = Instance.new("TextLabel")
+        textLabel.Size = UDim2.new(0, 100, 0, 20)
+        textLabel.Position = UDim2.new(-0.5, 0, 1, 0)
+        textLabel.BackgroundTransparency = 1
+        textLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+        textLabel.TextStrokeTransparency = 0 -- Outline hitam agar jelas
+        textLabel.TextSize = 12
+        textLabel.Font = Enum.Font.SourceSansBold
+        textLabel.Text = player.Name
+        textLabel.Parent = billboard
     end
-end)
 
-print("ESP Mirip Game Berhasil Dijalankan!")
+    if player.Character then
+        task.spawn(function()
+            onCharacterAdded(player.Character)
+        end)
+    end
+    
+    player.CharacterAdded:Connect(onCharacterAdded)
+end
+
+-- Terapkan ke semua pemain yang ada di server
+for _, player in ipairs(Players:GetPlayers()) do
+    setupBillboard(player)
+end
+
+Players.PlayerAdded:Connect(setupBillboard)
+
+print("ESP Foto Profil Asli Berhasil Dijalankan!")
