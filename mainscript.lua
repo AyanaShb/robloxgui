@@ -1,10 +1,12 @@
--- v3.9.9 - Absolute Player-Only ESP & Multi-Source Health Fix
+-- v4.0.0 - Universal Bot/NPC ESP, Corner Box, Spine Skeleton & Custom Bypass
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local Lighting = game:GetService("Lighting")
 local Workspace = game:GetService("Workspace")
 local RunService = game:GetService("RunService")
 local HttpService = game:GetService("HttpService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local ScriptContext = game:GetService("ScriptContext")
 local Camera = Workspace.CurrentCamera
 local LocalPlayer = Players.LocalPlayer
 
@@ -20,11 +22,53 @@ task.spawn(function()
         if make_writeable then
             pcall(function() make_writeable(getreg()) end)
         end
+        if detour_function then
+            detour_function = function(...) return true end
+        end
+        if getconnections then
+            pcall(function()
+                for _, connection in ipairs(getconnections(ScriptContext.Error)) do
+                    connection:Disable()
+                end
+            end)
+        end
+        if getcallingscript then
+            pcall(function()
+                getcallingscript = function() return nil end
+            end)
+        end
+        for _, tableName in ipairs({"_G", "shared"}) do
+            pcall(function()
+                local target = getgenv()[tableName]
+                if target and type(target) == "table" then
+                    for key, _ in pairs(target) do
+                        local strKey = tostring(key):lower()
+                        if strKey:find("signature") or strKey:find("checksum") or strKey:find("hash") then
+                            target[key] = nil
+                        end
+                    end
+                end
+            end)
+        end
+        for _, remote in ipairs(ReplicatedStorage:GetDescendants()) do
+            if remote:IsA("RemoteEvent") or remote:IsA("RemoteFunction") then
+                local name = remote.Name:lower()
+                if name:find("handshake") or name:find("validate") or name:find("verify") or name:find("integrity") or name:find("anti") then
+                    pcall(function()
+                        if remote:IsA("RemoteEvent") then
+                            remote.FireServer = function(...) return true end
+                        elseif remote:IsA("RemoteFunction") then
+                            remote.InvokeServer = function(...) return true end
+                        end
+                    end)
+                end
+            end
+        end
     end)
 end)
 
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "D3D_Ultimate_Android_V3_9_9"
+ScreenGui.Name = "D3D_Ultimate_Android_V4_0_0"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
@@ -130,9 +174,7 @@ local HackConfig = {
     SpeedAktif = false,
     CustomSpeed = 50,
     JumpAktif = false,
-    CustomJump = 100,
-    GunModsAktif = false,
-    CustomFireRate = 800
+    CustomJump = 100
 }
 
 local ESPCache = {}
@@ -216,7 +258,7 @@ end)
 local TitleLabel = Instance.new("TextLabel")
 TitleLabel.Size = UDim2.new(1, 0, 0, 36)
 TitleLabel.BackgroundTransparency = 1
-TitleLabel.Text = "× D3D MENU: PURE PLAYER v3.9.9 ×"
+TitleLabel.Text = "× D3D MENU: BOT & PLAYER v4.0.0 ×"
 TitleLabel.TextColor3 = Color3.fromRGB(240, 240, 255)
 TitleLabel.TextSize = 11.5
 TitleLabel.Font = Enum.Font.GothamBold
@@ -461,7 +503,7 @@ local function CreateSlider(parent, text, min, max, default, callback)
             local pos = math.clamp((input.Position.X - sliderBar.AbsolutePosition.X) / sliderBar.AbsoluteSize.X, 0, 1)
             fill.Size = UDim2.new(pos, 0, 1, 0)
             local val = math.floor(min + ((max - min) * pos))
-            label.Text = text .. ": " + tostring(val)
+            label.Text = text .. ": " .. tostring(val)
             if callback then callback(val) end
         end
     end)
@@ -496,14 +538,11 @@ local function CreateButton(parent, text, callback)
     frame.Parent = parent
 end
 
--- FILTER MUTLAK: Hanya menerima player asli yang terdaftar di service Players
-local function IsValidPlayerCharacter(char)
+-- FILTER FLEKSIBEL: Melacak Player Asli DAN Bot/NPC/Dummy di Workspace
+local function IsValidEntityCharacter(char)
     if not char or not char:IsA("Model") then return false end
     if char == LocalPlayer.Character then return false end
     
-    local playerInstance = Players:GetPlayerFromCharacter(char)
-    if not playerInstance then return false end -- Tolak semua objek non-player (bukan pemain asli)
-
     local hum = char:FindFirstChildOfClass("Humanoid")
     local root = char:FindFirstChild("HumanoidRootPart") or char:FindFirstChild("Torso") or char:FindFirstChild("UpperTorso") or char.PrimaryPart
     local head = char:FindFirstChild("Head")
@@ -512,11 +551,9 @@ local function IsValidPlayerCharacter(char)
     return true
 end
 
--- MULTI-SOURCE HEALTH READER: Mendeteksi darah dari Humanoid, Attributes, atau Value objek
 local function GetEntityHealthData(char)
     if not char then return 100, 100 end
     
-    -- 1. Cek dari Humanoid Standar
     local hum = char:FindFirstChildOfClass("Humanoid")
     if hum then
         local hp = hum.Health
@@ -526,14 +563,12 @@ local function GetEntityHealthData(char)
         end
     end
 
-    -- 2. Cek dari Model Attributes (Sering dipakai game custom)
     local successAttrHp, attrHp = pcall(function() return char:GetAttribute("Health") or char:GetAttribute("HP") or char:GetAttribute("CurrentHealth") end)
     local successAttrMax, attrMax = pcall(function() return char:GetAttribute("MaxHealth") or char:GetAttribute("MaxHP") or 100 end)
     if successAttrHp and type(attrHp) == "number" then
         return attrHp, (type(attrMax) == "number" and attrMax > 0) and attrMax or 100
     end
 
-    -- 3. Cek dari IntValue / NumberValue di dalam karakter
     for _, obj in pairs(char:GetDescendants()) do
         if obj:IsA("NumberValue") or obj:IsA("IntValue") then
             local name = obj.Name:lower()
@@ -546,11 +581,14 @@ local function GetEntityHealthData(char)
     return 100, 100
 end
 
-local function IsEnemyEntity(playerInstance)
-    if playerInstance == LocalPlayer then return false end
+local function IsEnemyEntity(char)
     if HackConfig.FFAModeAktif then return true end
-    if playerInstance.Team and LocalPlayer.Team then
-        if playerInstance.Team == LocalPlayer.Team then return false end
+    local pInstance = Players:GetPlayerFromCharacter(char)
+    if pInstance then
+        if pInstance == LocalPlayer then return false end
+        if pInstance.Team and LocalPlayer.Team then
+            if pInstance.Team == LocalPlayer.Team then return false end
+        end
     end
     return true
 end
@@ -580,11 +618,24 @@ local function GetDynamicTargetPart(char)
     return body
 end
 
-local function GetAllTargetablePlayers()
+local function GetAllTargetableEntities()
     local list = {}
+    -- Ambil dari Players
     for _, p in ipairs(Players:GetPlayers()) do
-        if p ~= LocalPlayer and p.Character and IsValidPlayerCharacter(p.Character) then
-            table.insert(list, p)
+        if p ~= LocalPlayer and p.Character and IsValidEntityCharacter(p.Character) then
+            table.insert(list, p.Character)
+        end
+    end
+    -- Ambil dari Workspace (Bot/NPC/Dummy)
+    for _, obj in ipairs(Workspace:GetDescendants()) do
+        if obj:IsA("Model") and IsValidEntityCharacter(obj) then
+            local isAlreadyPlayer = false
+            for _, p in ipairs(Players:GetPlayers()) do
+                if p.Character == obj then isAlreadyPlayer = true break end
+            end
+            if not isAlreadyPlayer then
+                table.insert(list, obj)
+            end
         end
     end
     return list
@@ -605,9 +656,8 @@ end
 
 local function GetNewTarget3D()
     local closest, shortestDist = nil, math.huge
-    for _, p in ipairs(GetAllTargetablePlayers()) do
-        if IsEnemyEntity(p) then
-            local char = p.Character
+    for _, char in ipairs(GetAllTargetableEntities()) do
+        if IsEnemyEntity(char) then
             local targetPart = GetDynamicTargetPart(char)
             if targetPart then
                 if not HackConfig.WallCheck or IsVisible(targetPart) then
@@ -627,9 +677,8 @@ end
 local function GetClosestEnemy2D()
     local closest, shortestDist = nil, HackConfig.FOVRadius
     local center = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
-    for _, p in ipairs(GetAllTargetablePlayers()) do
-        if IsEnemyEntity(p) then
-            local char = p.Character
+    for _, char in ipairs(GetAllTargetableEntities()) do
+        if IsEnemyEntity(char) then
             local targetPart = GetDynamicTargetPart(char)
             if targetPart then
                 if not HackConfig.WallCheck or IsVisible(targetPart) then
@@ -662,6 +711,11 @@ local function HideESPObject(esp)
         if esp.HealthBar then esp.HealthBar.Visible = false end
         if esp.HeadCircle then esp.HeadCircle.Visible = false end
         if esp.HeadBillboard then esp.HeadBillboard.Enabled = false end
+        if esp.CornerBox then
+            for _, line in pairs(esp.CornerBox) do
+                if line then line.Visible = false end
+            end
+        end
         if esp.Skeleton then
             for _, bone in pairs(esp.Skeleton) do
                 if bone then bone.Visible = false end
@@ -686,12 +740,13 @@ local function RemoveEntityESP(key)
     end
 end
 
-local function CreateEntityESP(key, playerInstance)
+local function CreateEntityESP(key)
     RemoveEntityESP(key)
 
     local headBillboard, headImageLabel
     pcall(function()
         local head = key:FindFirstChild("Head")
+        local playerInstance = Players:GetPlayerFromCharacter(key)
         if head and playerInstance and playerInstance:IsA("Player") then
             headBillboard = Instance.new("BillboardGui")
             headBillboard.Name = "HeadPhotoESP"
@@ -722,6 +777,18 @@ local function CreateEntityESP(key, playerInstance)
         end
     end)
 
+    -- Membuat 4 Garis untuk setiap sudut Box (Total 16 Garis Drawing untuk Corner Box Putus-Putus)
+    local cornerLines = {}
+    local directions = {"TL_H", "TL_V", "TR_H", "TR_V", "BL_H", "BL_V", "BR_H", "BR_V"}
+    -- Menggunakan 2 garis per sudut (Horisontal & Vertikal) dikali 4 sudut
+    for _, _ in ipairs({1, 2, 3, 4, 5, 6, 7, 8}) do
+        local ln = Drawing.new("Line")
+        ln.Thickness = 1.5
+        ln.Transparency = 0.8
+        ln.Visible = false
+        table.insert(cornerLines, ln)
+    end
+
     local espData = {
         Line = Drawing.new("Line"),
         Name = Drawing.new("Text"),
@@ -733,8 +800,11 @@ local function CreateEntityESP(key, playerInstance)
         HealthBar = Drawing.new("Square"),
         HeadCircle = Drawing.new("Circle"),
         HeadBillboard = headBillboard,
+        CornerBox = cornerLines,
         Skeleton = {
-            Spine = Drawing.new("Line"),
+            SpineHead = Drawing.new("Line"),     -- Kepala ke Leher/Dada Atas
+            SpineUpper = Drawing.new("Line"),    -- Dada Atas ke Pinggang
+            SpineLower = Drawing.new("Line"),    -- Pinggang ke Pangkal Paha
             LeftArm = Drawing.new("Line"),
             RightArm = Drawing.new("Line"),
             LeftLeg = Drawing.new("Line"),
@@ -784,7 +854,7 @@ local function CreateEntityESP(key, playerInstance)
     ESPCache[key] = espData
 end
 
-CreateToggle(TabContentFrames["Visual"], "Enemy ESP", false, function(v) 
+CreateToggle(TabContentFrames["Visual"], "Enemy ESP (Player & Bot)", false, function(v) 
     VisualsConfig.EnemyESP = v 
 end)
 
@@ -862,16 +932,18 @@ CreateToggle(TabContentFrames["World"], "Fly (Tahan Tombol Lompat)", false, func
     ShowPopupNotification(v and "Fly Diaktifkan" or "Fly Dimatikan")
 end)
 
-local function GetPlayerNamesList()
+local function GetEntityNamesList()
     local names = {}
-    for _, p in ipairs(GetAllTargetablePlayers()) do
-        if p.Character then table.insert(names, p.Name) end
+    for _, char in ipairs(GetAllTargetableEntities()) do
+        local p = Players:GetPlayerFromCharacter(char)
+        local name = p and p.Name or (char.Name ~= "" and char.Name or "Bot/NPC")
+        table.insert(names, name)
     end
     if #names == 0 then table.insert(names, "Tidak Ada Target") end
     return names
 end
 
-CreateDropdown(TabContentFrames["World"], "Target Teleport", GetPlayerNamesList(), GetPlayerNamesList()[1], function(selected)
+CreateDropdown(TabContentFrames["World"], "Target Teleport", GetEntityNamesList(), GetEntityNamesList()[1], function(selected)
     WorldConfig.SelectedTeleportTarget = selected
 end)
 
@@ -879,9 +951,11 @@ CreateButton(TabContentFrames["World"], "Mulai Teleport", function()
     pcall(function()
         local targetName = WorldConfig.SelectedTeleportTarget
         local foundRoot = nil
-        for _, p in ipairs(GetAllTargetablePlayers()) do
-            if p.Name == targetName and p.Character then
-                foundRoot = p.Character:FindFirstChild("HumanoidRootPart") or p.Character:FindFirstChild("Torso") or p.Character:FindFirstChild("UpperTorso") or p.Character.PrimaryPart
+        for _, char in ipairs(GetAllTargetableEntities()) do
+            local p = Players:GetPlayerFromCharacter(char)
+            local name = p and p.Name or (char.Name ~= "" and char.Name or "Bot/NPC")
+            if name == targetName then
+                foundRoot = char:FindFirstChild("HumanoidRootPart") or char:FindFirstChild("Torso") or char:FindFirstChild("UpperTorso") or char.PrimaryPart
                 break
             end
         end
@@ -915,11 +989,6 @@ CreateDropdown(TabContentFrames["Skill"], "Target Bagian Tubuh", {"Head", "Neck"
 CreateSlider(TabContentFrames["Skill"], "Kelengketan Aim POV (Smoothness)", 1, 100, 15, function(val) HackConfig.AimbotSmoothness = val end)
 CreateToggle(TabContentFrames["Skill"], "Tampilkan Lingkaran FOV", false, function(v) HackConfig.ShowFOV = v end)
 CreateSlider(TabContentFrames["Skill"], "Lebar Lingkaran FOV", 10, 600, 150, function(val) HackConfig.FOVRadius = val end)
-CreateToggle(TabContentFrames["Skill"], "Gun Mods (Infinite Ammo & RPM)", false, function(v) 
-    HackConfig.GunModsAktif = v 
-    ShowPopupNotification(v and "Gun Mods Diaktifkan" or "Gun Mods Dimatikan")
-end)
-CreateSlider(TabContentFrames["Skill"], "RPM Fire Rate", 400, 2500, 800, function(val) HackConfig.CustomFireRate = val end)
 
 CreateDropdown(TabContentFrames["Configuration"], "UI Theme Mode", {"Dark", "Light"}, "Dark", function(mode)
     AppTheme = mode
@@ -1022,8 +1091,7 @@ RunService.RenderStepped:Connect(function()
         local predictedAimPos = nil
 
         if LockedTarget and LockedTarget.Parent then
-            local pInst = Players:GetPlayerFromCharacter(LockedTarget)
-            if pInst and IsValidPlayerCharacter(LockedTarget) and IsEnemyEntity(pInst) then
+            if IsValidEntityCharacter(LockedTarget) and IsEnemyEntity(LockedTarget) then
                 partToAim = GetDynamicTargetPart(LockedTarget)
                 if partToAim then
                     if not HackConfig.WallCheck or IsVisible(partToAim) then
@@ -1071,25 +1139,24 @@ RunService.RenderStepped:Connect(function()
         LockedTarget = nil
     end
 
-    local activePlayers = GetAllTargetablePlayers()
+    local activeEntities = GetAllTargetableEntities()
     
     for key, _ in pairs(ESPCache) do
         local found = false
-        for _, p in ipairs(activePlayers) do
-            if p.Character == key and IsValidPlayerCharacter(key) then found = true break end
+        for _, char in ipairs(activeEntities) do
+            if char == key and IsValidEntityCharacter(key) then found = true break end
         end
         if not found then RemoveEntityESP(key) end
     end
 
-    for _, p in ipairs(activePlayers) do
-        local char = p.Character
-        if IsValidPlayerCharacter(char) then
+    for _, char in ipairs(activeEntities) do
+        if IsValidEntityCharacter(char) then
             if not ESPCache[char] then
-                CreateEntityESP(char, p)
+                CreateEntityESP(char)
             end
 
             local esp = ESPCache[char]
-            local isEnemy = IsEnemyEntity(p)
+            local isEnemy = IsEnemyEntity(char)
             local shouldDraw = (VisualsConfig.PlayerESP) or (VisualsConfig.EnemyESP and isEnemy)
 
             local primaryPart = char:FindFirstChild("HumanoidRootPart") or char:FindFirstChild("Torso") or char:FindFirstChild("UpperTorso") or char:FindFirstChild("Head") or char.PrimaryPart
@@ -1150,18 +1217,89 @@ RunService.RenderStepped:Connect(function()
                         esp.HeadCircle.Visible = false
                     end
 
-                    drawBone(esp.Skeleton.Spine, hPos or utPos, utPos)
+                    -- SKELETON DENGAN TULANG BELAKANG LENGKAP
+                    -- 1. Kepala ke Dada Atas (UpperTorso / Torso)
+                    drawBone(esp.Skeleton.SpineHead, hPos, utPos)
+                    -- 2. Dada Atas ke Pinggang / LowerTorso
+                    drawBone(esp.Skeleton.SpineUpper, utPos, ltPos)
+                    -- 3. Pinggang ke Akar Bawah (HumanoidRootPart / PrimaryPart)
+                    drawBone(esp.Skeleton.SpineLower, ltPos, getPos(primaryPart))
+
+                    -- Anggota Tubuh terhubung ke Tulang Belakang / Dada Atas
                     drawBone(esp.Skeleton.LeftArm, utPos, laPos)
                     drawBone(esp.Skeleton.RightArm, utPos, raPos)
                     drawBone(esp.Skeleton.LeftLeg, ltPos, llPos)
                     drawBone(esp.Skeleton.RightLeg, ltPos, rlPos)
+
+                    -- CORNER BOX PUTUS-PUTUS (Atas, Bawah, Kiri, Kanan)
+                    pcall(function()
+                        local cf, size = char:GetBoundingBox()
+                        local topCenter = cf.Position + Vector3.new(0, size.Y / 2, 0)
+                        local bottomCenter = cf.Position - Vector3.new(0, size.Y / 2, 0)
+                        local topPos, topVisible = Camera:WorldToViewportPoint(topCenter)
+                        local botPos, botVisible = Camera:WorldToViewportPoint(bottomCenter)
+
+                        if topVisible and botVisible then
+                            local height = math.abs(topPos.Y - botPos.Y)
+                            local width = height / 2
+                            local boxX = topPos.X - (width / 2)
+                            local boxY = topPos.Y
+                            local lineLengthX = width * 0.3 -- Panjang segmen putus-putus sudut (30% dari lebar/tinggi)
+                            local lineLengthY = height * 0.3
+
+                            local lines = esp.CenterBox or esp.CornerBox
+                            if lines and #lines >= 8 then
+                                -- Top-Left Corner
+                                lines[1].From = Vector2.new(boxX, boxY)
+                                lines[1].To = Vector2.new(boxX + lineLengthX, boxY)
+                                lines[1].Color = currentESPColor; lines[1].Visible = true
+
+                                lines[2].From = Vector2.new(boxX, boxY)
+                                lines[2].To = Vector2.new(boxX, boxY + lineLengthY)
+                                lines[2].Color = currentESPColor; lines[2].Visible = true
+
+                                -- Top-Right Corner
+                                lines[3].From = Vector2.new(boxX + width, boxY)
+                                lines[3].To = Vector2.new(boxX + width - lineLengthX, boxY)
+                                lines[3].Color = currentESPColor; lines[3].Visible = true
+
+                                lines[4].From = Vector2.new(boxX + width, boxY)
+                                lines[4].To = Vector2.new(boxX + width, boxY + lineLengthY)
+                                lines[4].Color = currentESPColor; lines[4].Visible = true
+
+                                -- Bottom-Left Corner
+                                lines[5].From = Vector2.new(boxX, boxY + height)
+                                lines[5].To = Vector2.new(boxX + lineLengthX, boxY + height)
+                                lines[5].Color = currentESPColor; lines[5].Visible = true
+
+                                lines[6].From = Vector2.new(boxX, boxY + height)
+                                lines[6].To = Vector2.new(boxX, boxY + height - lineLengthY)
+                                lines[6].Color = currentESPColor; lines[6].Visible = true
+
+                                -- Bottom-Right Corner
+                                lines[7].From = Vector2.new(boxX + width, boxY + height)
+                                lines[7].To = Vector2.new(boxX + width - lineLengthX, boxY + height)
+                                lines[7].Color = currentESPColor; lines[7].Visible = true
+
+                                lines[8].From = Vector2.new(boxX + width, boxY + height)
+                                lines[8].To = Vector2.new(boxX + width, boxY + height - lineLengthY)
+                                lines[8].Color = currentESPColor; lines[8].Visible = true
+                            end
+                        else
+                            if esp.CornerBox then
+                                for _, ln in pairs(esp.CornerBox) do ln.Visible = false end
+                            end
+                        end
+                    end)
 
                     esp.Line.From = Vector2.new(Camera.ViewportSize.X / 2, 0)
                     esp.Line.To = Vector2.new(vector.X, vector.Y)
                     esp.Line.Color = currentESPColor
                     esp.Line.Visible = true
 
-                    esp.Name.Text = p.Name
+                    local pInst = Players:GetPlayerFromCharacter(char)
+                    local displayName = pInst and pInst.Name or (char.Name ~= "" and char.Name or "Bot/NPC")
+                    esp.Name.Text = displayName
                     esp.Name.Position = Vector2.new(vector.X, vector.Y - 38)
                     esp.Name.Color = currentESPColor
                     esp.Name.Visible = true
@@ -1179,7 +1317,7 @@ RunService.RenderStepped:Connect(function()
                     esp.Gender.Color = currentESPColor
                     esp.Gender.Visible = true
 
-                    esp.Status.Text = "[Player]"
+                    esp.Status.Text = pInst and "[Player]" or "[Bot/NPC]"
                     esp.Status.Position = Vector2.new(vector.X, vector.Y + 50)
                     esp.Status.Color = currentESPColor
                     esp.Status.Visible = true
@@ -1253,43 +1391,5 @@ RunService.Stepped:Connect(function()
                 end
             end
         end
-    end
-end)
-
-local function ScanValueMods(tool)
-    pcall(function()
-        local function SetSafe(attr, value)
-            if tool:GetAttribute(attr) ~= nil then tool:SetAttribute(attr, value) end
-        end
-        SetSafe("TotalAmmo", 999999)
-        SetSafe("NewMax", 999999)
-        SetSafe("magazineSize", 999999)
-        SetSafe("spread", 0)
-        SetSafe("recoilMax", 0)
-        SetSafe("reloadTime", 0.05)
-        SetSafe("rateOfFire", HackConfig.CustomFireRate)
-        for _, obj in pairs(tool:GetDescendants()) do
-            if obj:IsA("IntValue") or obj:IsA("NumberValue") then
-                local name = obj.Name:lower()
-                if name:find("ammo") or name:find("clip") or name:find("mag") then
-                    obj.Value = 999999
-                elseif name:find("firerate") or name:find("rpm") then
-                    obj.Value = HackConfig.CustomFireRate
-                end
-            end
-        end
-    end)
-end
-
-RunService.RenderStepped:Connect(function()
-    if HackConfig.GunModsAktif then
-        if LocalPlayer.Character then
-            for _, t in pairs(LocalPlayer.Character:GetChildren()) do
-                if t:IsA("Tool") or t:IsA("Model") then ScanValueMods(t) end
-            end
-        end
-        for _, v in pairs(Camera:GetChildren()) do
-            if v:IsA("Model") then ScanValueMods(v) end
-       end
     end
 end)
