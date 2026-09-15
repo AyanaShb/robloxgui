@@ -1,4 +1,4 @@
--- v4.0.0 - Universal Bot/NPC ESP, Corner Box, Spine Skeleton & Custom Bypass
+-- v4.0.1 - Full Script: Universal Bot/NPC ESP, Corner Box, Spine Skeleton, Custom Bypass & Safe Aimbot
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local Lighting = game:GetService("Lighting")
@@ -68,7 +68,7 @@ task.spawn(function()
 end)
 
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "D3D_Ultimate_Android_V4_0_0"
+ScreenGui.Name = "D3D_Ultimate_Android_V4_0_1"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
@@ -258,7 +258,7 @@ end)
 local TitleLabel = Instance.new("TextLabel")
 TitleLabel.Size = UDim2.new(1, 0, 0, 36)
 TitleLabel.BackgroundTransparency = 1
-TitleLabel.Text = "× D3D MENU: BOT & PLAYER v4.0.0 ×"
+TitleLabel.Text = "× D3D MENU: BOT & PLAYER v4.0.1 ×"
 TitleLabel.TextColor3 = Color3.fromRGB(240, 240, 255)
 TitleLabel.TextSize = 11.5
 TitleLabel.Font = Enum.Font.GothamBold
@@ -538,7 +538,6 @@ local function CreateButton(parent, text, callback)
     frame.Parent = parent
 end
 
--- FILTER FLEKSIBEL: Melacak Player Asli DAN Bot/NPC/Dummy di Workspace
 local function IsValidEntityCharacter(char)
     if not char or not char:IsA("Model") then return false end
     if char == LocalPlayer.Character then return false end
@@ -620,13 +619,11 @@ end
 
 local function GetAllTargetableEntities()
     local list = {}
-    -- Ambil dari Players
     for _, p in ipairs(Players:GetPlayers()) do
         if p ~= LocalPlayer and p.Character and IsValidEntityCharacter(p.Character) then
             table.insert(list, p.Character)
         end
     end
-    -- Ambil dari Workspace (Bot/NPC/Dummy)
     for _, obj in ipairs(Workspace:GetDescendants()) do
         if obj:IsA("Model") and IsValidEntityCharacter(obj) then
             local isAlreadyPlayer = false
@@ -777,10 +774,7 @@ local function CreateEntityESP(key)
         end
     end)
 
-    -- Membuat 4 Garis untuk setiap sudut Box (Total 16 Garis Drawing untuk Corner Box Putus-Putus)
     local cornerLines = {}
-    local directions = {"TL_H", "TL_V", "TR_H", "TR_V", "BL_H", "BL_V", "BR_H", "BR_V"}
-    -- Menggunakan 2 garis per sudut (Horisontal & Vertikal) dikali 4 sudut
     for _, _ in ipairs({1, 2, 3, 4, 5, 6, 7, 8}) do
         local ln = Drawing.new("Line")
         ln.Thickness = 1.5
@@ -802,9 +796,9 @@ local function CreateEntityESP(key)
         HeadBillboard = headBillboard,
         CornerBox = cornerLines,
         Skeleton = {
-            SpineHead = Drawing.new("Line"),     -- Kepala ke Leher/Dada Atas
-            SpineUpper = Drawing.new("Line"),    -- Dada Atas ke Pinggang
-            SpineLower = Drawing.new("Line"),    -- Pinggang ke Pangkal Paha
+            SpineHead = Drawing.new("Line"),
+            SpineUpper = Drawing.new("Line"),
+            SpineLower = Drawing.new("Line"),
             LeftArm = Drawing.new("Line"),
             RightArm = Drawing.new("Line"),
             LeftLeg = Drawing.new("Line"),
@@ -1085,6 +1079,7 @@ RunService.RenderStepped:Connect(function()
         FOVFrame.Visible = HackConfig.ShowFOV and (HackConfig.AimbotAktif and HackConfig.AimbotMode == "POV Kamera (FOV)")
     end
 
+    -- LOGIKA AIMBOT AMAN (Slerp Interpolation Anti-Kick ViewAngle Check)
     if HackConfig.AimbotAktif then
         local targetValid = false
         local partToAim = nil
@@ -1126,11 +1121,15 @@ RunService.RenderStepped:Connect(function()
         end
 
         if LockedTarget and partToAim and predictedAimPos then
+            local currentCamCF = Camera.CFrame
+            local targetCF = CFrame.lookAt(currentCamCF.Position, predictedAimPos)
+            
             if HackConfig.AimbotMode == "360° (Brutal)" then
-                Camera.CFrame = CFrame.lookAt(Camera.CFrame.Position, predictedAimPos)
+                Camera.CFrame = currentCamCF:Slerp(targetCF, 0.5)
             else
-                local smoothFactor = HackConfig.AimbotSmoothness / 100
-                Camera.CFrame = Camera.CFrame:Lerp(CFrame.lookAt(Camera.CFrame.Position, predictedAimPos), smoothFactor)
+                local smoothness = math.clamp(HackConfig.AimbotSmoothness, 1, 100)
+                local alpha = math.clamp(1 / (smoothness * 0.1), 0.01, 1)
+                Camera.CFrame = currentCamCF:Slerp(targetCF, alpha)
             end
         else
             LockedTarget = nil
@@ -1218,20 +1217,15 @@ RunService.RenderStepped:Connect(function()
                     end
 
                     -- SKELETON DENGAN TULANG BELAKANG LENGKAP
-                    -- 1. Kepala ke Dada Atas (UpperTorso / Torso)
                     drawBone(esp.Skeleton.SpineHead, hPos, utPos)
-                    -- 2. Dada Atas ke Pinggang / LowerTorso
                     drawBone(esp.Skeleton.SpineUpper, utPos, ltPos)
-                    -- 3. Pinggang ke Akar Bawah (HumanoidRootPart / PrimaryPart)
                     drawBone(esp.Skeleton.SpineLower, ltPos, getPos(primaryPart))
-
-                    -- Anggota Tubuh terhubung ke Tulang Belakang / Dada Atas
                     drawBone(esp.Skeleton.LeftArm, utPos, laPos)
                     drawBone(esp.Skeleton.RightArm, utPos, raPos)
                     drawBone(esp.Skeleton.LeftLeg, ltPos, llPos)
                     drawBone(esp.Skeleton.RightLeg, ltPos, rlPos)
 
-                    -- CORNER BOX PUTUS-PUTUS (Atas, Bawah, Kiri, Kanan)
+                    -- CORNER BOX PUTUS-PUTUS
                     pcall(function()
                         local cf, size = char:GetBoundingBox()
                         local topCenter = cf.Position + Vector3.new(0, size.Y / 2, 0)
@@ -1244,46 +1238,19 @@ RunService.RenderStepped:Connect(function()
                             local width = height / 2
                             local boxX = topPos.X - (width / 2)
                             local boxY = topPos.Y
-                            local lineLengthX = width * 0.3 -- Panjang segmen putus-putus sudut (30% dari lebar/tinggi)
+                            local lineLengthX = width * 0.3
                             local lineLengthY = height * 0.3
 
-                            local lines = esp.CenterBox or esp.CornerBox
+                            local lines = esp.CornerBox
                             if lines and #lines >= 8 then
-                                -- Top-Left Corner
-                                lines[1].From = Vector2.new(boxX, boxY)
-                                lines[1].To = Vector2.new(boxX + lineLengthX, boxY)
-                                lines[1].Color = currentESPColor; lines[1].Visible = true
-
-                                lines[2].From = Vector2.new(boxX, boxY)
-                                lines[2].To = Vector2.new(boxX, boxY + lineLengthY)
-                                lines[2].Color = currentESPColor; lines[2].Visible = true
-
-                                -- Top-Right Corner
-                                lines[3].From = Vector2.new(boxX + width, boxY)
-                                lines[3].To = Vector2.new(boxX + width - lineLengthX, boxY)
-                                lines[3].Color = currentESPColor; lines[3].Visible = true
-
-                                lines[4].From = Vector2.new(boxX + width, boxY)
-                                lines[4].To = Vector2.new(boxX + width, boxY + lineLengthY)
-                                lines[4].Color = currentESPColor; lines[4].Visible = true
-
-                                -- Bottom-Left Corner
-                                lines[5].From = Vector2.new(boxX, boxY + height)
-                                lines[5].To = Vector2.new(boxX + lineLengthX, boxY + height)
-                                lines[5].Color = currentESPColor; lines[5].Visible = true
-
-                                lines[6].From = Vector2.new(boxX, boxY + height)
-                                lines[6].To = Vector2.new(boxX, boxY + height - lineLengthY)
-                                lines[6].Color = currentESPColor; lines[6].Visible = true
-
-                                -- Bottom-Right Corner
-                                lines[7].From = Vector2.new(boxX + width, boxY + height)
-                                lines[7].To = Vector2.new(boxX + width - lineLengthX, boxY + height)
-                                lines[7].Color = currentESPColor; lines[7].Visible = true
-
-                                lines[8].From = Vector2.new(boxX + width, boxY + height)
-                                lines[8].To = Vector2.new(boxX + width, boxY + height - lineLengthY)
-                                lines[8].Color = currentESPColor; lines[8].Visible = true
+                                lines[1].From = Vector2.new(boxX, boxY); lines[1].To = Vector2.new(boxX + lineLengthX, boxY); lines[1].Color = currentESPColor; lines[1].Visible = true
+                                lines[2].From = Vector2.new(boxX, boxY); lines[2].To = Vector2.new(boxX, boxY + lineLengthY); lines[2].Color = currentESPColor; lines[2].Visible = true
+                                lines[3].From = Vector2.new(boxX + width, boxY); lines[3].To = Vector2.new(boxX + width - lineLengthX, boxY); lines[3].Color = currentESPColor; lines[3].Visible = true
+                                lines[4].From = Vector2.new(boxX + width, boxY); lines[4].To = Vector2.new(boxX + width, boxY + lineLengthY); lines[4].Color = currentESPColor; lines[4].Visible = true
+                                lines[5].From = Vector2.new(boxX, boxY + height); lines[5].To = Vector2.new(boxX + lineLengthX, boxY + height); lines[5].Color = currentESPColor; lines[5].Visible = true
+                                lines[6].From = Vector2.new(boxX, boxY + height); lines[6].To = Vector2.new(boxX, boxY + height - lineLengthY); lines[6].Color = currentESPColor; lines[6].Visible = true
+                                lines[7].From = Vector2.new(boxX + width, boxY + height); lines[7].To = Vector2.new(boxX + width - lineLengthX, boxY + height); lines[7].Color = currentESPColor; lines[7].Visible = true
+                                lines[8].From = Vector2.new(boxX + width, boxY + height); lines[8].To = Vector2.new(boxX + width, boxY + height - lineLengthY); lines[8].Color = currentESPColor; lines[8].Visible = true
                             end
                         else
                             if esp.CornerBox then
