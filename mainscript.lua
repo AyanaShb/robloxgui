@@ -1,55 +1,58 @@
--- Custom VVIP ESP By Gemini (Tanpa Modul Lain)
+-- VVIP ESP Fixed for Delta Executor (No Crash & Working)
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
-local CoreGui = game:GetService("CoreGui")
 local LocalPlayer = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
 
--- Bersihkan ESP lama jika ada agar tidak menumpuk
-if CoreGui:FindFirstChild("GeminiVVIP_ESP") then
-    CoreGui.GeminiVVIP_ESP:Destroy()
+-- Ambil PlayerGui agar aman dari proteksi CoreGui game
+local PlayerGui = LocalPlayer:FindFirstChildOfClass("PlayerGui") or LocalPlayer:WaitForChild("PlayerGui")
+
+if PlayerGui:FindFirstChild("FixedVVIP_ESP") then
+    PlayerGui.FixedVVIP_ESP:Destroy()
 end
 
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "GeminiVVIP_ESP"
-ScreenGui.Parent = CoreGui
+ScreenGui.Name = "FixedVVIP_ESP"
+ScreenGui.ResetOnSpawn = false
+ScreenGui.Parent = PlayerGui
 
-local espRegistry = {}
+local espCache = {}
 
-local function createVisuals(player)
+local function createESP(player)
     if player == LocalPlayer then return end
 
-    -- BillboardGui untuk wadah elemen 3D ke 2D (Foto, Kotak, Nama, Darah, Jarak)
+    -- Buat BillboardGui
     local billboard = Instance.new("BillboardGui")
-    billboard.Name = player.Name .. "_VVIP"
+    billboard.Name = player.Name .. "_ESP"
     billboard.Size = UDim2.new(0, 160, 0, 200)
     billboard.StudsOffset = Vector3.new(0, 0.5, 0)
     billboard.AlwaysOnTop = true
     billboard.Parent = ScreenGui
 
-    -- 1. Lingkaran Foto Kepala di atas Box
+    -- Frame Foto Kepala
     local avatarFrame = Instance.new("Frame")
     avatarFrame.Size = UDim2.new(0, 34, 0, 34)
     avatarFrame.Position = UDim2.new(0.5, -17, 0, -52)
     avatarFrame.BackgroundTransparency = 1
     avatarFrame.Parent = billboard
 
-    local avatarImage = Instance.new("ImageLabel")
-    avatarImage.Size = UDim2.new(1, 0, 1, 0)
-    avatarImage.BackgroundTransparency = 1
-    avatarImage.Image = "rbxassetid://6034293636"
-    avatarImage.Parent = avatarFrame
+    local avatar = Instance.new("ImageLabel")
+    avatar.Size = UDim2.new(1, 0, 1, 0)
+    avatar.BackgroundTransparency = 1
+    -- Pakai asset default rbxasset langsung agar aman
+    avatar.Image = "rbxasset://textures/ui/GuiImagePlaceholder.png"
+    avatar.Parent = avatarFrame
 
-    local avatarCorner = Instance.new("UICorner")
-    avatarCorner.CornerRadius = UDim.new(1, 0)
-    avatarCorner.Parent = avatarImage
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(1, 0)
+    corner.Parent = avatar
 
-    local avatarStroke = Instance.new("UIStroke")
-    avatarStroke.Thickness = 1.5
-    avatarStroke.Color = Color3.fromRGB(255, 30, 30)
-    avatarStroke.Parent = avatarFrame
+    local stroke = Instance.new("UIStroke")
+    stroke.Thickness = 1.5
+    stroke.Color = Color3.fromRGB(255, 30, 30)
+    stroke.Parent = avatarFrame
 
-    -- 2. Teks Nama Pemain
+    -- Nama Player
     local nameLabel = Instance.new("TextLabel")
     nameLabel.Size = UDim2.new(0, 140, 0, 15)
     nameLabel.Position = UDim2.new(0.5, -70, 0, -15)
@@ -61,25 +64,25 @@ local function createVisuals(player)
     nameLabel.Text = player.Name
     nameLabel.Parent = billboard
 
-    -- 3. Kotak Merah Utama (Box ESP)
-    local boxFrame = Instance.new("Frame")
-    boxFrame.Size = UDim2.new(0, 56, 0, 100)
-    boxFrame.Position = UDim2.new(0.5, -28, 0, 4)
-    boxFrame.BackgroundTransparency = 1
-    boxFrame.Parent = billboard
+    -- Kotak Utama (Box)
+    local box = Instance.new("Frame")
+    box.Size = UDim2.new(0, 56, 0, 100)
+    box.Position = UDim2.new(0.5, -28, 0, 4)
+    box.BackgroundTransparency = 1
+    box.Parent = billboard
 
     local boxStroke = Instance.new("UIStroke")
     boxStroke.Thickness = 1.5
     boxStroke.Color = Color3.fromRGB(255, 30, 30)
-    boxStroke.Parent = boxFrame
+    boxStroke.Parent = box
 
-    -- 4. Health Bar Vertikal di Sisi Kanan Box
+    -- Health Bar Vertikal di Kanan Box
     local healthBg = Instance.new("Frame")
     healthBg.Size = UDim2.new(0, 5, 1, 0)
     healthBg.Position = UDim2.new(1, 3, 0, 0)
     healthBg.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
     healthBg.BorderSizePixel = 0
-    healthBg.Parent = boxFrame
+    healthBg.Parent = box
 
     local healthFill = Instance.new("Frame")
     healthFill.Size = UDim2.new(1, 0, 1, 0)
@@ -87,7 +90,7 @@ local function createVisuals(player)
     healthFill.BorderSizePixel = 0
     healthFill.Parent = healthBg
 
-    -- 5. Teks Jarak [xxm] di Bawah Box
+    -- Teks Jarak [xxm]
     local distLabel = Instance.new("TextLabel")
     distLabel.Size = UDim2.new(0, 140, 0, 15)
     distLabel.Position = UDim2.new(0.5, -70, 0, 106)
@@ -99,88 +102,98 @@ local function createVisuals(player)
     distLabel.Text = "[0m]"
     distLabel.Parent = billboard
 
-    -- Memuat Thumbnail Kepala Roblox secara asynchronous
+    -- Ambil Foto Kepala Roblox secara aman dengan pcall terpisah
     task.spawn(function()
-        pcall(function()
-            local content, isReady = Players:GetUserThumbnailAsync(player.UserId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size150x150)
-            if isReady and content then
-                avatarImage.Image = content
-            end
+        local success, result = pcall(function()
+            return Players:GetUserThumbnailAsync(player.UserId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size100x100)
         end)
+        if success and result then
+            avatar.Image = result
+        end
     end)
 
-    -- 6. Garis Tracer dari Atas Tengah Layar menggunakan Drawing API
-    local tracerLine = Drawing.new("Line")
-    tracerLine.Visible = false
-    tracerLine.Color = Color3.fromRGB(255, 30, 30)
-    tracerLine.Thickness = 1.5
+    -- Garis Tracer aman (menggunakan Drawing jika didukung executor)
+    local tracer = nil
+    pcall(function()
+        tracer = Drawing.new("Line")
+        tracer.Visible = false
+        tracer.Color = Color3.fromRGB(255, 30, 30)
+        tracer.Thickness = 1.5
+    end)
 
-    espRegistry[player] = {
+    espCache[player] = {
         Billboard = billboard,
         HealthFill = healthFill,
         DistLabel = distLabel,
-        Tracer = tracerLine
+        Tracer = tracer
     }
 end
 
-local function removeVisuals(player)
-    if espRegistry[player] then
-        espRegistry[player].Billboard:Destroy()
-        espRegistry[player].Tracer:Remove()
-        espRegistry[player] = nil
+local function removeESP(player)
+    if espCache[player] then
+        if espCache[player].Billboard then
+            espCache[player].Billboard:Destroy()
+        end
+        if espCache[player].Tracer then
+            pcall(function() espCache[player].Tracer:Remove() end)
+        end
+        espCache[player] = nil
     end
 end
 
 for _, p in ipairs(Players:GetPlayers()) do
-    createVisuals(p)
+    createESP(p)
 end
 
-Players.PlayerAdded:Connect(createVisuals)
-Players.PlayerRemoving:Connect(removeVisuals)
+Players.PlayerAdded:Connect(createESP)
+Players.PlayerRemoving:Connect(removeESP)
 
--- Loop Utama untuk update posisi dan status secara real-time
+-- Loop Utama Render
 RunService.RenderStepped:Connect(function()
-    for player, data in pairs(espRegistry) do
-        local character = player.Character
-        local head = character and character:FindFirstChild("Head")
-        local rootPart = character and character:FindFirstChild("HumanoidRootPart")
-        local humanoid = character and character:FindFirstChild("Humanoid")
+    for player, cache in pairs(espCache) do
+        local char = player.Character
+        local head = char and char:FindFirstChild("Head")
+        local root = char and char:FindFirstChild("HumanoidRootPart")
+        local hum = char and char:FindFirstChild("Humanoid")
 
-        if character and head and rootPart and humanoid and humanoid.Health > 0 then
-            data.Billboard.Adornee = head
-            data.Billboard.Enabled = true
+        if char and head and root and hum and hum.Health > 0 then
+            cache.Billboard.Adornee = head
+            cache.Billboard.Enabled = true
 
-            -- Update posisi garis tracer agar terhubung rapi dari atas tengah layar
+            -- Garis Tracer dari atas tengah layar
             local headPos, onScreen = Camera:WorldToViewportPoint(head.Position)
-            if onScreen then
-                data.Tracer.Visible = true
-                data.Tracer.From = Vector2.new(Camera.ViewportSize.X / 2, 0)
-                data.Tracer.To = Vector2.new(headPos.X, headPos.Y - 22)
-            else
-                data.Tracer.Visible = false
+            if cache.Tracer then
+                if onScreen then
+                    cache.Tracer.Visible = true
+                    cache.Tracer.From = Vector2.new(Camera.ViewportSize.X / 2, 0)
+                    cache.Tracer.To = Vector2.new(headPos.X, headPos.Y - 22)
+                else
+                    cache.Tracer.Visible = false
+                end
             end
 
-            -- Update hitungan jarak dalam meter ([xxm])
-            local distance = (rootPart.Position - Camera.CFrame.Position).Magnitude
-            data.DistLabel.Text = string.format("[%dm]", math.floor(distance))
+            -- Kalkulasi Jarak Meter
+            local dist = (root.Position - Camera.CFrame.Position).Magnitude
+            cache.DistLabel.Text = string.format("[%dm]", math.floor(dist))
 
-            -- Update ukuran dan warna Health Bar vertikal
-            local healthPercent = math.clamp(humanoid.Health / humanoid.MaxHealth, 0, 1)
-            data.HealthFill.Size = UDim2.new(1, 0, healthPercent, 0)
-            data.HealthFill.Position = UDim2.new(0, 0, 1 - healthPercent, 0)
+            -- Update Health Bar
+            local hpPercent = math.clamp(hum.Health / hum.MaxHealth, 0, 1)
+            cache.HealthFill.Size = UDim2.new(1, 0, hpPercent, 0)
+            cache.HealthFill.Position = UDim2.new(0, 0, 1 - hpPercent, 0)
 
-            if healthPercent > 0.6 then
-                data.HealthFill.BackgroundColor3 = Color3.fromRGB(0, 255, 0)     -- Hijau (Darah Aman)
-            elseif healthPercent > 0.3 then
-                data.HealthFill.BackgroundColor3 = Color3.fromRGB(255, 255, 0)  -- Kuning (Darah Sekarat)
+            if hpPercent > 0.6 then
+                cache.HealthFill.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
+            elseif hpPercent > 0.3 then
+                cache.HealthFill.BackgroundColor3 = Color3.fromRGB(255, 255, 0)
             else
-                data.HealthFill.BackgroundColor3 = Color3.fromRGB(255, 0, 0)    -- Merah (Darah Kritis)
+                cache.HealthFill.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
             end
         else
-            data.Billboard.Adornee = nil
-            data.Billboard.Enabled = false
-            data.Tracer.Visible = false
+            cache.Billboard.Adornee = nil
+            cache.Billboard.Enabled = false
+            if cache.Tracer then
+                cache.Tracer.Visible = false
+            end
         end
     end
 end)
-
