@@ -1,4 +1,4 @@
--- v3.9.6 -
+-- v3.9.7 -
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local Lighting = game:GetService("Lighting")
@@ -83,7 +83,7 @@ pcall(function()
 end)
 
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "D3D_Ultimate_Android_V3_9_6"
+ScreenGui.Name = "D3D_Ultimate_Android_V3_9_7"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
@@ -275,7 +275,7 @@ end)
 local TitleLabel = Instance.new("TextLabel")
 TitleLabel.Size = UDim2.new(1, 0, 0, 36)
 TitleLabel.BackgroundTransparency = 1
-TitleLabel.Text = "× D3D MENU: PLAYER & BOT v3.9.6 ×"
+TitleLabel.Text = "× D3D MENU: PLAYER & BOT v3.9.7 ×"
 TitleLabel.TextColor3 = Color3.fromRGB(240, 240, 255)
 TitleLabel.TextSize = 11.5
 TitleLabel.Font = Enum.Font.GothamBold
@@ -564,8 +564,7 @@ local function IsValidCharacter(char)
     local hum = char:FindFirstChildOfClass("Humanoid")
     local root = char:FindFirstChild("HumanoidRootPart") or char:FindFirstChild("Torso") or char:FindFirstChild("UpperTorso") or char.PrimaryPart
     
-    if not hum or not root then return false end
-    if hum.Health <= 0 then return false end
+    if not root then return false end
     if char:IsA("Tool") or char:FindFirstChildOfClass("Tool") then return false end
 
     return true
@@ -580,6 +579,41 @@ local function GetEntityModel(target)
         end
     end
     return nil
+end
+
+local function GetEntityHealthData(char)
+    if not char then return 100, 100 end
+    
+    -- Cek Humanoid Standar
+    local hum = char:FindFirstChildOfClass("Humanoid")
+    if hum then
+        local hp = hum.Health
+        local maxHp = hum.MaxHealth
+        if maxHp and maxHp > 0 then
+            return hp, maxHp
+        end
+    end
+
+    -- Cek Custom Value / Attribute jika game menggunakan sistem darah non-standard
+    for _, obj in pairs(char:GetDescendants()) do
+        if obj:IsA("NumberValue") or obj:IsA("IntValue") then
+            local name = obj.Name:lower()
+            if name == "health" or name == "hp" or name == "currenthealth" then
+                return obj.Value, 100
+            end
+        end
+    end
+
+    for _, v in pairs(char:GetChildren()) do
+        if v:IsA("Model") then
+            local subHum = v:FindFirstChildOfClass("Humanoid")
+            if subHum then
+                return subHum.Health, subHum.MaxHealth
+            end
+        end
+    end
+
+    return 100, 100
 end
 
 local function IsEnemyEntity(target)
@@ -1079,7 +1113,7 @@ Players.PlayerAdded:Connect(function(p)
     if HackConfig.AntiAdminAktif and CheckIfAdmin(p) then
         TitleLabel.Text = "⚠️ ADMIN TERDETEKSI: " .. p.Name
         ShowPopupNotification("⚠️ ADMIN TERDETEKSI: " .. p.Name)
-        task.delay(5, function() TitleLabel.Text = "× D3D MENU: PLAYER & BOT v3.9.6 ×" end)
+        task.delay(5, function() TitleLabel.Text = "× D3D MENU: PLAYER & BOT v3.9.7 ×" end)
     end
 end)
 
@@ -1197,8 +1231,8 @@ RunService.RenderStepped:Connect(function()
             local shouldDraw = (VisualsConfig.PlayerESP) or (VisualsConfig.EnemyESP and isEnemy)
 
             local primaryPart = char:FindFirstChild("HumanoidRootPart") or char:FindFirstChild("Torso") or char:FindFirstChild("UpperTorso") or char:FindFirstChild("Head") or char.PrimaryPart or char:FindFirstChildOfClass("BasePart")
-            local hum = char:FindFirstChildOfClass("Humanoid")
-            local active = shouldDraw and primaryPart and (not hum or hum.Health > 0)
+            local health, maxHealth = GetEntityHealthData(char)
+            local active = shouldDraw and primaryPart and (health > 0)
 
             if active then
                 if esp.HeadBillboard then
@@ -1302,42 +1336,36 @@ RunService.RenderStepped:Connect(function()
                     esp.Status.Color = currentESPColor
                     esp.Status.Visible = true
 
-                    if hum then
-                        local healthPct = math.clamp(hum.Health / hum.MaxHealth, 0, 1)
-                        local barHeight = 40
-                        local barWidth = 5
-                        local barX = vector.X + 24
-                        local barY = vector.Y - 20
+                    local healthPct = math.clamp(health / (maxHealth > 0 and maxHealth or 100), 0, 1)
+                    local barHeight = 40
+                    local barWidth = 5
+                    local barX = vector.X + 24
+                    local barY = vector.Y - 20
 
-                        -- Health Bar Background (Volume)
-                        esp.HealthBarBg.Position = Vector2.new(barX, barY)
-                        esp.HealthBarBg.Size = Vector2.new(barWidth, barHeight)
-                        esp.HealthBarBg.Visible = true
+                    -- Health Bar Background (Volume)
+                    esp.HealthBarBg.Position = Vector2.new(barX, barY)
+                    esp.HealthBarBg.Size = Vector2.new(barWidth, barHeight)
+                    esp.HealthBarBg.Visible = true
 
-                        -- Health Bar Border (Mengikuti Color Picker)
-                        esp.HealthBarBorder.Position = Vector2.new(barX - 1, barY - 1)
-                        esp.HealthBarBorder.Size = Vector2.new(barWidth + 2, barHeight + 2)
-                        esp.HealthBarBorder.Color = currentESPColor
-                        esp.HealthBarBorder.Visible = true
+                    -- Health Bar Border (Mengikuti Color Picker)
+                    esp.HealthBarBorder.Position = Vector2.new(barX - 1, barY - 1)
+                    esp.HealthBarBorder.Size = Vector2.new(barWidth + 2, barHeight + 2)
+                    esp.HealthBarBorder.Color = currentESPColor
+                    esp.HealthBarBorder.Visible = true
 
-                        -- Health Bar Fill & Dynamic Color Per 33%++
-                        local currentHeight = barHeight * healthPct
-                        esp.HealthBar.Position = Vector2.new(barX, barY + (barHeight - currentHeight))
-                        esp.HealthBar.Size = Vector2.new(barWidth, currentHeight)
+                    -- Health Bar Fill & Dynamic Color Per 33%++
+                    local currentHeight = barHeight * healthPct
+                    esp.HealthBar.Position = Vector2.new(barX, barY + (barHeight - currentHeight))
+                    esp.HealthBar.Size = Vector2.new(barWidth, currentHeight)
 
-                        if healthPct > 0.66 then
-                            esp.HealthBar.Color = Color3.fromRGB(0, 255, 0) -- Hijau
-                        elseif healthPct > 0.33 then
-                            esp.HealthBar.Color = Color3.fromRGB(255, 140, 0) -- Oranye
-                        else
-                            esp.HealthBar.Color = Color3.fromRGB(139, 0, 0) -- Merah Gelap
-                        end
-                        esp.HealthBar.Visible = true
+                    if healthPct > 0.66 then
+                        esp.HealthBar.Color = Color3.fromRGB(0, 255, 0) -- Hijau
+                    elseif healthPct > 0.33 then
+                        esp.HealthBar.Color = Color3.fromRGB(255, 140, 0) -- Oranye
                     else
-                        esp.HealthBarBg.Visible = false
-                        esp.HealthBarBorder.Visible = false
-                        esp.HealthBar.Visible = false
+                        esp.HealthBar.Color = Color3.fromRGB(139, 0, 0) -- Merah Gelap
                     end
+                    esp.HealthBar.Visible = true
                 else
                     if esp.HeadBillboard then esp.HeadBillboard.Enabled = false end
                     HideESPObject(esp)
