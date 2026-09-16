@@ -735,7 +735,6 @@ Toggle(PlayerTab, "Multi Jump", Cfg.MultiJump, function(v) Cfg.MultiJump = v end
 Toggle(PlayerTab, "Fly Hack (tahan Jump)", Cfg.FlyHack, function(v)
     Cfg.FlyHack = v
     if not v then
-        -- reset saat dimatikan
         if _G.__FlyBV then pcall(function() _G.__FlyBV:Destroy() end); _G.__FlyBV = nil end
     end
 end)
@@ -772,7 +771,6 @@ ComboBox(WorldTab, "Clock Time", {"Default", "Pagi", "Siang", "Sore", "Malam"}, 
     elseif v == "Malam" then
         Lighting.ClockTime = 0; Lighting.Brightness = 1; Lighting.OutdoorAmbient = Color3.fromRGB(30,30,50)
     else
-        -- Default: kembalikan ke nilai umum
         Lighting.ClockTime = 14
         Lighting.Brightness = 2
         Lighting.OutdoorAmbient = Color3.fromRGB(70, 70, 70)
@@ -910,13 +908,11 @@ local function isTeam(model)
     return false
 end
 
--- ====== ESP BOX & HEALTH (VERSI ASLI KAMU - TIDAK DIUBAH) ======
 local function createESP(model)
     local box = make("Frame", {
         BackgroundTransparency = 1, BorderSizePixel = 0, Visible = false,
         ZIndex = 3, Parent = ESPGui, Name = "Box"
     })
-    local corners = {}
     local c1 = make("Frame", {Size = UDim2.new(0, 10, 0, 2), BackgroundColor3 = Color3.white, BorderSizePixel = 0, ZIndex = 4, Parent = box})
     local c2 = make("Frame", {Size = UDim2.new(0, 2, 0, 10), BackgroundColor3 = Color3.white, BorderSizePixel = 0, ZIndex = 4, Parent = box})
     local c3 = make("Frame", {Size = UDim2.new(0, 10, 0, 2), BackgroundColor3 = Color3.white, AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, 0, 0, 0), BorderSizePixel = 0, ZIndex = 4, Parent = box})
@@ -925,7 +921,6 @@ local function createESP(model)
     local c6 = make("Frame", {Size = UDim2.new(0, 2, 0, 10), BackgroundColor3 = Color3.white, AnchorPoint = Vector2.new(0, 1), Position = UDim2.new(0, 0, 1, 0), BorderSizePixel = 0, ZIndex = 4, Parent = box})
     local c7 = make("Frame", {Size = UDim2.new(0, 10, 0, 2), BackgroundColor3 = Color3.white, AnchorPoint = Vector2.new(1, 1), Position = UDim2.new(1, 0, 1, 0), BorderSizePixel = 0, ZIndex = 4, Parent = box})
     local c8 = make("Frame", {Size = UDim2.new(0, 2, 0, 10), BackgroundColor3 = Color3.white, AnchorPoint = Vector2.new(1, 1), Position = UDim2.new(1, 0, 1, 0), BorderSizePixel = 0, ZIndex = 4, Parent = box})
-    corners = {c1,c2,c3,c4,c5,c6,c7,c8}
 
     local name = make("TextLabel", {
         BackgroundTransparency = 1, TextSize = 13, Font = Enum.Font.GothamBold,
@@ -954,17 +949,30 @@ local function createESP(model)
     })
     corner(img, 19)
 
+    -- ===== HEALTH BAR (VERSI FIX) =====
+    -- Track: full tinggi box, 6 px lebar
     local healthBar = make("Frame", {
-        Size = UDim2.new(0, 5, 0, 40), BackgroundColor3 = Color3.fromRGB(20,20,20),
-        BorderSizePixel = 0, Visible = false, ZIndex = 5, Parent = ESPGui
+        Size = UDim2.new(0, 6, 0, 40),
+        BackgroundColor3 = Color3.fromRGB(15, 15, 15),
+        BorderSizePixel = 0,
+        Visible = false,
+        ZIndex = 7,
+        Parent = ESPGui
     })
-    corner(healthBar, 2)
+    corner(healthBar, 3)
+    stroke(healthBar, Color3.fromRGB(0,0,0), 1, 0.3)
+
+    -- Fill: anchor bottom-left agar menyusut ke bawah (volume berkurang sesuai HP)
     local healthFill = make("Frame", {
-        Size = UDim2.new(1,0,1,0), BackgroundColor3 = Color3.fromRGB(0,255,80),
-        BorderSizePixel = 0, AnchorPoint = Vector2.new(0,1), Position = UDim2.new(0,0,1,0),
+        Size = UDim2.new(1, 0, 1, 0),
+        BackgroundColor3 = Color3.fromRGB(0,255,80),
+        BorderSizePixel = 0,
+        AnchorPoint = Vector2.new(0, 1),
+        Position = UDim2.new(0, 0, 1, 0),
+        ZIndex = 8,
         Parent = healthBar
     })
-    corner(healthFill, 2)
+    corner(healthFill, 3)
 
     local skeletonParts = {}
     for i = 1, 9 do
@@ -981,7 +989,7 @@ local function createESP(model)
     })
 
     return {
-        Box = box, Corners = corners,
+        Box = box, Corners = {c1,c2,c3,c4,c5,c6,c7,c8},
         Name = name, Dist = dist, Pic = pic, Img = img,
         HealthBar = healthBar, HealthFill = healthFill,
         Skeleton = skeletonParts, Line = line
@@ -998,7 +1006,6 @@ local function destroyESP(data)
     end
 end
 
--- Entity Cache + Cleanup
 local ValidEntities = {}
 task.spawn(function()
     while task.wait(0.4) do
@@ -1107,7 +1114,7 @@ RunService.RenderStepped:Connect(function()
             d.Box.Visible = Cfg.ESPBox
             for _, c in ipairs(d.Corners) do c.BackgroundColor3 = color end
 
-            -- Name (di atas box, TIDAK ketutupan picture)
+            -- Name
             d.Name.Position = UDim2.new(0, topLeft.X, 0, topLeft.Y - 26)
             d.Name.Size = UDim2.new(0, 200, 0, 16)
             d.Name.AnchorPoint = Vector2.new(0.5, 0)
@@ -1115,7 +1122,7 @@ RunService.RenderStepped:Connect(function()
             d.Name.TextColor3 = color
             d.Name.Visible = Cfg.ESPName
 
-            -- Distance (bawah box)
+            -- Distance
             d.Dist.Position = UDim2.new(0, topLeft.X, 0, topLeft.Y + height + 4)
             d.Dist.Size = UDim2.new(0, 200, 0, 14)
             d.Dist.AnchorPoint = Vector2.new(0.5, 0)
@@ -1123,16 +1130,30 @@ RunService.RenderStepped:Connect(function()
             d.Dist.Text = meters .. " m"
             d.Dist.Visible = Cfg.ESPDistance
 
-            -- Health (VERSI ASLI KAMU)
+            -- ===== HEALTH BAR (FIX) =====
+            -- Tinggi bar = tinggi box (mentok atas-bawah box)
+            -- Posisi: sisi kanan box, ada gap 4 px
             local hp = math.clamp(hum.Health / hum.MaxHealth, 0, 1)
-            local hcol = hp > 0.7 and Color3.fromRGB(0,255,80) or (hp > 0.4 and Color3.fromRGB(255,150,0) or Color3.fromRGB(180,0,0))
-            d.HealthBar.Position = UDim2.new(0, topLeft.X + width + 4, 0, topLeft.Y - 8)
-            d.HealthBar.Size = UDim2.new(0, 5, 0, height)
-            d.HealthFill.Size = UDim2.new(1, 0, hp, 0)
-            d.HealthFill.BackgroundColor3 = hcol
-            d.HealthBar.Visible = Cfg.ESPHealth
 
-            -- Picture (lebih tinggi dari name)
+            d.HealthBar.Visible = Cfg.ESPHealth
+            d.HealthBar.Position = UDim2.new(0, topLeft.X + (width/2) + 4, 0, topLeft.Y - 8)
+            d.HealthBar.Size = UDim2.new(0, 6, 0, height)
+
+            -- Warna berdasarkan persen HP
+            local hcol
+            if hp > 0.7 then
+                hcol = Color3.fromRGB(0, 220, 60)       -- hijau (100% - 71%)
+            elseif hp > 0.4 then
+                hcol = Color3.fromRGB(255, 150, 0)      -- orange (70% - 41%)
+            else
+                hcol = Color3.fromRGB(160, 0, 0)        -- merah gelap (40% - 0%)
+            end
+
+            -- Volume fill = persen HP, anchor bottom biar nyusut ke bawah
+            d.HealthFill.BackgroundColor3 = hcol
+            d.HealthFill.Size = UDim2.new(1, 0, hp, 0)
+
+            -- Picture
             if Cfg.ESPPicture then
                 d.Pic.Visible = true
                 d.Pic.Size = UDim2.new(0, 42, 0, 42)
@@ -1151,11 +1172,9 @@ RunService.RenderStepped:Connect(function()
                 d.Pic.Visible = false
             end
 
-            -- LINE: ditarik turun sampai mentok picture / kepala
+            -- Line
             if Cfg.ESPLine then
                 local screenTop = Vector2.new(Camera.ViewportSize.X / 2, 0)
-                -- kalau picture aktif -> ujung bawah picture = topLeft.Y - 78 + 42 = topLeft.Y - 36
-                -- kalau tidak -> ujung atas kepala = topLeft.Y
                 local anchorY = Cfg.ESPPicture and (topLeft.Y - 36) or topLeft.Y
                 local targetPt = Vector2.new(topLeft.X, anchorY)
                 d.Line.Visible = true
@@ -1312,7 +1331,7 @@ RunService.RenderStepped:Connect(function()
 end)
 
 -- ==========================================
--- PLAYER HACKS (dengan reset bersih)
+-- PLAYER HACKS
 -- ==========================================
 RunService.Stepped:Connect(function()
     local char = LocalPlayer.Character
@@ -1331,7 +1350,6 @@ UserInputService.JumpRequest:Connect(function()
     end
 end)
 
--- Fly
 RunService.RenderStepped:Connect(function()
     if not LocalPlayer.Character then
         if _G.__FlyBV then pcall(function() _G.__FlyBV:Destroy() end); _G.__FlyBV = nil end
@@ -1353,7 +1371,6 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
--- WallHack (Noclip)
 RunService.Stepped:Connect(function()
     if Cfg.WallHack and LocalPlayer.Character then
         for _, part in ipairs(LocalPlayer.Character:GetDescendants()) do
@@ -1442,4 +1459,4 @@ task.spawn(function()
     end
 end)
 
-print("[LiteHack] UI Loaded (FIXED v3). Tekan ikon tengkorak untuk show/hide.")
+print("[LiteHack] UI Loaded (FIXED v4 - ESP Health). Tekan ikon tengkorak untuk show/hide.")
