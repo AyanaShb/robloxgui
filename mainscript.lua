@@ -82,6 +82,7 @@ _G.LiteHackCfg = {
     ESPDistance = true,
     ESPPicture = false,
     ESPWeapon = true,
+    ESPBomb = false,
     ESPColor = Color3.fromRGB(255, 60, 60),
     Aimbot = false,
     AimTeamCheck = true,
@@ -98,7 +99,6 @@ _G.LiteHackCfg = {
     ShowCrosshair = false,
     SpeedRun = false,
     SpeedRunValue = 50,
-    MultiJump = false,
     RapidFire = false,
     UnlimitedAmmo = false,
     NoRecoil = false,
@@ -151,38 +151,70 @@ end
 local FONT_BOLD = Enum.Font.GothamBold
 
 -- ==========================================
--- SMOOTH TELEPORT (1.7s + smootherstep)
+-- SMOOTH TELEPORT (BodyVelocity - anti-detect)
 -- ==========================================
+-- Logika: gerakkan karakter pakai BodyVelocity yang di-update tiap frame,
+-- jadi server lihat "gerak cepat" bukan "loncat CFrame".
 _G.__SmoothTeleport = function(targetPos, duration)
     local char = LocalPlayer.Character
     if not char then return end
     local hrp = char:FindFirstChild("HumanoidRootPart")
     if not hrp then return end
 
-    duration = duration or 1.7
+    -- Batalkan teleport sebelumnya kalau masih jalan
+    if _G.__ActiveTeleportBV then
+        pcall(function() _G.__ActiveTeleportBV:Destroy() end)
+        _G.__ActiveTeleportBV = nil
+    end
+    if _G.__ActiveTeleportConn then
+        pcall(function() _G.__ActiveTeleportConn:Disconnect() end)
+        _G.__ActiveTeleportConn = nil
+    end
+
     local startPos = hrp.Position
     local startTime = tick()
     local conn
+    local bv = Instance.new("BodyVelocity")
+    bv.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
+    bv.Velocity = Vector3.new(0, 0, 0)
+    bv.P = 3000
+    bv.Parent = hrp
+    _G.__ActiveTeleportBV = bv
 
-    -- smootherstep: lebih halus dari smoothstep (turun-naik 2 lapis)
-    local function smootherstep(t)
-        return t * t * t * (t * (t * 6 - 15) + 10)
-    end
-
-    conn = RunService.RenderStepped:Connect(function()
+    conn = RunService.Heartbeat:Connect(function()
         if not hrp or not hrp.Parent then
             if conn then conn:Disconnect() end
+            if bv then pcall(function() bv:Destroy() end) end
             return
         end
+
+        local currentPos = hrp.Position
+        local diff = targetPos - currentPos
+        local dist = diff.Magnitude
         local elapsed = tick() - startTime
-        local t = math.clamp(elapsed / duration, 0, 1)
-        local eased = smootherstep(t)
-        local newPos = startPos:Lerp(targetPos, eased)
-        hrp.CFrame = CFrame.new(newPos, newPos + hrp.CFrame.LookVector * 0.001 + hrp.CFrame.UpVector * 0.001)
-        if t >= 1 then
+
+        -- Sampai tujuan atau timeout
+        if dist < 5 or elapsed > duration then
+            if bv then pcall(function() bv:Destroy() end) end
             if conn then conn:Disconnect() end
+            _G.__ActiveTeleportBV = nil
+            _G.__ActiveTeleportConn = nil
+
+            -- Fallback: kalau masih jauh, teleport CFrame pelan-pelan
+            if dist > 5 and elapsed > duration then
+                -- Teleport step kecil biar nggak loncat jauh
+                local stepTarget = currentPos + diff.Unit * math.min(dist, 30)
+                hrp.CFrame = CFrame.new(stepTarget, stepTarget + hrp.CFrame.LookVector * 0.001 + hrp.CFrame.UpVector * 0.001)
+            end
+            return
         end
+
+        -- Kecepatan disesuaikan: 60-180 studs/detik
+        -- Makin jauh, makin cepat, tapi ada limit
+        local speed = math.clamp(dist * 3, 60, 180)
+        bv.Velocity = diff.Unit * speed
     end)
+    _G.__ActiveTeleportConn = conn
 end
 
 -- ==========================================
@@ -785,6 +817,9 @@ Toggle(VisualTab, "Skeleton", Cfg.ESPSkeleton, function(v) Cfg.ESPSkeleton = v e
 Toggle(VisualTab, "Distance", Cfg.ESPDistance, function(v) Cfg.ESPDistance = v end)
 Toggle(VisualTab, "Picture", Cfg.ESPPicture, function(v) Cfg.ESPPicture = v end)
 
+Section(VisualTab, "Bomb ESP")
+Toggle(VisualTab, "Bomb ESP (PlantedC4)", Cfg.ESPBomb, function(v) Cfg.ESPBomb = v end)
+
 -- ==========================================
 -- TAB AIMBOT
 -- ==========================================
@@ -820,8 +855,6 @@ Toggle(PlayerTab, "Speed Run", Cfg.SpeedRun, function(v)
     end
 end)
 Slider(PlayerTab, "Speed %", 100, 500, Cfg.SpeedRunValue, "%", function(v) Cfg.SpeedRunValue = v end)
-
-Toggle(PlayerTab, "Multi Jump (Tap = naik)", Cfg.MultiJump, function(v) Cfg.MultiJump = v end)
 
 Section(PlayerTab, "Combat")
 Toggle(PlayerTab, "Rapid Fire", Cfg.RapidFire, function(v)
@@ -870,7 +903,7 @@ ComboBox(WorldTab, "Clock Time", {"Default", "Pagi", "Siang", "Sore", "Malam"}, 
 end)
 
 -- ==========================================
--- LOW GRAVITY (FIX - no BodyVelocity drag, cuma BodyForce)
+-- LOW GRAVITY
 -- ==========================================
 local LOW_GRAVITY_VALUE = 2
 
@@ -892,22 +925,15 @@ local function applyLowGravity(char)
     local lift = gravity - LOW_GRAVITY_VALUE
     if lift < 0 then lift = 0 end
 
-    -- BodyForce konstan biar karakter "ringan" (nggak ngunci ketinggian)
     if _G.__LG_Force then pcall(function() _G.__LG_Force:Destroy() end) end
     local bf = Instance.new("BodyForce")
     bf.Force = Vector3.new(0, hrp:GetMass() * lift, 0)
     bf.Parent = hrp
     _G.__LG_Force = bf
 
-    -- HipHeight naik biar "ngambang"
     hum.HipHeight = _G.__LG_Original.HipHeight + 2
-
-    -- JumpPower tinggi
     hum.UseJumpPower = true
     hum.JumpPower = 100
-
-    -- Nggak ada BodyVelocity drag — biar bebas naik/turun
-    -- Cuma pakai BodyForce + max fall cap di frame loop
 end
 
 local function removeLowGravity()
@@ -933,7 +959,6 @@ Toggle(WorldTab, "Low Gravity", Cfg.LowGravity, function(v)
     end
 end)
 
--- Frame loop: cuma cap max fall, nggak ngunci velocity
 RunService.Heartbeat:Connect(function()
     if not Cfg.LowGravity then return end
     local char = LocalPlayer.Character
@@ -945,7 +970,6 @@ RunService.Heartbeat:Connect(function()
         applyLowGravity(char)
     end
 
-    -- Cuma batasi max fall speed, biar jatuh pelan (kayak di bulan)
     local vel = hrp.AssemblyLinearVelocity
     if vel.Y < -15 then
         hrp.AssemblyLinearVelocity = Vector3.new(vel.X, -15, vel.Z)
@@ -1191,7 +1215,7 @@ CloseBtn.MouseButton1Click:Connect(function() MainFrame.Visible = false end)
 IconBtn.MouseButton1Click:Connect(function() MainFrame.Visible = not MainFrame.Visible end)
 
 -- ==========================================
--- FOV CIRCLE + AIM LINE + CROSSHAIR
+-- FOV CIRCLE + AIM LINE + CROSSHAIR (SMALL & RAPAT)
 -- ==========================================
 local FOVGui = make("ScreenGui", {Name = "LiteHack_FOV", ResetOnSpawn = false, IgnoreGuiInset = true, Parent = getGuiParent()})
 local FOVCircle = make("Frame", {
@@ -1215,10 +1239,10 @@ local AimLineGui = make("Frame", {
     Parent = FOVGui
 })
 
--- Crosshair buatan (dot putih di tengah layar)
+-- CROSSHAIR SMALL & RAPAT
 local CrosshairDot = make("Frame", {
-    Size = UDim2.new(0, 4, 0, 4),
-    Position = UDim2.new(0.5, -2, 0.5, -2),
+    Size = UDim2.new(0, 3, 0, 3),
+    Position = UDim2.new(0.5, -1.5, 0.5, -1.5),
     BackgroundColor3 = Color3.fromRGB(255, 255, 255),
     BorderSizePixel = 0,
     Visible = false,
@@ -1226,8 +1250,8 @@ local CrosshairDot = make("Frame", {
     Parent = FOVGui
 })
 corner(CrosshairDot, 2)
-stroke(CrosshairDot, Color3.fromRGB(0, 0, 0), 1, 0.3)
--- Titik tambahan biar kelihatan (4 garis kecil di sekeliling)
+stroke(CrosshairDot, Color3.fromRGB(0, 0, 0), 1, 0.5)
+
 local CrosshairLines = {}
 for i = 1, 4 do
     local line = make("Frame", {
@@ -1237,35 +1261,34 @@ for i = 1, 4 do
         ZIndex = 100,
         Parent = FOVGui
     })
-    stroke(line, Color3.fromRGB(0, 0, 0), 1, 0.3)
+    stroke(line, Color3.fromRGB(0, 0, 0), 1, 0.5)
     table.insert(CrosshairLines, line)
 end
 
--- Update crosshair posisi tiap frame
 RunService.RenderStepped:Connect(function()
     if Cfg.ShowCrosshair then
         local vs = Camera.ViewportSize
         local cx = vs.X / 2
         local cy = vs.Y / 2
         CrosshairDot.Visible = true
-        CrosshairDot.Position = UDim2.new(0, cx - 2, 0, cy - 2)
+        CrosshairDot.Position = UDim2.new(0, cx - 1.5, 0, cy - 1.5)
 
-        -- 4 garis: atas, bawah, kiri, kanan
+        -- 4 garis kecil: panjang 5px, jarak 4px dari center
         -- Atas
-        CrosshairLines[1].Size = UDim2.new(0, 1, 0, 8)
-        CrosshairLines[1].Position = UDim2.new(0, cx, 0, cy - 14)
+        CrosshairLines[1].Size = UDim2.new(0, 1, 0, 5)
+        CrosshairLines[1].Position = UDim2.new(0, cx - 0.5, 0, cy - 9)
         CrosshairLines[1].Visible = true
         -- Bawah
-        CrosshairLines[2].Size = UDim2.new(0, 1, 0, 8)
-        CrosshairLines[2].Position = UDim2.new(0, cx, 0, cy + 6)
+        CrosshairLines[2].Size = UDim2.new(0, 1, 0, 5)
+        CrosshairLines[2].Position = UDim2.new(0, cx - 0.5, 0, cy + 4)
         CrosshairLines[2].Visible = true
         -- Kiri
-        CrosshairLines[3].Size = UDim2.new(0, 8, 0, 1)
-        CrosshairLines[3].Position = UDim2.new(0, cx - 14, 0, cy)
+        CrosshairLines[3].Size = UDim2.new(0, 5, 0, 1)
+        CrosshairLines[3].Position = UDim2.new(0, cx - 9, 0, cy - 0.5)
         CrosshairLines[3].Visible = true
         -- Kanan
-        CrosshairLines[4].Size = UDim2.new(0, 8, 0, 1)
-        CrosshairLines[4].Position = UDim2.new(0, cx + 6, 0, cy)
+        CrosshairLines[4].Size = UDim2.new(0, 5, 0, 1)
+        CrosshairLines[4].Position = UDim2.new(0, cx + 4, 0, cy - 0.5)
         CrosshairLines[4].Visible = true
     else
         CrosshairDot.Visible = false
@@ -1601,14 +1624,134 @@ RunService.RenderStepped:Connect(function()
 end)
 
 -- ==========================================
--- AIMBOT + AUTO FIRE (HOLD sampai target mati/keluar FOV/kena wall)
+-- ESP BOM (PlantedC4)
+-- ==========================================
+local BombGui = make("ScreenGui", {Name = "LiteHack_Bomb", ResetOnSpawn = false, IgnoreGuiInset = true, Parent = getGuiParent()})
+local BombBox = make("Frame", {
+    Size = UDim2.new(0, 100, 0, 100),
+    BackgroundTransparency = 1,
+    BorderSizePixel = 0,
+    Visible = false,
+    ZIndex = 3,
+    Parent = BombGui
+})
+local bc1 = make("Frame", {Size = UDim2.new(0, 15, 0, 3), BackgroundColor3 = Color3.fromRGB(255, 40, 40), BorderSizePixel = 0, ZIndex = 4, Parent = BombBox})
+local bc2 = make("Frame", {Size = UDim2.new(0, 3, 0, 15), BackgroundColor3 = Color3.fromRGB(255, 40, 40), BorderSizePixel = 0, ZIndex = 4, Parent = BombBox})
+local bc3 = make("Frame", {Size = UDim2.new(0, 15, 0, 3), BackgroundColor3 = Color3.fromRGB(255, 40, 40), AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, 0, 0, 0), BorderSizePixel = 0, ZIndex = 4, Parent = BombBox})
+local bc4 = make("Frame", {Size = UDim2.new(0, 3, 0, 15), BackgroundColor3 = Color3.fromRGB(255, 40, 40), AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, 0, 0, 0), BorderSizePixel = 0, ZIndex = 4, Parent = BombBox})
+local bc5 = make("Frame", {Size = UDim2.new(0, 15, 0, 3), BackgroundColor3 = Color3.fromRGB(255, 40, 40), AnchorPoint = Vector2.new(0, 1), Position = UDim2.new(0, 0, 1, 0), BorderSizePixel = 0, ZIndex = 4, Parent = BombBox})
+local bc6 = make("Frame", {Size = UDim2.new(0, 3, 0, 15), BackgroundColor3 = Color3.fromRGB(255, 40, 40), AnchorPoint = Vector2.new(0, 1), Position = UDim2.new(0, 0, 1, 0), BorderSizePixel = 0, ZIndex = 4, Parent = BombBox})
+local bc7 = make("Frame", {Size = UDim2.new(0, 15, 0, 3), BackgroundColor3 = Color3.fromRGB(255, 40, 40), AnchorPoint = Vector2.new(1, 1), Position = UDim2.new(1, 0, 1, 0), BorderSizePixel = 0, ZIndex = 4, Parent = BombBox})
+local bc8 = make("Frame", {Size = UDim2.new(0, 3, 0, 15), BackgroundColor3 = Color3.fromRGB(255, 40, 40), AnchorPoint = Vector2.new(1, 1), Position = UDim2.new(1, 0, 1, 0), BorderSizePixel = 0, ZIndex = 4, Parent = BombBox})
+
+local BombLabel = make("TextLabel", {
+    Size = UDim2.new(0, 200, 0, 18),
+    BackgroundTransparency = 1,
+    Text = "💣 BOM",
+    TextColor3 = Color3.fromRGB(255, 60, 60),
+    TextSize = 16,
+    Font = Enum.Font.GothamBold,
+    TextStrokeTransparency = 0.3,
+    Visible = false,
+    ZIndex = 10,
+    Parent = BombGui
+})
+
+local BombDist = make("TextLabel", {
+    Size = UDim2.new(0, 200, 0, 14),
+    BackgroundTransparency = 1,
+    Text = "0 m",
+    TextColor3 = Color3.fromRGB(255, 200, 200),
+    TextSize = 12,
+    Font = Enum.Font.GothamBold,
+    TextStrokeTransparency = 0.4,
+    Visible = false,
+    ZIndex = 10,
+    Parent = BombGui
+})
+
+RunService.RenderStepped:Connect(function()
+    if not Cfg.ESPBomb then
+        BombBox.Visible = false
+        BombLabel.Visible = false
+        BombDist.Visible = false
+        return
+    end
+
+    local c4 = workspace:FindFirstChild("PlantedC4")
+    if not c4 then
+        BombBox.Visible = false
+        BombLabel.Visible = false
+        BombDist.Visible = false
+        return
+    end
+
+    -- Ambil posisi bom
+    local bombPos
+    local ok, pivot = pcall(function() return c4:GetPivot().Position end)
+    if ok and pivot then
+        bombPos = pivot
+    else
+        -- Fallback: cari BasePart pertama di dalamnya
+        for _, child in ipairs(c4:GetDescendants()) do
+            if child:IsA("BasePart") then
+                bombPos = child.Position
+                break
+            end
+        end
+    end
+
+    if not bombPos then
+        BombBox.Visible = false
+        BombLabel.Visible = false
+        BombDist.Visible = false
+        return
+    end
+
+    -- Project ke layar
+    local screenPos, onScreen = Camera:WorldToViewportPoint(bombPos)
+    if not onScreen then
+        BombBox.Visible = false
+        BombLabel.Visible = false
+        BombDist.Visible = false
+        return
+    end
+
+    -- Hitung ukuran kotak berdasarkan jarak (makin dekat, makin besar)
+    local myChar = LocalPlayer.Character
+    local myRoot = myChar and myChar:FindFirstChild("HumanoidRootPart")
+    local meters = 0
+    if myRoot then
+        meters = math.floor((myRoot.Position - bombPos).Magnitude)
+    end
+
+    local size = math.clamp(2000 / math.max(meters, 5), 40, 200)
+    local sx = screenPos.X
+    local sy = screenPos.Y
+
+    BombBox.Position = UDim2.new(0, sx - size/2, 0, sy - size/2)
+    BombBox.Size = UDim2.new(0, size, 0, size)
+    BombBox.Visible = true
+
+    BombLabel.Position = UDim2.new(0, sx, 0, sy - size/2 - 22)
+    BombLabel.AnchorPoint = Vector2.new(0.5, 0)
+    BombLabel.Visible = true
+
+    BombDist.Position = UDim2.new(0, sx, 0, sy + size/2 + 2)
+    BombDist.AnchorPoint = Vector2.new(0.5, 0)
+    BombDist.Text = meters .. " m"
+    BombDist.Visible = true
+end)
+
+-- ==========================================
+-- AIMBOT + AUTO FIRE
 -- ==========================================
 local LockedTarget = nil
 local lastFireTime = 0
-local FIRE_INTERVAL = 0.08  -- 80ms antar tembakan saat hold
+local FIRE_INTERVAL = 0.08
 local fireHoldActive = false
 local lastFireToggle = 0
-local FIRE_TOGGLE_DURATION = 0.05  -- durasi hold aktivate (50ms on, 50ms off)
+local FIRE_TOGGLE_DURATION = 0.05
 
 local function isVisible(part)
     if not part then return false end
@@ -1667,7 +1810,6 @@ local function pickTarget()
     return best
 end
 
--- Cek target di crosshair: hidup, dalam FOV, nggak ke halang
 local function getHoldFireTarget()
     local screenCenter = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
     local ray = Camera:ViewportPointToRay(screenCenter.X, screenCenter.Y)
@@ -1684,7 +1826,6 @@ local function getHoldFireTarget()
     if Cfg.AimTeamCheck and isTeam(hitModel) then return nil end
     local hum = hitModel:FindFirstChildOfClass("Humanoid")
     if not hum or hum.Health <= 0 then return nil end
-    -- Cek FOV (kalau mode FOV)
     if Cfg.AimMode == "FOV" then
         local targetPart = getAimPart(hitModel)
         if targetPart then
@@ -1704,14 +1845,12 @@ local function getEquippedTool()
     return char:FindFirstChildOfClass("Tool")
 end
 
--- Hold fire: activate + deactivate berulang, biar nggak nyangkut
 local function holdFireToggle()
     local tool = getEquippedTool()
     if not tool then return end
     local now = tick()
     if (now - lastFireToggle) < FIRE_TOGGLE_DURATION then return end
     lastFireToggle = now
-    -- on-off on-off
     pcall(function()
         if fireHoldActive then
             tool:Deactivate()
@@ -1731,16 +1870,11 @@ RunService.RenderStepped:Connect(function()
         FOVCircle.Visible = false
     end
 
-    -- ==========================================
-    -- AUTO FIRE (HOLD - terus nembak selama target valid)
-    -- ==========================================
     if Cfg.AutoFire then
         local targetModel, targetHum = getHoldFireTarget()
         if targetModel and targetHum and targetHum.Health > 0 then
-            -- Target valid: terus toggle on-off biar nembak terus
             holdFireToggle()
         else
-            -- Target invalid: matikan fire
             local tool = getEquippedTool()
             if tool and fireHoldActive then
                 pcall(function() tool:Deactivate() end)
@@ -1748,7 +1882,6 @@ RunService.RenderStepped:Connect(function()
             end
         end
     else
-        -- Auto Fire off: pastikan tool di-deactivate
         if fireHoldActive then
             local tool = getEquippedTool()
             if tool then pcall(function() tool:Deactivate() end) end
@@ -1756,9 +1889,6 @@ RunService.RenderStepped:Connect(function()
         end
     end
 
-    -- ==========================================
-    -- AIMBOT
-    -- ==========================================
     if not Cfg.Aimbot then
         LockedTarget = nil
         AimLineGui.Visible = false
@@ -1820,56 +1950,6 @@ RunService.Stepped:Connect(function()
     if not hum then return end
     if Cfg.SpeedRun then
         hum.WalkSpeed = 16 * (Cfg.SpeedRunValue / 100)
-    end
-end)
-
--- ==========================================
--- MULTI JUMP (FIX - pakai BodyVelocity saat tap)
--- ==========================================
-local jumpTapBoost = 25
-local lastTapTime = 0
-local TAP_COOLDOWN = 0.1
-local jumpBV = nil
-
-local function boostJump()
-    local char = LocalPlayer.Character
-    if not char then return end
-    local hrp = char:FindFirstChild("HumanoidRootPart")
-    if not hrp then return end
-
-    -- Hapus BV lama kalau ada
-    if jumpBV then pcall(function() jumpBV:Destroy() end); jumpBV = nil end
-
-    local bv = Instance.new("BodyVelocity")
-    bv.MaxForce = Vector3.new(0, math.huge, 0)  -- cuma Y
-    bv.Velocity = Vector3.new(0, jumpTapBoost, 0)
-    bv.P = 1250
-    bv.Parent = hrp
-    jumpBV = bv
-
-    -- Lepas setelah 0.15 detik
-    task.delay(0.15, function()
-        if jumpBV and jumpBV == bv then
-            pcall(function() bv:Destroy() end)
-            jumpBV = nil
-        end
-    end)
-end
-
-UserInputService.JumpRequest:Connect(function()
-    if not Cfg.MultiJump then return end
-    local char = LocalPlayer.Character
-    if not char then return end
-    local hum = char:FindFirstChildOfClass("Humanoid")
-    if not hum then return end
-
-    local now = tick()
-    if (now - lastTapTime) < TAP_COOLDOWN then return end
-    lastTapTime = now
-
-    -- Kalau di udara, boost pakai BV
-    if hum.FloorMaterial == Enum.Material.Air then
-        boostJump()
     end
 end)
 
@@ -2155,4 +2235,4 @@ task.spawn(function()
     end
 end)
 
-print("[LiteHack] UI Loaded (v14). Teleport 1.7s smoother. Crosshair. AutoFire hold. MultiJump BV. LowGrav fix.")
+print("[LiteHack] UI Loaded (v15). Multi Jump removed. Small crosshair. BodyVelocity teleport. Bomb ESP added.")
