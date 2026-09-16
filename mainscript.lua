@@ -95,6 +95,7 @@ _G.LiteHackCfg = {
     AimDistance = 500,
     AimSmoothness = 100,
     AutoFire = false,
+    ShowCrosshair = false,
     SpeedRun = false,
     SpeedRunValue = 50,
     MultiJump = false,
@@ -150,7 +151,7 @@ end
 local FONT_BOLD = Enum.Font.GothamBold
 
 -- ==========================================
--- SMOOTH TELEPORT
+-- SMOOTH TELEPORT (1.7s + smootherstep)
 -- ==========================================
 _G.__SmoothTeleport = function(targetPos, duration)
     local char = LocalPlayer.Character
@@ -158,13 +159,14 @@ _G.__SmoothTeleport = function(targetPos, duration)
     local hrp = char:FindFirstChild("HumanoidRootPart")
     if not hrp then return end
 
-    duration = duration or 1.5
+    duration = duration or 1.7
     local startPos = hrp.Position
     local startTime = tick()
     local conn
 
-    local function smoothstep(t)
-        return t * t * (3 - 2 * t)
+    -- smootherstep: lebih halus dari smoothstep (turun-naik 2 lapis)
+    local function smootherstep(t)
+        return t * t * t * (t * (t * 6 - 15) + 10)
     end
 
     conn = RunService.RenderStepped:Connect(function()
@@ -174,7 +176,7 @@ _G.__SmoothTeleport = function(targetPos, duration)
         end
         local elapsed = tick() - startTime
         local t = math.clamp(elapsed / duration, 0, 1)
-        local eased = smoothstep(t)
+        local eased = smootherstep(t)
         local newPos = startPos:Lerp(targetPos, eased)
         hrp.CFrame = CFrame.new(newPos, newPos + hrp.CFrame.LookVector * 0.001 + hrp.CFrame.UpVector * 0.001)
         if t >= 1 then
@@ -789,6 +791,7 @@ Toggle(VisualTab, "Picture", Cfg.ESPPicture, function(v) Cfg.ESPPicture = v end)
 Section(AimbotTab, "Aimbot Settings")
 Toggle(AimbotTab, "Aimbot", Cfg.Aimbot, function(v) Cfg.Aimbot = v end)
 Toggle(AimbotTab, "Auto Fire", Cfg.AutoFire, function(v) Cfg.AutoFire = v end)
+Toggle(AimbotTab, "Show Crosshair", Cfg.ShowCrosshair, function(v) Cfg.ShowCrosshair = v end)
 Toggle(AimbotTab, "Team Check", Cfg.AimTeamCheck, function(v) Cfg.AimTeamCheck = v end)
 Toggle(AimbotTab, "Wall Check", Cfg.AimWallCheck, function(v) Cfg.AimWallCheck = v end)
 ComboBox(AimbotTab, "Mode Aimbot", {"FOV", "360°"}, Cfg.AimMode, function(v) Cfg.AimMode = v end)
@@ -867,7 +870,7 @@ ComboBox(WorldTab, "Clock Time", {"Default", "Pagi", "Siang", "Sore", "Malam"}, 
 end)
 
 -- ==========================================
--- LOW GRAVITY (FIX - JumpPower tinggi + BodyForce + drag)
+-- LOW GRAVITY (FIX - no BodyVelocity drag, cuma BodyForce)
 -- ==========================================
 local LOW_GRAVITY_VALUE = 2
 
@@ -877,7 +880,6 @@ local function applyLowGravity(char)
     local hrp = char:FindFirstChild("HumanoidRootPart")
     if not hum or not hrp then return end
 
-    -- Simpan nilai asli sekali saja
     if not _G.__LG_Original then
         _G.__LG_Original = {
             JumpPower = hum.JumpPower,
@@ -890,28 +892,22 @@ local function applyLowGravity(char)
     local lift = gravity - LOW_GRAVITY_VALUE
     if lift < 0 then lift = 0 end
 
-    -- BodyForce konstan biar karakter "ringan"
+    -- BodyForce konstan biar karakter "ringan" (nggak ngunci ketinggian)
     if _G.__LG_Force then pcall(function() _G.__LG_Force:Destroy() end) end
     local bf = Instance.new("BodyForce")
     bf.Force = Vector3.new(0, hrp:GetMass() * lift, 0)
     bf.Parent = hrp
     _G.__LG_Force = bf
 
-    -- HipHeight tinggi biar ngambang
-    hum.HipHeight = _G.__LG_Original.HipHeight + 3
+    -- HipHeight naik biar "ngambang"
+    hum.HipHeight = _G.__LG_Original.HipHeight + 2
 
-    -- JumpPower tinggi biar lompat tinggi
+    -- JumpPower tinggi
     hum.UseJumpPower = true
     hum.JumpPower = 100
 
-    -- Tambah drag vertikal biar jatuh pelan
-    if _G.__LG_BV then pcall(function() _G.__LG_BV:Destroy() end) end
-    local bv = Instance.new("BodyVelocity")
-    bv.MaxForce = Vector3.new(0, math.huge, 0)
-    bv.Velocity = Vector3.new(0, 0, 0)
-    bv.P = 50  -- drag
-    bv.Parent = hrp
-    _G.__LG_BV = bv
+    -- Nggak ada BodyVelocity drag — biar bebas naik/turun
+    -- Cuma pakai BodyForce + max fall cap di frame loop
 end
 
 local function removeLowGravity()
@@ -925,7 +921,6 @@ local function removeLowGravity()
         end
     end
     if _G.__LG_Force then pcall(function() _G.__LG_Force:Destroy() end); _G.__LG_Force = nil end
-    if _G.__LG_BV then pcall(function() _G.__LG_BV:Destroy() end); _G.__LG_BV = nil end
     _G.__LG_Original = nil
 end
 
@@ -938,8 +933,8 @@ Toggle(WorldTab, "Low Gravity", Cfg.LowGravity, function(v)
     end
 end)
 
--- Update BodyVelocity tiap frame biar ngambang + drag
-RunService.RenderStepped:Connect(function()
+-- Frame loop: cuma cap max fall, nggak ngunci velocity
+RunService.Heartbeat:Connect(function()
     if not Cfg.LowGravity then return end
     local char = LocalPlayer.Character
     local hrp = char and char:FindFirstChild("HumanoidRootPart")
@@ -950,15 +945,10 @@ RunService.RenderStepped:Connect(function()
         applyLowGravity(char)
     end
 
-    -- Drag vertikal biar jatuh pelan (cap fall & rise)
+    -- Cuma batasi max fall speed, biar jatuh pelan (kayak di bulan)
     local vel = hrp.AssemblyLinearVelocity
-    local maxFall = 10
-    local maxRise = 60  -- biar lompat tinggi tetap bisa naik
-
-    if vel.Y < -maxFall then
-        hrp.AssemblyLinearVelocity = Vector3.new(vel.X, -maxFall, vel.Z)
-    elseif vel.Y > maxRise then
-        hrp.AssemblyLinearVelocity = Vector3.new(vel.X, maxRise, vel.Z)
+    if vel.Y < -15 then
+        hrp.AssemblyLinearVelocity = Vector3.new(vel.X, -15, vel.Z)
     end
 end)
 
@@ -972,7 +962,7 @@ end, function(name)
     local target = Players:FindFirstChild(name)
     if target and target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
         if _G.__SmoothTeleport then
-            _G.__SmoothTeleport(target.Character.HumanoidRootPart.Position, 1.5)
+            _G.__SmoothTeleport(target.Character.HumanoidRootPart.Position, 1.7)
         end
     end
 end)
@@ -1100,7 +1090,7 @@ local function refreshLocList()
         corner(tpBtn, 4)
         tpBtn.MouseButton1Click:Connect(function()
             if _G.__SmoothTeleport then
-                _G.__SmoothTeleport(Vector3.new(loc.x, loc.y, loc.z), 1.5)
+                _G.__SmoothTeleport(Vector3.new(loc.x, loc.y, loc.z), 1.7)
             end
         end)
 
@@ -1201,7 +1191,7 @@ CloseBtn.MouseButton1Click:Connect(function() MainFrame.Visible = false end)
 IconBtn.MouseButton1Click:Connect(function() MainFrame.Visible = not MainFrame.Visible end)
 
 -- ==========================================
--- FOV CIRCLE + AIM LINE
+-- FOV CIRCLE + AIM LINE + CROSSHAIR
 -- ==========================================
 local FOVGui = make("ScreenGui", {Name = "LiteHack_FOV", ResetOnSpawn = false, IgnoreGuiInset = true, Parent = getGuiParent()})
 local FOVCircle = make("Frame", {
@@ -1224,6 +1214,64 @@ local AimLineGui = make("Frame", {
     Visible = false,
     Parent = FOVGui
 })
+
+-- Crosshair buatan (dot putih di tengah layar)
+local CrosshairDot = make("Frame", {
+    Size = UDim2.new(0, 4, 0, 4),
+    Position = UDim2.new(0.5, -2, 0.5, -2),
+    BackgroundColor3 = Color3.fromRGB(255, 255, 255),
+    BorderSizePixel = 0,
+    Visible = false,
+    ZIndex = 100,
+    Parent = FOVGui
+})
+corner(CrosshairDot, 2)
+stroke(CrosshairDot, Color3.fromRGB(0, 0, 0), 1, 0.3)
+-- Titik tambahan biar kelihatan (4 garis kecil di sekeliling)
+local CrosshairLines = {}
+for i = 1, 4 do
+    local line = make("Frame", {
+        BackgroundColor3 = Color3.fromRGB(255, 255, 255),
+        BorderSizePixel = 0,
+        Visible = false,
+        ZIndex = 100,
+        Parent = FOVGui
+    })
+    stroke(line, Color3.fromRGB(0, 0, 0), 1, 0.3)
+    table.insert(CrosshairLines, line)
+end
+
+-- Update crosshair posisi tiap frame
+RunService.RenderStepped:Connect(function()
+    if Cfg.ShowCrosshair then
+        local vs = Camera.ViewportSize
+        local cx = vs.X / 2
+        local cy = vs.Y / 2
+        CrosshairDot.Visible = true
+        CrosshairDot.Position = UDim2.new(0, cx - 2, 0, cy - 2)
+
+        -- 4 garis: atas, bawah, kiri, kanan
+        -- Atas
+        CrosshairLines[1].Size = UDim2.new(0, 1, 0, 8)
+        CrosshairLines[1].Position = UDim2.new(0, cx, 0, cy - 14)
+        CrosshairLines[1].Visible = true
+        -- Bawah
+        CrosshairLines[2].Size = UDim2.new(0, 1, 0, 8)
+        CrosshairLines[2].Position = UDim2.new(0, cx, 0, cy + 6)
+        CrosshairLines[2].Visible = true
+        -- Kiri
+        CrosshairLines[3].Size = UDim2.new(0, 8, 0, 1)
+        CrosshairLines[3].Position = UDim2.new(0, cx - 14, 0, cy)
+        CrosshairLines[3].Visible = true
+        -- Kanan
+        CrosshairLines[4].Size = UDim2.new(0, 8, 0, 1)
+        CrosshairLines[4].Position = UDim2.new(0, cx + 6, 0, cy)
+        CrosshairLines[4].Visible = true
+    else
+        CrosshairDot.Visible = false
+        for _, l in ipairs(CrosshairLines) do l.Visible = false end
+    end
+end)
 
 -- ==========================================
 -- ESP ENGINE
@@ -1470,7 +1518,6 @@ RunService.RenderStepped:Connect(function()
 
             local picTopY = topLeft.Y - 93
             local picCenterY = picTopY + 21
-            local picBottomY = picTopY + 42
 
             if Cfg.ESPPicture then
                 d.Pic.Visible = true
@@ -1554,11 +1601,14 @@ RunService.RenderStepped:Connect(function()
 end)
 
 -- ==========================================
--- AIMBOT + AUTO FIRE (FIXED)
+-- AIMBOT + AUTO FIRE (HOLD sampai target mati/keluar FOV/kena wall)
 -- ==========================================
 local LockedTarget = nil
 local lastFireTime = 0
-local FIRE_COOLDOWN = 0.08  -- 80ms antar tembakan
+local FIRE_INTERVAL = 0.08  -- 80ms antar tembakan saat hold
+local fireHoldActive = false
+local lastFireToggle = 0
+local FIRE_TOGGLE_DURATION = 0.05  -- durasi hold aktivate (50ms on, 50ms off)
 
 local function isVisible(part)
     if not part then return false end
@@ -1617,8 +1667,8 @@ local function pickTarget()
     return best
 end
 
--- Cek apakah crosshair tepat kena musuh (HIDUP)
-local function getCrosshairTarget()
+-- Cek target di crosshair: hidup, dalam FOV, nggak ke halang
+local function getHoldFireTarget()
     local screenCenter = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
     local ray = Camera:ViewportPointToRay(screenCenter.X, screenCenter.Y)
     local params = RaycastParams.new()
@@ -1627,15 +1677,24 @@ local function getCrosshairTarget()
     local result = workspace:Raycast(ray.Origin, ray.Direction * 5000, params)
     if not result then return nil end
     local hit = result.Instance
-    -- Cari karakter dari hit part
     local hitModel = hit:FindFirstAncestorOfClass("Model")
     if not hitModel then return nil end
     local plr = Players:GetPlayerFromCharacter(hitModel)
     if not plr or plr == LocalPlayer then return nil end
     if Cfg.AimTeamCheck and isTeam(hitModel) then return nil end
-    -- Cek Humanoid masih hidup
     local hum = hitModel:FindFirstChildOfClass("Humanoid")
     if not hum or hum.Health <= 0 then return nil end
+    -- Cek FOV (kalau mode FOV)
+    if Cfg.AimMode == "FOV" then
+        local targetPart = getAimPart(hitModel)
+        if targetPart then
+            local pos, on = Camera:WorldToViewportPoint(targetPart.Position)
+            if on then
+                local d = (screenCenter - Vector2.new(pos.X, pos.Y)).Magnitude
+                if d > Cfg.AimFOVSize then return nil end
+            end
+        end
+    end
     return hitModel, hum
 end
 
@@ -1645,13 +1704,22 @@ local function getEquippedTool()
     return char:FindFirstChildOfClass("Tool")
 end
 
-local function fireTool()
+-- Hold fire: activate + deactivate berulang, biar nggak nyangkut
+local function holdFireToggle()
     local tool = getEquippedTool()
-    if not tool then return false end
+    if not tool then return end
+    local now = tick()
+    if (now - lastFireToggle) < FIRE_TOGGLE_DURATION then return end
+    lastFireToggle = now
+    -- on-off on-off
     pcall(function()
-        tool:Activate()
+        if fireHoldActive then
+            tool:Deactivate()
+        else
+            tool:Activate()
+        end
     end)
-    return true
+    fireHoldActive = not fireHoldActive
 end
 
 RunService.RenderStepped:Connect(function()
@@ -1664,17 +1732,27 @@ RunService.RenderStepped:Connect(function()
     end
 
     -- ==========================================
-    -- AUTO FIRE (FIXED - cek HP target sebelum tembak)
+    -- AUTO FIRE (HOLD - terus nembak selama target valid)
     -- ==========================================
     if Cfg.AutoFire then
-        local now = tick()
-        if (now - lastFireTime) > FIRE_COOLDOWN then
-            local targetModel, targetHum = getCrosshairTarget()
-            -- Cuma nembak kalau target ada & HIDUP
-            if targetModel and targetHum and targetHum.Health > 0 then
-                fireTool()
-                lastFireTime = now
+        local targetModel, targetHum = getHoldFireTarget()
+        if targetModel and targetHum and targetHum.Health > 0 then
+            -- Target valid: terus toggle on-off biar nembak terus
+            holdFireToggle()
+        else
+            -- Target invalid: matikan fire
+            local tool = getEquippedTool()
+            if tool and fireHoldActive then
+                pcall(function() tool:Deactivate() end)
+                fireHoldActive = false
             end
+        end
+    else
+        -- Auto Fire off: pastikan tool di-deactivate
+        if fireHoldActive then
+            local tool = getEquippedTool()
+            if tool then pcall(function() tool:Deactivate() end) end
+            fireHoldActive = false
         end
     end
 
@@ -1746,34 +1824,52 @@ RunService.Stepped:Connect(function()
 end)
 
 -- ==========================================
--- MULTI JUMP (FIX - pakai JumpRequest, work di Android custom button)
+-- MULTI JUMP (FIX - pakai BodyVelocity saat tap)
 -- ==========================================
--- Logika: setiap JumpRequest saat di udara → tambah velocity vertikal.
--- Di tanah, Roblox handle lompatan normal.
--- JumpRequest ke-trigger baik dari tombol default maupun custom game.
-
-local jumpTapBoost = 14
+local jumpTapBoost = 25
 local lastTapTime = 0
 local TAP_COOLDOWN = 0.1
+local jumpBV = nil
+
+local function boostJump()
+    local char = LocalPlayer.Character
+    if not char then return end
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
+
+    -- Hapus BV lama kalau ada
+    if jumpBV then pcall(function() jumpBV:Destroy() end); jumpBV = nil end
+
+    local bv = Instance.new("BodyVelocity")
+    bv.MaxForce = Vector3.new(0, math.huge, 0)  -- cuma Y
+    bv.Velocity = Vector3.new(0, jumpTapBoost, 0)
+    bv.P = 1250
+    bv.Parent = hrp
+    jumpBV = bv
+
+    -- Lepas setelah 0.15 detik
+    task.delay(0.15, function()
+        if jumpBV and jumpBV == bv then
+            pcall(function() bv:Destroy() end)
+            jumpBV = nil
+        end
+    end)
+end
 
 UserInputService.JumpRequest:Connect(function()
     if not Cfg.MultiJump then return end
     local char = LocalPlayer.Character
     if not char then return end
     local hum = char:FindFirstChildOfClass("Humanoid")
-    local hrp = char:FindFirstChild("HumanoidRootPart")
-    if not hum or not hrp then return end
+    if not hum then return end
 
     local now = tick()
     if (now - lastTapTime) < TAP_COOLDOWN then return end
     lastTapTime = now
 
-    -- Kalau di udara, tambah velocity vertikal (naikin lebih tinggi)
+    -- Kalau di udara, boost pakai BV
     if hum.FloorMaterial == Enum.Material.Air then
-        local vel = hrp.AssemblyLinearVelocity
-        local newY = vel.Y + jumpTapBoost
-        if newY > 120 then newY = 120 end  -- cap biar nggak meledak
-        hrp.AssemblyLinearVelocity = Vector3.new(vel.X, newY, vel.Z)
+        boostJump()
     end
 end)
 
@@ -2059,4 +2155,4 @@ task.spawn(function()
     end
 end)
 
-print("[LiteHack] UI Loaded (v13). Multi Jump pakai JumpRequest. Auto Fire cek HP. Low Gravity pakai BodyForce+BV.")
+print("[LiteHack] UI Loaded (v14). Teleport 1.7s smoother. Crosshair. AutoFire hold. MultiJump BV. LowGrav fix.")
