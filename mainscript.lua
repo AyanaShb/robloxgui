@@ -1,508 +1,869 @@
 -- ============================================================
--- ULTIMATE MODS - IMGUI EDITION
--- Visual / Player / Aimbot / World / Config
+-- LITE HACK + ULTIMATE MODS | WindUI Edition
+-- Bubble 1/4 : Services + Bypass + UI Framework
 -- ============================================================
 
 local Players           = game:GetService("Players")
 local RunService        = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local HttpService       = game:GetService("HttpService")
-local Lighting          = game:GetService("Lighting")
-local UserInputService  = game:GetService("UserInputService")
+local ScriptContext     = game:GetService("ScriptContext")
 local TweenService      = game:GetService("TweenService")
-local LocalPlayer       = Players.LocalPlayer
-local Camera            = workspace.CurrentCamera
-local CoreGui           = (gethui and gethui()) or game:GetService("CoreGui")
+local UserInputService  = game:GetService("UserInputService")
+local Lighting          = game:GetService("Lighting")
 
--- ============================================================
--- ANTI-CHEAT BYPASS (soft)
--- ============================================================
+local LocalPlayer = Players.LocalPlayer
+
+-- ==========================================
+-- AUTO BYPASS ANTI-CHEAT (COPY UTUH DARI KODEMU)
+-- ==========================================
 task.spawn(function()
     pcall(function()
-        if setreadonly and getrenv then pcall(function() setreadonly(getrenv(), false) end) end
+        if setreadonly then pcall(function() setreadonly(getrenv(), false); setreadonly(getreg(), false); setreadonly(getgc(), false) end) end
+        if make_writeable then pcall(function() make_writeable(getreg()) end) end
+        if detour_function then detour_function = function(...) return true end end
         if getconnections then
             pcall(function()
-                for _, c in ipairs(getconnections(LocalPlayer.Idled)) do c:Disable() end
+                for _, connection in ipairs(getconnections(ScriptContext.Error)) do
+                    connection:Disable()
+                end
             end)
+        end
+        if getcallingscript then pcall(function() getcallingscript = function() return nil end end) end
+        for _, tableName in ipairs({"_G", "shared"}) do
+            pcall(function()
+                local target = getgenv()[tableName]
+                if target and type(target) == "table" then
+                    for key, _ in pairs(target) do
+                        local strKey = tostring(key):lower()
+                        if strKey:find("signature") or strKey:find("checksum") or strKey:find("hash") then
+                            target[key] = nil
+                        end
+                    end
+                end
+            end)
+        end
+        for _, remote in ipairs(ReplicatedStorage:GetDescendants()) do
+            if remote:IsA("RemoteEvent") or remote:IsA("RemoteFunction") then
+                local name = remote.Name:lower()
+                if name:find("handshake") or name:find("validate") or name:find("verify") or name:find("integrity") or name:find("anti") then
+                    pcall(function()
+                        if remote:IsA("RemoteEvent") then
+                            remote.FireServer = function(...) return true end
+                        elseif remote:IsA("RemoteFunction") then
+                            remote.InvokeServer = function(...) return true end
+                        end
+                    end)
+                end
+            end
         end
     end)
 end)
 
--- ============================================================
--- LOAD IMGUI
--- ============================================================
-local ImGui
-local ok, err = pcall(function()
-    ImGui = loadstring(game:HttpGet("https://raw.githubusercontent.com/ImGui-Roblox/ImGui/main/ImGui.lua"))()
+local Camera = workspace.CurrentCamera
+if Camera.ViewportSize.Y > Camera.ViewportSize.X then
+    repeat task.wait(0.5) until Camera.ViewportSize.X > Camera.ViewportSize.Y
+    task.wait(1)
+end
+
+-- ==========================================
+-- LOAD WINDUI
+-- ==========================================
+local WindUI = loadstring(game:HttpGet("https://raw.githubusercontent.com/Footagesus/WindUI/refs/heads/main/main.lua"))()
+WindUI:SetTheme("Dark")
+
+-- ==========================================
+-- FLOATING SKULL (GLOWUP)
+-- ==========================================
+local CoreGui = (gethui and gethui()) or game:GetService("CoreGui")
+
+local SkullGui = Instance.new("ScreenGui")
+SkullGui.Name = "LH_SkullToggle"
+SkullGui.ResetOnSpawn = false
+SkullGui.IgnoreGuiInset = true
+SkullGui.Parent = CoreGui
+
+local SkullBtn = Instance.new("TextButton")
+SkullBtn.Size = UDim2.fromOffset(54, 54)
+SkullBtn.Position = UDim2.new(0, 20, 0.5, -27)
+SkullBtn.BackgroundColor3 = Color3.fromRGB(10, 10, 18)
+SkullBtn.BackgroundTransparency = 0.08
+SkullBtn.Text = "💀"
+SkullBtn.TextSize = 30
+SkullBtn.Font = Enum.Font.GothamBold
+SkullBtn.TextColor3 = Color3.fromRGB(200, 0, 255)
+SkullBtn.AutoButtonColor = false
+SkullBtn.Active = true
+SkullBtn.Draggable = true
+SkullBtn.Parent = SkullGui
+
+local SkullCorner = Instance.new("UICorner", SkullBtn)
+SkullCorner.CornerRadius = UDim.new(1, 0)
+
+local SkullStroke = Instance.new("UIStroke", SkullBtn)
+SkullStroke.Color = Color3.fromRGB(200, 0, 255)
+SkullStroke.Thickness = 2.5
+SkullStroke.Transparency = 0.15
+
+-- glow pulse
+task.spawn(function()
+    while SkullBtn.Parent do
+        TweenService:Create(SkullStroke, TweenInfo.new(1.3, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), {Transparency = 0.75, Thickness = 1.5}):Play()
+        task.wait(1.3)
+        TweenService:Create(SkullStroke, TweenInfo.new(1.3, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), {Transparency = 0.1, Thickness = 3}):Play()
+        task.wait(1.3)
+    end
 end)
 
-if not ok or not ImGui then
-    -- Fallback: alternative ImGui source
-    pcall(function()
-        ImGui = loadstring(game:HttpGet("https://lua-libraries.vercel.app/imgui.lua"))()
-    end)
-end
+-- ==========================================
+-- WINDOW (compact, rounded, semi-transparan)
+-- ==========================================
+local Window = WindUI:CreateWindow({
+    Title = "💀 Lite Hack + Ultimate Mods",
+    Icon = "skull",
+    Author = "Universal",
+    Folder = "LiteHack",
+    Size = UDim2.fromOffset(560, 380),
+    Transparent = true,
+    Theme = "Dark",
+    Resizable = false,
+    SideBarWidth = 0,
+    HideSearchBar = true,
+    HasOutline = true,
+})
 
-if not ImGui then
-    warn("[Ultimate Mods] Gagal load ImGui, coba executor lain.")
-    return
-end
+-- hide built-in toggle button, pakai floating skull custom
+pcall(function()
+    Window:EditOpenButton({ Enabled = false })
+end)
 
--- ============================================================
--- KONFIGURASI VARIABEL
--- ============================================================
-local Config = {
-    -- Visual
-    ESPEnemy        = false,
-    ESPTeam         = false,
-    ESPColor        = Color3.fromRGB(255, 0, 0),
-    ESPBox          = true,
-    ESPName         = true,
-    ESPLine         = false,
-    ESPHealth       = true,
-    ESPSkeleton     = false,
-    ESPDistance     = true,
-    ESPPicture      = false,
+-- ==========================================
+-- 5 TAB HEADER (wrapped scroll horizontal otomatis)
+-- ==========================================
+local TabVisual = Window:Tab({ Title = "Visual", Icon = "eye" })
+local TabPlayer = Window:Tab({ Title = "Player", Icon = "user" })
+local TabAim    = Window:Tab({ Title = "Aimbot", Icon = "crosshair" })
+local TabWorld  = Window:Tab({ Title = "World", Icon = "globe" })
+local TabConfig = Window:Tab({ Title = "Config", Icon = "settings" })
 
-    -- Aimbot
-    Aimbot          = false,
-    TeamCheck       = true,
-    WallCheck       = true,
-    AimbotMode      = "FOV",           -- FOV / 360
-    TriggerMode     = "Camera",        -- Camera / Fire(snap)
-    ShowFOV         = true,
-    FOVSize         = 150,
-    AimLine         = false,
-    AimTarget       = "Head",          -- Head / Neck / Chest
-    AimDistance     = 500,             -- meter
-
-    -- Player
-    SpeedRun        = false,
-    SpeedPercent    = 100,             -- %
-    MultiJump       = false,
-    FlyHack         = false,
-    RapidFire       = false,
-    UnlimitedAmmo   = false,
-
+-- ==========================================
+-- GLOBAL STATE (semua variabel dari kodemu + tambahan baru)
+-- ==========================================
+local State = {
+    -- Anti-Admin (dari kodemu)
+    AntiAdminAktif = false,
+    -- ESP
+    EnemyESP = false, TeamESP = false,
+    ESPColor = Color3.fromRGB(255, 50, 50),
+    ESP_Box = true, ESP_Name = true, ESP_Line = true,
+    ESP_Health = true, ESP_Skeleton = false,
+    ESP_Distance = true, ESP_Picture = false,
+    -- Aimbot (dari kodemu + tambahan)
+    AimbotAktif = false,
+    TeamCheck = true, WallCheck = true,
+    AimMode = "FOV",
+    TriggerMode = "Camera",
+    AimFOV = true, FOVSize = 150, AimLine = true,
+    AimTargetMode = "Head", AimDistance = 500,
+    AimbotSmoothness = 15,
+    -- Player (dari kodemu)
+    SpeedAktif = false, SpeedPercent = 100,
+    MultiJump = false, FlyHack = false,
+    AntiFallDamageAktif = false,
+    JumpAktif = false,
+    CustomJump = 100,
+    -- Gun (dari kodemu)
+    GunModsAktif = false,
+    CustomFireRate = 800,
     -- World
-    ClockTime       = "Day",           -- Morning / Day / Evening / Night
-    NoGravity       = false,
-
+    ClockTime = "Noon",
+    NoGravity = false,
+    TeleportTarget = nil,
     -- Config
-    Theme           = "Dark"
+    Theme = "Dark",
 }
 
--- ============================================================
--- HELPER: TIMEOFDAY
--- ============================================================
-local function ApplyClockTime(opt)
-    local times = {
-        Morning = 6,
-        Day     = 14,
-        Evening = 18,
-        Night   = 0
-    }
-    Lighting.ClockTime = times[opt] or 14
-end
+-- FOV frame dari kodemu (kita tetap pakai, cuma dipindah ke luar Rayfield)
+local FOVGui, FOVFrame
+pcall(function()
+    local TargetParent = CoreGui
+    FOVGui = Instance.new("ScreenGui")
+    FOVGui.Name = "Universal_FOV_System"
+    FOVGui.Parent = TargetParent
+    FOVGui.IgnoreGuiInset = true
 
--- ============================================================
--- HELPER: IS ENEMY / TEAM
--- ============================================================
-local function IsPlayerEnemy(plr)
-    if plr == LocalPlayer then return false end
-    if Config.TeamCheck and plr.Team and LocalPlayer.Team then
-        return plr.Team ~= LocalPlayer.Team
+    FOVFrame = Instance.new("Frame")
+    FOVFrame.Parent = FOVGui
+    FOVFrame.AnchorPoint = Vector2.new(0.5, 0.5)
+    FOVFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
+    FOVFrame.Size = UDim2.new(0, State.FOVSize * 2, 0, State.FOVSize * 2)
+    FOVFrame.BackgroundTransparency = 1
+    FOVFrame.Visible = false
+
+    local FOVStroke = Instance.new("UIStroke")
+    FOVStroke.Parent = FOVFrame
+    FOVStroke.Color = Color3.fromRGB(255, 255, 255)
+    FOVStroke.Thickness = 1.5
+    FOVStroke.Transparency = 0.5
+
+    local FOVCorner = Instance.new("UICorner")
+    FOVCorner.Parent = FOVFrame
+    FOVCorner.CornerRadius = UDim.new(1, 0)
+end)
+
+-- ==========================================
+-- ANTI-ADMIN (dari kodemu, notifikasi pakai WindUI)
+-- ==========================================
+local function CheckIfAdmin(p)
+    if p == LocalPlayer then return false end
+    local nameRaw = string.upper(p.Name .. " " .. p.DisplayName)
+    if string.find(nameRaw, "%[GM%]") or string.find(nameRaw, "%[MOD%]")
+        or string.find(nameRaw, "GAME MASTER") or string.find(nameRaw, "MODERATOR")
+        or string.find(nameRaw, "DEWAKASAPUTRA") or string.find(nameRaw, "DEWA PROJECT") then
+        return true
     end
-    return true
-end
-
-local function IsPlayerTeam(plr)
-    if plr == LocalPlayer then return false end
-    if plr.Team and LocalPlayer.Team then
-        return plr.Team == LocalPlayer.Team
+    local ls = p:FindFirstChild("leaderstats")
+    if ls then
+        for _, stat in pairs(ls:GetChildren()) do
+            local statValue = string.upper(tostring(stat.Value))
+            if statValue == "GM" or statValue == "MOD" or statValue == "GAME MASTER" or statValue == "MODERATOR" then
+                return true
+            end
+        end
     end
     return false
 end
 
--- ============================================================
--- HELPER: WALL CHECK
--- ============================================================
-local function IsVisible(part)
-    if not part then return false end
-    if not Config.WallCheck then return true end
-    local rp = RaycastParams.new()
-    rp.FilterDescendantsInstances = { LocalPlayer.Character, Camera }
-    rp.FilterType = Enum.RaycastFilterType.Exclude
-    local dir = (part.Position - Camera.CFrame.Position)
-    local result = workspace:Raycast(Camera.CFrame.Position, dir, rp)
-    if not result then return true end
-    return result.Instance:IsDescendantOf(part.Parent)
+local function SendAdminWarning(p)
+    pcall(function()
+        WindUI:Notify({
+            Title = "⚠️ GM TERDETEKSI!",
+            Content = "Admin/Moderator ["..p.Name.."] ada di room ini!",
+            Duration = 8,
+            Icon = "alert-triangle",
+        })
+    end)
 end
 
--- ============================================================
--- HELPER: GET TARGET PART
--- ============================================================
-local function GetTargetPart(char)
-    if not char then return nil end
-    if Config.AimTarget == "Head" then
-        return char:FindFirstChild("Head")
-    elseif Config.AimTarget == "Neck" then
-        return char:FindFirstChild("Neck") or char:FindFirstChild("Head")
-    else
-        return char:FindFirstChild("UpperTorso") or char:FindFirstChild("HumanoidRootPart")
+Players.PlayerAdded:Connect(function(p)
+    if State.AntiAdminAktif then
+        task.wait(1)
+        if CheckIfAdmin(p) then SendAdminWarning(p) end
     end
-end
+end)
 
+task.spawn(function()
+    while task.wait(5) do
+        if State.AntiAdminAktif then
+            for _, p in pairs(Players:GetPlayers()) do
+                if CheckIfAdmin(p) then SendAdminWarning(p) end
+            end
+        end
+    end
+end)
+
+-- ==========================================
+-- FLAG UNTUK BUBBLE BERIKUTNYA
+-- (dipakai bubble 2,3,4 biar akses variabel State, Tab, dll)
+-- ==========================================
+_G.LH_Bubble1 = {
+    State = State,
+    TabVisual = TabVisual, TabPlayer = TabPlayer, TabAim = TabAim,
+    TabWorld = TabWorld, TabConfig = TabConfig,
+    SkullBtn = SkullBtn, FOVFrame = FOVFrame,
+    Camera = Camera, WindUI = WindUI,
+    CoreGui = CoreGui,
+    Players = Players, RunService = RunService, LocalPlayer = LocalPlayer,
+    UserInputService = UserInputService, Lighting = Lighting,
+    HttpService = HttpService,
+    CheckIfAdmin = CheckIfAdmin, SendAdminWarning = SendAdminWarning,
+}
 -- ============================================================
--- ESP SYSTEM (DRAWING BASED - tebal & lengkap)
+-- LITE HACK + ULTIMATE MODS | WindUI Edition
+-- Bubble 2/4 : Tab Visual (ESP)
 -- ============================================================
-local ESPCache = {}       -- [player] = { ... }
 
-local function GetOrCreateDrawing()
-    return {
-        Box       = Drawing.new("Square"),
-        Name      = Drawing.new("Text"),
-        Distance  = Drawing.new("Text"),
-        Line      = Drawing.new("Line"),
-        HealthBg  = Drawing.new("Square"),
-        HealthBar = Drawing.new("Square"),
-        Picture   = Drawing.new("Image"),
-        HeadDot   = Drawing.new("Circle"),
-    }
+local B1          = _G.LH_Bubble1
+local State       = B1.State
+local TabVisual   = B1.TabVisual
+local WindUI      = B1.WindUI
+local Players     = B1.Players
+local RunService  = B1.RunService
+local LocalPlayer = B1.LocalPlayer
+local Camera      = B1.Camera
+local CoreGui     = B1.CoreGui
+
+-- ==========================================
+-- SECTION: ESP FILTER
+-- ==========================================
+local VSec1 = TabVisual:Section({ Title = "ESP Filter" })
+
+VSec1:Toggle({
+    Title = "Enemy ESP",
+    Desc = "Tampilkan ESP untuk semua player yang BUKAN team kamu",
+    Type = "Checkbox",
+    Default = false,
+    Callback = function(v) State.EnemyESP = v end,
+})
+
+VSec1:Toggle({
+    Title = "Team ESP",
+    Desc = "Tampilkan ESP untuk semua player di TEAM kamu",
+    Type = "Checkbox",
+    Default = false,
+    Callback = function(v) State.TeamESP = v end,
+})
+
+-- ==========================================
+-- SECTION: ESP COLOR (RGB PICKER)
+-- ==========================================
+local VSec2 = TabVisual:Section({ Title = "ESP Color (RGB)" })
+
+VSec2:Colorpicker({
+    Title = "ESP Color",
+    Desc = "Warna yang sama untuk semua elemen ESP",
+    Default = State.ESPColor,
+    Transparency = 0,
+    Callback = function(color)
+        State.ESPColor = color
+        if refreshESPColor then refreshESPColor() end
+    end,
+})
+
+-- ==========================================
+-- SECTION: ESP ELEMENTS (7 CHECKBOX)
+-- ==========================================
+local VSec3 = TabVisual:Section({ Title = "ESP Elements" })
+
+VSec3:Toggle({
+    Title = "Box",
+    Desc = "Kotak persegi mengelilingi player",
+    Type = "Checkbox",
+    Default = true,
+    Callback = function(v) State.ESP_Box = v end,
+})
+
+VSec3:Toggle({
+    Title = "Name",
+    Desc = "Nama player di atas box",
+    Type = "Checkbox",
+    Default = true,
+    Callback = function(v) State.ESP_Name = v end,
+})
+
+VSec3:Toggle({
+    Title = "Line",
+    Desc = "Garis dari atas layar ke kepala target (tebal)",
+    Type = "Checkbox",
+    Default = true,
+    Callback = function(v) State.ESP_Line = v end,
+})
+
+VSec3:Toggle({
+    Title = "Health",
+    Desc = "Bar HP di samping kanan box (warna dinamis)",
+    Type = "Checkbox",
+    Default = true,
+    Callback = function(v) State.ESP_Health = v end,
+})
+
+VSec3:Toggle({
+    Title = "Skeleton",
+    Desc = "Garis tulang R15/R6",
+    Type = "Checkbox",
+    Default = false,
+    Callback = function(v) State.ESP_Skeleton = v end,
+})
+
+VSec3:Toggle({
+    Title = "Distance",
+    Desc = "Jarak dalam meter di bawah box",
+    Type = "Checkbox",
+    Default = true,
+    Callback = function(v) State.ESP_Distance = v end,
+})
+
+VSec3:Toggle({
+    Title = "Picture",
+    Desc = "Avatar bulat player di atas kepala (ada spasi)",
+    Type = "Checkbox",
+    Default = false,
+    Callback = function(v) State.ESP_Picture = v end,
+})
+
+-- ==========================================
+-- ESP RENDER ENGINE (Drawing API + BillboardGui untuk picture)
+-- ==========================================
+local DrawGui = Instance.new("ScreenGui")
+DrawGui.Name = "LH_ESP_Pictures"
+DrawGui.ResetOnSpawn = false
+DrawGui.IgnoreGuiInset = true
+DrawGui.Parent = CoreGui
+
+local espData    = {}   -- [model] = { box, name, dist, line, hbBG, hbFill, skel[], picFrame, picImg, picStroke }
+local thumbCache = {}   -- [userId] = url
+
+-- helper
+local function worldToScreen(pos)
+    local sp, on = Camera:WorldToViewportPoint(pos)
+    return Vector2.new(sp.X, sp.Y), on
 end
 
-local function ApplyDrawingDefaults(d)
-    -- Box
-    d.Box.Thickness = 2
-    d.Box.Filled    = false
-    d.Box.Transparency = 1
-    d.Box.Visible   = false
-
-    -- Name (di atas box)
-    d.Name.Size     = 14
-    d.Name.Center   = true
-    d.Name.Outline  = true
-    d.Name.Font     = 2
-    d.Name.Visible  = false
-
-    -- Distance (di bawah box)
-    d.Distance.Size    = 13
-    d.Distance.Center  = true
-    d.Distance.Outline = true
-    d.Distance.Font    = 2
-    d.Distance.Visible = false
-
-    -- Line (dari kepala ke bawah layar / titik pusat)
-    d.Line.Thickness    = 2
-    d.Line.Visible      = false
-    d.Line.Transparency = 1
-
-    -- Health
-    d.HealthBg.Filled   = true
-    d.HealthBg.Visible  = false
-    d.HealthBg.Color    = Color3.fromRGB(30, 30, 30)
-    d.HealthBar.Filled  = true
-    d.HealthBar.Visible = false
-
-    -- Picture
-    d.Picture.Visible = false
-    d.Picture.Transparency = 1
-    d.Picture.Size    = Vector2.new(40, 40)
-    d.Picture.Rounding = 100  -- bulat
-
-    -- Head dot
-    d.HeadDot.Radius    = 3
-    d.HeadDot.Filled    = true
-    d.HeadDot.Thickness = 2
-    d.HeadDot.Visible   = false
+local function isEnemyPlayer(plr)
+    if not plr.Team then return true end
+    return plr.Team ~= LocalPlayer.Team
 end
 
--- Ambil thumbnail player (bulat)
-local ThumbCache = {}
-local function GetThumb(plr)
-    if ThumbCache[plr.UserId] then return ThumbCache[plr.UserId] end
-    local url = ("https://www.roblox.com/headshot-thumbnail/image?userId=%d&width=150&height=150&format=png"):format(plr.UserId)
-    ThumbCache[plr.UserId] = url
+local function shouldDraw(plr)
+    if plr == LocalPlayer then return false end
+    if isEnemyPlayer(plr) then return State.EnemyESP
+    else return State.TeamESP end
+end
+
+local function getThumb(plr)
+    if thumbCache[plr.UserId] then return thumbCache[plr.UserId] end
+    local ok, url = pcall(function()
+        return Players:GetUserThumbnailAsync(plr.UserId,
+            Enum.ThumbnailType.HeadShot,
+            Enum.ThumbnailSize.Size100x100)
+    end)
+    if ok then thumbCache[plr.UserId] = url end
     return url
 end
 
--- Health color
-local function HealthColor(pct)
-    if pct >= 0.7 then
-        return Color3.fromRGB(0, 255, 0)
-    elseif pct >= 0.4 then
-        return Color3.fromRGB(255, 165, 0)
-    else
-        return Color3.fromRGB(180, 0, 0)
+-- refresh color ke semua ESP aktif
+refreshESPColor = function()
+    for _, d in pairs(espData) do
+        if d.box then d.box.Color = State.ESPColor end
+        if d.name then d.name.Color = State.ESPColor end
+        if d.dist then d.dist.Color = State.ESPColor end
+        if d.line then d.line.Color = State.ESPColor end
+        for _, s in ipairs(d.skel or {}) do s.draw.Color = State.ESPColor end
+        if d.picStroke then d.picStroke.Color = State.ESPColor end
     end
 end
+_G.refreshESPColor = refreshESPColor
 
--- Skeleton (garis antar joint sederhana)
-local SkeletonParts = {
-    {"Head","UpperTorso"}, {"UpperTorso","LowerTorso"},
-    {"UpperTorso","LeftUpperArm"}, {"LeftUpperArm","LeftLowerArm"}, {"LeftLowerArm","LeftHand"},
-    {"UpperTorso","RightUpperArm"}, {"RightUpperArm","RightLowerArm"}, {"RightLowerArm","RightHand"},
-    {"LowerTorso","LeftUpperLeg"}, {"LeftUpperLeg","LeftLowerLeg"}, {"LeftLowerLeg","LeftFoot"},
-    {"LowerTorso","RightUpperLeg"}, {"RightUpperLeg","RightLowerLeg"}, {"RightLowerLeg","RightFoot"}
-}
+-- buat data Drawing untuk 1 character
+local function createESPData(char)
+    local d = {}
+    d.box  = Drawing.new("Square"); d.box.Thickness = 2.5; d.box.Filled = false
+    d.name = Drawing.new("Text"); d.name.Size = 15; d.name.Center = true
+    d.name.Outline = true; d.name.OutlineColor = Color3.new(0, 0, 0)
+    d.dist = Drawing.new("Text"); d.dist.Size = 13; d.dist.Center = true
+    d.dist.Outline = true; d.dist.OutlineColor = Color3.new(0, 0, 0)
+    d.line = Drawing.new("Line"); d.line.Thickness = 2.5
+    d.hbBG   = Drawing.new("Square"); d.hbBG.Filled = true; d.hbBG.Thickness = 0; d.hbBG.Color = Color3.new(0, 0, 0)
+    d.hbFill = Drawing.new("Square"); d.hbFill.Filled = true; d.hbFill.Thickness = 0
 
-local function UpdateESPForPlayer(plr)
-    local cache = ESPCache[plr]
-    local char = plr.Character
-    local hrp  = char and char:FindFirstChild("HumanoidRootPart")
-    local head = char and char:FindFirstChild("Head")
-    local hum  = char and char:FindFirstChildOfClass("Humanoid")
-
-    if not (char and hrp and head and hum and hum.Health > 0) then
-        if cache then
-            for _, obj in pairs(cache) do
-                if typeof(obj) == "table" then
-                    for _, d in pairs(obj) do if d and d.Visible ~= nil then d.Visible = false end end
-                elseif obj and obj.Visible ~= nil then
-                    obj.Visible = false
-                end
-            end
-        end
-        return
+    -- skeleton bones (R15 + R6)
+    d.skel = {}
+    local conns = {
+        {"Head","UpperTorso"},{"UpperTorso","LowerTorso"},
+        {"UpperTorso","LeftUpperArm"},{"LeftUpperArm","LeftLowerArm"},{"LeftLowerArm","LeftHand"},
+        {"UpperTorso","RightUpperArm"},{"RightUpperArm","RightLowerArm"},{"RightLowerArm","RightHand"},
+        {"LowerTorso","LeftUpperLeg"},{"LeftUpperLeg","LeftLowerLeg"},{"LeftLowerLeg","LeftFoot"},
+        {"LowerTorso","RightUpperLeg"},{"RightUpperLeg","RightLowerLeg"},{"RightLowerLeg","RightFoot"},
+        -- R6 fallback
+        {"Head","Torso"},{"Torso","Left Arm"},{"Torso","Right Arm"},
+        {"Torso","Left Leg"},{"Torso","Right Leg"},
+    }
+    for _, c in ipairs(conns) do
+        local dl = Drawing.new("Line"); dl.Thickness = 2
+        table.insert(d.skel, { from = c[1], to = c[2], draw = dl })
     end
-
-    -- Filter aktif
-    local isEnemy = IsPlayerEnemy(plr)
-    local isTeam  = IsPlayerTeam(plr)
-    local active  = (Config.ESPEnemy and isEnemy) or (Config.ESPTeam and isTeam)
-    if not active then
-        if cache then
-            for _, obj in pairs(cache) do
-                if typeof(obj) == "table" then
-                    for _, d in pairs(obj) do if d and d.Visible ~= nil then d.Visible = false end end
-                elseif obj and obj.Visible ~= nil then
-                    obj.Visible = false
-                end
-            end
-        end
-        return
-    end
-
-    -- Get viewport positions
-    local headPos, headVis = Camera:WorldToViewportPoint(head.Position + Vector3.new(0, 1.5, 0))
-    local rootPos, rootVis = Camera:WorldToViewportPoint(hrp.Position - Vector3.new(0, 3, 0))
-    local topPos, topVis   = Camera:WorldToViewportPoint((head.Position + Vector3.new(0, 3, 0)))
-    local botPos, botVis   = Camera:WorldToViewportPoint((hrp.Position - Vector3.new(0, 3.2, 0)))
-
-    -- Kalau offscreen, matikan
-    if not (headVis and rootVis) then
-        if cache then
-            for _, obj in pairs(cache) do
-                if typeof(obj) == "table" then
-                    for _, d in pairs(obj) do if d and d.Visible ~= nil then d.Visible = false end end
-                elseif obj and obj.Visible ~= nil then
-                    obj.Visible = false
-                end
-            end
-        end
-        return
-    end
-
-    -- Setup drawing kalau belum ada
-    if not cache then
-        cache = GetOrCreateDrawing()
-        ApplyDrawingDefaults(cache)
-        ESPCache[plr] = cache
-    end
-
-    -- Hitung box
-    local boxTop    = Vector2.new(topPos.X, topPos.Y)
-    local boxBottom = Vector2.new(botPos.X, botPos.Y)
-    local boxHeight = math.abs(boxBottom.Y - boxTop.Y)
-    local boxWidth  = boxHeight * 0.55
-    local boxX      = boxTop.X - boxWidth / 2
-    local boxY      = boxTop.Y
-    local boxPos    = Vector2.new(boxX, boxY)
-    local boxSize   = Vector2.new(boxWidth, boxHeight)
-
-    local color = Config.ESPColor
-
-    -- BOX
-    if Config.ESPBox then
-        cache.Box.Visible = true
-        cache.Box.Color   = color
-        cache.Box.Position = boxPos
-        cache.Box.Size     = boxSize
-        cache.Box.Thickness = 2
-    else
-        cache.Box.Visible = false
-    end
-
-    -- NAME (di atas box)
-    if Config.ESPName then
-        cache.Name.Visible = true
-        cache.Name.Color   = color
-        cache.Name.Text    = plr.Name
-        cache.Name.Position = Vector2.new(boxPos.X + boxWidth / 2, boxPos.Y - 18)
-    else
-        cache.Name.Visible = false
-    end
-
-    -- DISTANCE (di bawah box)
-    if Config.ESPDistance then
-        local myHrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-        local dist = myHrp and math.floor((myHrp.Position - hrp.Position).Magnitude) or 0
-        cache.Distance.Visible = true
-        cache.Distance.Color   = color
-        cache.Distance.Text    = dist .. "m"
-        cache.Distance.Position = Vector2.new(boxPos.X + boxWidth / 2, boxPos.Y + boxHeight + 2)
-    else
-        cache.Distance.Visible = false
-    end
-
-    -- LINE (dari kepala ke bawah layar, sesuai request "di kepala")
-    if Config.ESPLine then
-        cache.Line.Visible = true
-        cache.Line.Color   = color
-        cache.Line.From    = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y)
-        cache.Line.To      = Vector2.new(headPos.X, headPos.Y)
-    else
-        cache.Line.Visible = false
-    end
-
-    -- HEALTH BAR (kanan box)
-    if Config.ESPHealth then
-        local pct = hum.Health / hum.MaxHealth
-        local hbW = 4
-        local hbX = boxPos.X + boxWidth + 4
-        cache.HealthBg.Visible = true
-        cache.HealthBg.Color   = Color3.fromRGB(20, 20, 20)
-        cache.HealthBg.Position = Vector2.new(hbX, boxPos.Y)
-        cache.HealthBg.Size     = Vector2.new(hbW, boxHeight)
-
-        cache.HealthBar.Visible = true
-        cache.HealthBar.Color   = HealthColor(pct)
-        local fillH = boxHeight * pct
-        cache.HealthBar.Position = Vector2.new(hbX, boxPos.Y + (boxHeight - fillH))
-        cache.HealthBar.Size     = Vector2.new(hbW, fillH)
-    else
-        cache.HealthBg.Visible  = false
-        cache.HealthBar.Visible = false
-    end
-
-    -- SKELETON
-    if Config.ESPSkeleton then
-        if not cache.Skeleton then
-            cache.Skeleton = {}
-            for i = 1, #SkeletonParts do
-                cache.Skeleton[i] = Drawing.new("Line")
-                cache.Skeleton[i].Thickness = 1.5
-            end
-        end
-        for i, pair in ipairs(SkeletonParts) do
-            local a = char:FindFirstChild(pair[1])
-            local b = char:FindFirstChild(pair[2])
-            local ln = cache.Skeleton[i]
-            if a and b then
-                local pa, va = Camera:WorldToViewportPoint(a.Position)
-                local pb, vb = Camera:WorldToViewportPoint(b.Position)
-                if va and vb then
-                    ln.Visible = true
-                    ln.Color   = color
-                    ln.From    = Vector2.new(pa.X, pa.Y)
-                    ln.To      = Vector2.new(pb.X, pb.Y)
-                else
-                    ln.Visible = false
-                end
-            else
-                ln.Visible = false
-            end
-        end
-    elseif cache.Skeleton then
-        for _, ln in ipairs(cache.Skeleton) do ln.Visible = false end
-    end
-
-    -- PICTURE (di atas kepala, bulat, ada spasi)
-    if Config.ESPPicture then
-        cache.Picture.Visible = true
-        local url = GetThumb(plr)
-        pcall(function()
-            if cache.Picture.Image ~= url then
-                cache.Picture.Image = url
-            end
-        end)
-        cache.Picture.Size     = Vector2.new(36, 36)
-        cache.Picture.Position = Vector2.new(headPos.X - 18, headPos.Y - 60)
-    else
-        cache.Picture.Visible = false
-    end
+    return d
 end
 
--- Bersihkan cache kalau player keluar
-Players.PlayerRemoving:Connect(function(plr)
-    local c = ESPCache[plr]
-    if c then
-        for _, obj in pairs(c) do
-            if typeof(obj) == "table" then
-                for _, d in pairs(obj) do pcall(function() d:Remove() end) end
-            elseif obj and obj.Remove then
-                pcall(function() obj:Remove() end)
-            end
-        end
-        ESPCache[plr] = nil
-    end
-end)
+-- buat UI picture (BillboardGui bulat)
+local function createPicture(char, plr)
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
+    local bg = Instance.new("BillboardGui")
+    bg.Name = "LH_Pic"
+    bg.Adornee = hrp
+    bg.AlwaysOnTop = true
+    bg.Size = UDim2.fromOffset(48, 48)
+    bg.StudsOffset = Vector3.new(0, 3.2, 0)
+    bg.ClipsDescendants = false
+    bg.Parent = DrawGui
 
--- Render loop ESP
+    local frame = Instance.new("Frame")
+    frame.Size = UDim2.fromScale(1, 1)
+    frame.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
+    frame.BorderSizePixel = 0
+    frame.Parent = bg
+    Instance.new("UICorner", frame).CornerRadius = UDim.new(1, 0)
+
+    local img = Instance.new("ImageLabel")
+    img.Size = UDim2.fromScale(1, 1)
+    img.BackgroundTransparency = 1
+    img.Parent = frame
+    Instance.new("UICorner", img).CornerRadius = UDim.new(1, 0)
+
+    local stroke = Instance.new("UIStroke", frame)
+    stroke.Color = State.ESPColor
+    stroke.Thickness = 2
+
+    local url = getThumb(plr)
+    if url then img.Image = url end
+
+    return bg, frame, img, stroke
+end
+
+-- destroy
+local function destroyESPData(char)
+    local d = espData[char]
+    if not d then return end
+    if d.box then d.box:Remove() end
+    if d.name then d.name:Remove() end
+    if d.dist then d.dist:Remove() end
+    if d.line then d.line:Remove() end
+    if d.hbBG then d.hbBG:Remove() end
+    if d.hbFill then d.hbFill:Remove() end
+    for _, s in ipairs(d.skel) do s.draw:Remove() end
+    if d.picFrame then d.picFrame:Destroy() end
+    espData[char] = nil
+end
+
+-- ==========================================
+-- RENDER LOOP ESP
+-- ==========================================
 RunService.RenderStepped:Connect(function()
+    local center = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
+    local seen   = {}
+
     for _, plr in ipairs(Players:GetPlayers()) do
-        if plr ~= LocalPlayer then
-            pcall(UpdateESPForPlayer, plr)
+        if plr ~= LocalPlayer and shouldDraw(plr) and plr.Character then
+            local char = plr.Character
+            local hum  = char:FindFirstChildOfClass("Humanoid")
+            local hrp  = char:FindFirstChild("HumanoidRootPart")
+            local head = char:FindFirstChild("Head")
+
+            if hum and hum.Health > 0 and hrp and head then
+                seen[char] = true
+                if not espData[char] then
+                    espData[char] = createESPData(char)
+                    local bg, frame, img, stroke = createPicture(char, plr)
+                    if bg then
+                        espData[char].picFrame = bg
+                        espData[char].picImg   = img
+                        espData[char].picStroke = stroke
+                    end
+                end
+
+                local d = espData[char]
+                local headPos, onH = worldToScreen(head.Position)
+                local footPos, onF = worldToScreen(hrp.Position - Vector3.new(0, 3, 0))
+
+                if onH and onF and headPos.Y > -200 and headPos.Y < Camera.ViewportSize.Y + 200 then
+                    local boxH = math.abs(footPos.Y - headPos.Y)
+                    local boxW = boxH * 0.55
+                    local boxX = headPos.X - boxW / 2
+                    local boxY = headPos.Y
+
+                    -- BOX
+                    d.box.Visible  = State.ESP_Box
+                    d.box.Size     = Vector2.new(boxW, boxH)
+                    d.box.Position = Vector2.new(boxX, boxY)
+                    d.box.Color    = State.ESPColor
+
+                    -- NAME (atas box)
+                    d.name.Visible  = State.ESP_Name
+                    d.name.Text     = plr.Name
+                    d.name.Position = Vector2.new(headPos.X, boxY - 20)
+                    d.name.Color    = State.ESPColor
+
+                    -- DISTANCE (bawah box)
+                    local meters = math.floor((Camera.CFrame.Position - hrp.Position).Magnitude)
+                    d.dist.Visible  = State.ESP_Distance
+                    d.dist.Text     = meters .. "m"
+                    d.dist.Position = Vector2.new(headPos.X, boxY + boxH + 5)
+                    d.dist.Color    = State.ESPColor
+
+                    -- LINE (dari atas layar ke kepala, tebal)
+                    d.line.Visible = State.ESP_Line
+                    d.line.From    = Vector2.new(center.X, 0)
+                    d.line.To      = headPos
+                    d.line.Color   = State.ESPColor
+
+                    -- SKELETON
+                    for _, s in ipairs(d.skel) do
+                        local a = char:FindFirstChild(s.from)
+                        local b = char:FindFirstChild(s.to)
+                        if a and b and State.ESP_Skeleton then
+                            local pa, oa = worldToScreen(a.Position)
+                            local pb, ob = worldToScreen(b.Position)
+                            s.draw.Visible = oa and ob
+                            s.draw.From    = pa
+                            s.draw.To      = pb
+                            s.draw.Color   = State.ESPColor
+                        else
+                            s.draw.Visible = false
+                        end
+                    end
+
+                    -- HEALTH BAR (kanan box, warna dinamis 100/70/40)
+                    if State.ESP_Health then
+                        local pct = math.clamp(hum.Health / math.max(hum.MaxHealth, 1), 0, 1)
+                        local col = pct > 0.7 and Color3.fromRGB(0, 255, 0)
+                            or pct > 0.4 and Color3.fromRGB(255, 150, 0)
+                            or Color3.fromRGB(139, 0, 0)
+
+                        local hbX = boxX + boxW + 5
+                        d.hbBG.Visible  = true
+                        d.hbBG.Size     = Vector2.new(4, boxH)
+                        d.hbBG.Position = Vector2.new(hbX, boxY)
+
+                        d.hbFill.Visible  = true
+                        d.hbFill.Size     = Vector2.new(4, boxH * pct)
+                        d.hbFill.Position = Vector2.new(hbX, boxY + boxH - (boxH * pct))
+                        d.hbFill.Color    = col
+                    else
+                        d.hbBG.Visible   = false
+                        d.hbFill.Visible = false
+                    end
+
+                    -- PICTURE
+                    if d.picFrame then
+                        d.picFrame.Enabled = State.ESP_Picture
+                        if State.ESP_Picture and d.picStroke then
+                            d.picStroke.Color = State.ESPColor
+                        end
+                    end
+                else
+                    -- di luar layar: matikan semua
+                    d.box.Visible    = false
+                    d.name.Visible   = false
+                    d.dist.Visible   = false
+                    d.line.Visible   = false
+                    d.hbBG.Visible   = false
+                    d.hbFill.Visible = false
+                    for _, s in ipairs(d.skel) do s.draw.Visible = false end
+                    if d.picFrame then d.picFrame.Enabled = false end
+                end
+            end
+        end
+    end
+
+    -- cleanup yang tidak ada di frame
+    for char, _ in pairs(espData) do
+        if not seen[char] then
+            destroyESPData(char)
         end
     end
 end)
 
+-- update FOV frame size kalau State.FOVSize berubah
+task.spawn(function()
+    while task.wait(0.25) do
+        if B1.FOVFrame then
+            B1.FOVFrame.Size = UDim2.new(0, State.FOVSize * 2, 0, State.FOVSize * 2)
+        end
+    end
+end)
 -- ============================================================
--- AIMBOT SYSTEM
+-- LITE HACK + ULTIMATE MODS | WindUI Edition
+-- Bubble 3/4 : Tab Aimbot + Tab Player + Gun Mods
 -- ============================================================
+
+local B1          = _G.LH_Bubble1
+local State       = B1.State
+local TabAim      = B1.TabAim
+local TabPlayer   = B1.TabPlayer
+local Players     = B1.Players
+local RunService  = B1.RunService
+local LocalPlayer = B1.LocalPlayer
+local Camera      = B1.Camera
+local UIS         = B1.UserInputService
+local WindUI      = B1.WindUI
+
+-- ==========================================
+-- SHARED: IsEnemy (dipakai ESP & aimbot)
+-- ==========================================
+local function isEnemyPlayer(plr)
+    if not plr.Team then return true end
+    return plr.Team ~= LocalPlayer.Team
+end
+
+-- ==========================================
+-- SHARED: raycast wall check
+-- ==========================================
+local function IsVisible(targetPart)
+    if not targetPart then return false end
+    local params = RaycastParams.new()
+    params.FilterDescendantsInstances = { LocalPlayer.Character, Camera }
+    params.FilterType = Enum.RaycastFilterType.Exclude
+    local origin = Camera.CFrame.Position
+    local dir    = (targetPart.Position - origin)
+    local result = workspace:Raycast(origin, dir, params)
+    if not result then return true end
+    return result.Instance:IsDescendantOf(targetPart.Parent)
+end
+
+-- ==========================================
+-- AIMBOT TAB UI
+-- ==========================================
+local ASec1 = TabAim:Section({ Title = "Aimbot" })
+
+ASec1:Toggle({
+    Title = "Aimbot",
+    Desc = "Aktifkan auto-aim",
+    Type = "Checkbox",
+    Default = false,
+    Callback = function(v) State.AimbotAktif = v end,
+})
+
+ASec1:Toggle({
+    Title = "Team Check",
+    Desc = "Jangan aim ke team sendiri",
+    Type = "Checkbox",
+    Default = true,
+    Callback = function(v) State.TeamCheck = v end,
+})
+
+ASec1:Toggle({
+    Title = "Wall Check",
+    Desc = "Hanya aim jika target terlihat (tidak di balik tembok)",
+    Type = "Checkbox",
+    Default = true,
+    Callback = function(v) State.WallCheck = v end,
+})
+
+ASec1:Dropdown({
+    Title = "Mode Aimbot",
+    Values = { "FOV", "360°" },
+    Default = "FOV",
+    Callback = function(v) State.AimMode = v end,
+})
+
+ASec1:Dropdown({
+    Title = "Mode Trigger",
+    Values = { "Camera", "Fire" },
+    Default = "Camera",
+    Callback = function(v) State.TriggerMode = v end,
+})
+
+ASec1:Toggle({
+    Title = "Aim FOV",
+    Desc = "Tampilkan lingkaran FOV",
+    Type = "Checkbox",
+    Default = true,
+    Callback = function(v)
+        State.AimFOV = v
+        if B1.FOVFrame then B1.FOVFrame.Visible = v end
+    end,
+})
+
+ASec1:Slider({
+    Title = "Size FOV",
+    Desc = "Radius lingkaran FOV (pixel)",
+    Min = 10, Max = 600, Default = 150,
+    Callback = function(v)
+        State.FOVSize = v
+        if B1.FOVFrame then
+            B1.FOVFrame.Size = UDim2.new(0, v * 2, 0, v * 2)
+        end
+    end,
+})
+
+ASec1:Toggle({
+    Title = "Aim Line",
+    Desc = "Garis dari pusat layar ke target yang di-lock",
+    Type = "Checkbox",
+    Default = true,
+    Callback = function(v) State.AimLine = v end,
+})
+
+ASec1:Dropdown({
+    Title = "Aim Target",
+    Values = { "Head", "Neck", "Chest" },
+    Default = "Head",
+    Callback = function(v) State.AimTargetMode = v end,
+})
+
+ASec1:Slider({
+    Title = "Aim Distance",
+    Desc = "Jarak maksimum target (meter)",
+    Min = 50, Max = 2000, Default = 500,
+    Callback = function(v) State.AimDistance = v end,
+})
+
+local ASec2 = TabAim:Section({ Title = "Smoothness" })
+ASec2:Slider({
+    Title = "Aim Smoothness",
+    Desc = "Semakin tinggi = semakin lengket (1-100)",
+    Min = 1, Max = 100, Default = 15,
+    Callback = function(v) State.AimbotSmoothness = v end,
+})
+
+-- ==========================================
+-- AIM LINE DRAWING
+-- ==========================================
+local AimLine = Drawing.new("Line")
+AimLine.Thickness = 2.5
+AimLine.Visible = false
+
+-- ==========================================
+-- AIMBOT LOGIC
+-- ==========================================
 local LockedTarget = nil
-local FOVCircle, AimLine
 
--- FOV circle & aim line drawings
-FOVCircle = Drawing.new("Circle")
-FOVCircle.Thickness = 1.5
-FOVCircle.NumSides  = 60
-FOVCircle.Filled    = false
-FOVCircle.Color     = Color3.fromRGB(255, 255, 255)
-FOVCircle.Transparency = 0.7
-FOVCircle.Visible   = false
+local function getTargetPart(char)
+    if not char then return nil end
+    local head  = char:FindFirstChild("Head")
+    local neck  = char:FindFirstChild("UpperTorso") or char:FindFirstChild("Torso")
+    local chest = char:FindFirstChild("HumanoidRootPart") or char:FindFirstChild("Torso")
+    if State.AimTargetMode == "Head"  then return head or neck or chest end
+    if State.AimTargetMode == "Neck"  then return neck or head or chest end
+    if State.AimTargetMode == "Chest" then return chest or neck or head end
+    return head
+end
 
-AimLine = Drawing.new("Line")
-AimLine.Thickness = 1.5
-AimLine.Color     = Color3.fromRGB(255, 100, 100)
-AimLine.Visible   = false
-
-local function GetClosestTarget()
-    local closest, shortestDist = nil, math.huge
-    local center = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
-    local myHrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-    if not myHrp then return nil end
-
+-- ambil target terdekat (3D)
+local function getClosest3D()
+    local best, bestDist = nil, math.huge
     for _, plr in ipairs(Players:GetPlayers()) do
         if plr ~= LocalPlayer and plr.Character then
-            local okTeam = (not Config.TeamCheck) or IsPlayerEnemy(plr)
-            if okTeam then
-                local char = plr.Character
-                local hum = char:FindFirstChildOfClass("Humanoid")
-                local part = GetTargetPart(char)
-                if hum and hum.Health > 0 and part then
-                    local dist3D = (myHrp.Position - part.Position).Magnitude
-                    if dist3D <= Config.AimDistance then
-                        if IsVisible(part) then
-                            local pos, onScreen = Camera:WorldToViewportPoint(part.Position)
-                            if onScreen or Config.AimbotMode == "360" then
-                                local dist2D = (Vector2.new(pos.X, pos.Y) - center).Magnitude
-                                if Config.AimbotMode == "360" or dist2D <= Config.FOVSize then
-                                    if dist3D < shortestDist then
-                                        shortestDist = dist3D
-                                        closest = plr
-                                    end
-                                end
+            local char = plr.Character
+            local hum  = char:FindFirstChildOfClass("Humanoid")
+            local hrp  = char:FindFirstChild("HumanoidRootPart")
+            if hum and hum.Health > 0 and hrp then
+                if State.TeamCheck and not isEnemyPlayer(plr) then continue end
+                local dist = (Camera.CFrame.Position - hrp.Position).Magnitude
+                if dist <= State.AimDistance then
+                    local tp = getTargetPart(char)
+                    if tp and (not State.WallCheck or IsVisible(tp)) then
+                        if dist < bestDist then bestDist = dist; best = char end
+                    end
+                end
+            end
+        end
+    end
+    return best
+end
+
+-- ambil target terdekat di dalam FOV (2D)
+local function getClosest2D()
+    local center = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
+    local best, bestDist = nil, math.huge
+    for _, plr in ipairs(Players:GetPlayers()) do
+        if plr ~= LocalPlayer and plr.Character then
+            local char = plr.Character
+            local hum  = char:FindFirstChildOfClass("Humanoid")
+            local hrp  = char:FindFirstChild("HumanoidRootPart")
+            if hum and hum.Health > 0 and hrp then
+                if State.TeamCheck and not isEnemyPlayer(plr) then continue end
+                local dist3 = (Camera.CFrame.Position - hrp.Position).Magnitude
+                if dist3 <= State.AimDistance then
+                    local tp = getTargetPart(char)
+                    if tp and (not State.WallCheck or IsVisible(tp)) then
+                        local sp, on = Camera:WorldToViewportPoint(tp.Position)
+                        if on then
+                            local d2 = (center - Vector2.new(sp.X, sp.Y)).Magnitude
+                            if d2 <= State.FOVSize and d2 < bestDist then
+                                bestDist = d2
+                                best = char
                             end
                         end
                     end
@@ -510,29 +871,77 @@ local function GetClosestTarget()
             end
         end
     end
-    return closest
+    return best
 end
 
--- FOV & aim line rendering
+-- loop aimbot
 RunService.RenderStepped:Connect(function()
-    -- FOV circle
-    if Config.Aimbot and Config.ShowFOV then
-        FOVCircle.Visible  = true
-        FOVCircle.Position = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
-        FOVCircle.Radius   = Config.FOVSize
-    else
-        FOVCircle.Visible = false
+    -- FOV frame visibility
+    if B1.FOVFrame then
+        B1.FOVFrame.Visible = State.AimFOV and State.AimbotAktif and State.AimMode == "FOV"
+        B1.FOVFrame.Size = UDim2.new(0, State.FOVSize * 2, 0, State.FOVSize * 2)
     end
 
-    -- Aim line
-    if Config.Aimbot and Config.AimLine and LockedTarget and LockedTarget.Character then
-        local part = GetTargetPart(LockedTarget.Character)
-        if part then
-            local pos, onScreen = Camera:WorldToViewportPoint(part.Position)
-            if onScreen then
+    if not State.AimbotAktif then
+        LockedTarget = nil
+        AimLine.Visible = false
+        return
+    end
+
+    -- cek apakah target lock masih valid
+    local valid = false
+    local tp = nil
+    if LockedTarget and LockedTarget.Parent then
+        local hum = LockedTarget:FindFirstChildOfClass("Humanoid")
+        local hrp = LockedTarget:FindFirstChild("HumanoidRootPart")
+        if hum and hum.Health > 0 and hrp then
+            tp = getTargetPart(LockedTarget)
+            if tp and (not State.WallCheck or IsVisible(tp)) then
+                local d3 = (Camera.CFrame.Position - hrp.Position).Magnitude
+                if d3 <= State.AimDistance then
+                    if State.AimMode == "360°" then
+                        valid = true
+                    else
+                        local sp, on = Camera:WorldToViewportPoint(tp.Position)
+                        if on then
+                            local center = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
+                            local d2 = (center - Vector2.new(sp.X, sp.Y)).Magnitude
+                            if d2 <= State.FOVSize then valid = true end
+                        end
+                    end
+                end
+            end
+        end
+    end
+
+    -- cari target baru kalau tidak valid
+    if not valid then
+        local newTarget = (State.AimMode == "360°") and getClosest3D() or getClosest2D()
+        LockedTarget = newTarget
+        tp = LockedTarget and getTargetPart(LockedTarget)
+    end
+
+    -- eksekusi aim
+    if LockedTarget and tp then
+        -- Camera mode: rotate camera
+        if State.TriggerMode == "Camera" or State.AimMode == "360°" then
+            local targetCF = CFrame.lookAt(Camera.CFrame.Position, tp.Position)
+            if State.AimMode == "360°" then
+                Camera.CFrame = targetCF
+            else
+                local factor = State.AimbotSmoothness / 100
+                Camera.CFrame = Camera.CFrame:Lerp(targetCF, factor)
+            end
+        end
+
+        -- Aim line
+        if State.AimLine then
+            local sp, on = Camera:WorldToViewportPoint(tp.Position)
+            if on then
                 AimLine.Visible = true
                 AimLine.From = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
-                AimLine.To   = Vector2.new(pos.X, pos.Y)
+                AimLine.To   = Vector2.new(sp.X, sp.Y)
+                AimLine.Color = State.ESPColor
             else
                 AimLine.Visible = false
             end
@@ -542,382 +951,587 @@ RunService.RenderStepped:Connect(function()
     else
         AimLine.Visible = false
     end
-
-    -- Aimbot main logic
-    if Config.Aimbot then
-        local target = GetClosestTarget()
-        LockedTarget = target
-
-        if target and target.Character then
-            local part = GetTargetPart(target.Character)
-            if part and part.Parent then
-                if Config.TriggerMode == "Camera" then
-                    Camera.CFrame = CFrame.lookAt(Camera.CFrame.Position, part.Position)
-                else -- Fire (snap)
-                    Camera.CFrame = CFrame.lookAt(Camera.CFrame.Position, part.Position)
-                end
-            end
-        end
-    end
 end)
 
--- Trigger mode "Fire" — klik untuk snap
-UserInputService.InputBegan:Connect(function(input, gpe)
-    if gpe then return end
-    if Config.Aimbot and Config.TriggerMode == "Fire" and LockedTarget and LockedTarget.Character then
-        if input.UserInputType == Enum.UserInputType.MouseButton2 then
-            local part = GetTargetPart(LockedTarget.Character)
-            if part then
-                Camera.CFrame = CFrame.lookAt(Camera.CFrame.Position, part.Position)
-            end
+-- ==========================================
+-- TAB PLAYER UI
+-- ==========================================
+local PSec1 = TabPlayer:Section({ Title = "Movement" })
+
+PSec1:Toggle({
+    Title = "Speed Run",
+    Desc = "Ubah kecepatan lari (persen dari default 16)",
+    Type = "Checkbox",
+    Default = false,
+    Callback = function(v)
+        State.SpeedAktif = v
+        if not v then
+            local char = LocalPlayer.Character
+            local hum = char and char:FindFirstChildOfClass("Humanoid")
+            if hum then hum.WalkSpeed = 16 end
         end
-    end
-end)
+    end,
+})
 
--- ============================================================
--- PLAYER HACKS
--- ============================================================
--- Base WalkSpeed = 16
-local MultiJumpCount = 0
-local FLY_BV
+PSec1:Slider({
+    Title = "Speed %",
+    Desc = "Persentase kecepatan (100 = normal)",
+    Min = 50, Max = 500, Default = 100,
+    Callback = function(v) State.SpeedPercent = v end,
+})
 
+PSec1:Toggle({
+    Title = "Multi Jump",
+    Desc = "Bisa lompat berkali-kali di udara",
+    Type = "Checkbox",
+    Default = false,
+    Callback = function(v) State.MultiJump = v end,
+})
+
+PSec1:Toggle({
+    Title = "Fly Hack",
+    Desc = "Tahan tombol Jump untuk terbang",
+    Type = "Checkbox",
+    Default = false,
+    Callback = function(v) State.FlyHack = v end,
+})
+
+PSec1:Toggle({
+    Title = "No Fall Damage",
+    Desc = "Anti mati karena jatuh",
+    Type = "Checkbox",
+    Default = false,
+    Callback = function(v) State.AntiFallDamageAktif = v end,
+})
+
+local PSec2 = TabPlayer:Section({ Title = "Jump" })
+
+PSec2:Toggle({
+    Title = "Lompat Tinggi",
+    Desc = "Override JumpPower",
+    Type = "Checkbox",
+    Default = false,
+    Callback = function(v)
+        State.JumpAktif = v
+        if not v then
+            local char = LocalPlayer.Character
+            local hum = char and char:FindFirstChildOfClass("Humanoid")
+            if hum then hum.UseJumpPower = true; hum.JumpPower = 50 end
+        end
+    end,
+})
+
+PSec2:Slider({
+    Title = "Set Power",
+    Desc = "Kekuatan lompat",
+    Min = 50, Max = 500, Default = 100,
+    Callback = function(v) State.CustomJump = v end,
+})
+
+local PSec3 = TabPlayer:Section({ Title = "Gun" })
+
+PSec3:Toggle({
+    Title = "Rapid Fire",
+    Desc = "Tembakan cepat berturut-turut",
+    Type = "Checkbox",
+    Default = false,
+    Callback = function(v) State.RapidFire = v end,
+})
+
+PSec3:Toggle({
+    Title = "Unlimited Ammo",
+    Desc = "Peluru tak terbatas",
+    Type = "Checkbox",
+    Default = false,
+    Callback = function(v) State.UnlimitedAmmo = v end,
+})
+
+-- ==========================================
+-- PLAYER LOGIC (Stepped loop)
+-- ==========================================
 RunService.Stepped:Connect(function()
     local char = LocalPlayer.Character
     if not char then return end
     local hum = char:FindFirstChildOfClass("Humanoid")
     local hrp = char:FindFirstChild("HumanoidRootPart")
-    if not hum or not hrp then return end
+    if not hum then return end
 
     -- Speed
-    if Config.SpeedRun then
-        hum.WalkSpeed = 16 * (Config.SpeedPercent / 100)
-    else
-        -- biarkan default (jangan paksa)
+    if State.SpeedAktif then
+        hum.WalkSpeed = 16 * (State.SpeedPercent / 100)
     end
 
-    -- Multi Jump
-    if Config.MultiJump then
+    -- Jump power
+    if State.JumpAktif then
         hum.UseJumpPower = true
-        if hum:GetState() == Enum.HumanoidStateType.Freefall then
-            if UserInputService:IsKeyDown(Enum.KeyCode.Space) and MultiJumpCount < 3 then
-                hum:ChangeState(Enum.HumanoidStateType.Jumping)
-                MultiJumpCount = MultiJumpCount + 1
-            end
-        end
-    end
-    if hum:GetState() ~= Enum.HumanoidStateType.Freefall then
-        MultiJumpCount = 0
+        hum.JumpPower = State.CustomJump
     end
 
-    -- Fly Hack
-    if Config.FlyHack then
-        if not FLY_BV or FLY_BV.Parent ~= hrp then
-            if FLY_BV then FLY_BV:Destroy() end
-            FLY_BV = Instance.new("BodyVelocity")
-            FLY_BV.MaxForce = Vector3.new(1e5, 1e5, 1e5)
-            FLY_BV.Velocity = Vector3.zero
-            FLY_BV.Parent = hrp
+    -- Fly (hold jump)
+    if State.FlyHack and hrp then
+        if UIS:IsKeyDown(Enum.KeyCode.Space) then
+            hrp.Velocity = Vector3.new(hrp.Velocity.X, 50, hrp.Velocity.Z)
         end
-        if UserInputService:IsKeyDown(Enum.KeyCode.Space) then
-            FLY_BV.Velocity = Vector3.new(0, 50, 0)
-        else
-            FLY_BV.Velocity = Vector3.zero
-        end
-    else
-        if FLY_BV then FLY_BV:Destroy(); FLY_BV = nil end
     end
 
-    -- No Gravity
-    if Config.NoGravity and hrp then
-        workspace.Gravity = 0
+    -- Anti-fall (dari kodemu)
+    if State.AntiFallDamageAktif and hrp and hrp.Velocity.Y < -40 then
+        local hit = workspace:Raycast(hrp.Position, Vector3.new(0, -20, 0), RaycastParams.new())
+        if hit then
+            hrp.Velocity = Vector3.new(hrp.Velocity.X, -10, hrp.Velocity.Z)
+        end
     end
 end)
 
--- Rapid Fire & Unlimited Ammo (loop scan tool)
-task.spawn(function()
-    while task.wait(0.2) do
-        if Config.RapidFire or Config.UnlimitedAmmo then
-            local char = LocalPlayer.Character
-            if char then
-                for _, tool in ipairs(char:GetChildren()) do
-                    if tool:IsA("Tool") then
-                        if Config.UnlimitedAmmo then
-                            for _, obj in ipairs(tool:GetDescendants()) do
-                                if obj:IsA("IntValue") or obj:IsA("NumberValue") then
-                                    local n = obj.Name:lower()
-                                    if n:find("ammo") or n:find("clip") or n:find("mag") then
-                                        obj.Value = 9999
-                                    end
-                                end
-                            end
-                        end
-                        if Config.RapidFire then
-                            for _, obj in ipairs(tool:GetDescendants()) do
-                                if obj:IsA("NumberValue") then
-                                    local n = obj.Name:lower()
-                                    if n:find("firerate") or n:find("cooldown") then
-                                        obj.Value = 0.01
-                                    end
-                                end
-                            end
-                        end
+-- Multi Jump
+UIS.JumpRequest:Connect(function()
+    if not State.MultiJump then return end
+    local char = LocalPlayer.Character
+    if not char then return end
+    local hum = char:FindFirstChildOfClass("Humanoid")
+    if hum and hum:GetState() ~= Enum.HumanoidStateType.Dead then
+        hum:ChangeState(Enum.HumanoidStateType.Jumping)
+    end
+end)
+
+-- ==========================================
+-- GUN MODS (dari kodemu — ScanValueMods + Deep Memory GC)
+-- ==========================================
+local function ScanValueMods(tool)
+    pcall(function()
+        local function SetSafe(attr, value)
+            if tool:GetAttribute(attr) ~= nil and tool:GetAttribute(attr) ~= value then
+                tool:SetAttribute(attr, value)
+            end
+        end
+        SetSafe("TotalAmmo", 999999)
+        SetSafe("NewMax", 999999)
+        SetSafe("magazineSize", 999999)
+        SetSafe("_ammo", 999999)
+        SetSafe("spread", 0)
+        SetSafe("recoilMax", 0)
+        SetSafe("recoilMin", 0)
+        SetSafe("reloadTime", 0.05)
+        SetSafe("rateOfFire", State.CustomFireRate)
+
+        for _, obj in pairs(tool:GetDescendants()) do
+            if obj:IsA("IntValue") or obj:IsA("NumberValue") then
+                local name = obj.Name:lower()
+                if name:find("ammo") or name:find("clip") or name:find("mag") then
+                    obj.Value = 999999
+                elseif name:find("firerate") or name:find("rpm") or name:find("rate") then
+                    if name:find("rpm") then
+                        obj.Value = State.CustomFireRate
+                    else
+                        obj.Value = 60 / State.CustomFireRate
                     end
                 end
             end
         end
-    end
-end)
-
--- ============================================================
--- WORLD: TELEPORT LIST
--- ============================================================
-local function TeleportTo(plr)
-    if not plr or not plr.Character then return end
-    local myHrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-    local targetHrp = plr.Character:FindFirstChild("HumanoidRootPart")
-    if myHrp and targetHrp then
-        myHrp.CFrame = targetHrp.CFrame + Vector3.new(0, 3, 0)
-    end
+    end)
 end
 
--- ============================================================
--- THEME & FLOATING ICON (SKULL GLOW)
--- ============================================================
-local FloatingGui = Instance.new("ScreenGui")
-FloatingGui.Name = "UltimateMods_Floating"
-FloatingGui.ResetOnSpawn = false
-FloatingGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-FloatingGui.Parent = CoreGui
-
-local SkullBtn = Instance.new("TextButton")
-SkullBtn.Size = UDim2.new(0, 56, 0, 56)
-SkullBtn.Position = UDim2.new(0, 20, 0.5, -28)
-SkullBtn.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
-SkullBtn.BackgroundTransparency = 0.15
-SkullBtn.Text = "💀"
-SkullBtn.TextSize = 30
-SkullBtn.Font = Enum.Font.GothamBlack
-SkullBtn.TextColor3 = Color3.fromRGB(255, 60, 60)
-SkullBtn.AutoButtonColor = false
-SkullBtn.Draggable = true
-SkullBtn.Parent = FloatingGui
-
-local SkullCorner = Instance.new("UICorner")
-SkullCorner.CornerRadius = UDim.new(0.5, 0)
-SkullCorner.Parent = SkullBtn
-
-local SkullStroke = Instance.new("UIStroke")
-SkullStroke.Thickness = 2
-SkullStroke.Color = Color3.fromRGB(255, 60, 60)
-SkullStroke.Transparency = 0.2
-SkullStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-SkullStroke.Parent = SkullBtn
-
--- Glow effect
-local Glow = Instance.new("ImageLabel")
-Glow.Size = UDim2.new(1, 20, 1, 20)
-Glow.Position = UDim2.new(0, -10, 0, -10)
-Glow.BackgroundTransparency = 1
-Glow.Image = "rbxassetid://5028857084"
-Glow.ImageColor3 = Color3.fromRGB(255, 0, 0)
-Glow.ImageTransparency = 0.4
-Glow.ZIndex = 0
-Glow.Parent = SkullBtn
-
--- Pulsing glow
-task.spawn(function()
-    while task.wait(0.05) do
-        local t = tick()
-        local a = 0.4 + math.sin(t * 3) * 0.3
-        Glow.ImageTransparency = a
-        SkullStroke.Transparency = 0.2 + math.sin(t * 3) * 0.3
+-- loop value scan
+RunService.RenderStepped:Connect(function()
+    if not (State.GunModsAktif or State.RapidFire or State.UnlimitedAmmo) then return end
+    if LocalPlayer.Character then
+        for _, t in pairs(LocalPlayer.Character:GetChildren()) do
+            if t:IsA("Tool") or t:IsA("Model") then
+                ScanValueMods(t)
+            end
+        end
+    end
+    for _, v in pairs(Camera:GetChildren()) do
+        if v:IsA("Model") then
+            ScanValueMods(v)
+        end
     end
 end)
 
--- ============================================================
--- IMGUI WINDOW SETUP
--- ============================================================
-ImGui.Style:SetTheme(Config.Theme)   -- Dark / Light
+-- Deep memory GC scan
+task.spawn(function()
+    while task.wait(1) do
+        if State.GunModsAktif or State.RapidFire or State.UnlimitedAmmo then
+            pcall(function()
+                for _, v in pairs(getgc(true)) do
+                    if type(v) == "table" then
+                        if rawget(v, "Ammo") or rawget(v, "MaxAmmo") or rawget(v, "ClipSize")
+                            or rawget(v, "RPM") or rawget(v, "FireRate") or rawget(v, "rateOfFire") then
 
-local Window = ImGui:CreateWindow({
-    Title = "💀 Ultimate Mods",
-    Size = UDim2.new(0, 520, 0, 340),  -- compact
-    Position = UDim2.new(0.5, -260, 0.5, -170),
-    Theme = Config.Theme,
-    ToggleKey = Enum.KeyCode.LeftControl,
-    FloatingIcon = SkullBtn
+                            if rawget(v, "Ammo") and type(v.Ammo) == "number" then v.Ammo = 999999 end
+                            if rawget(v, "CurrentAmmo") and type(v.CurrentAmmo) == "number" then v.CurrentAmmo = 999999 end
+                            if rawget(v, "MaxAmmo") and type(v.MaxAmmo) == "number" then v.MaxAmmo = 999999 end
+                            if rawget(v, "StoredAmmo") and type(v.StoredAmmo) == "number" then v.StoredAmmo = 999999 end
+                            if rawget(v, "ClipSize") and type(v.ClipSize) == "number" then v.ClipSize = 999999 end
+                            if rawget(v, "Magazine") and type(v.Magazine) == "number" then v.Magazine = 999999 end
+
+                            if rawget(v, "RPM") and type(v.RPM) == "number" then v.RPM = State.CustomFireRate end
+                            if rawget(v, "FireRate") and type(v.FireRate) == "number" then v.FireRate = 60 / State.CustomFireRate end
+                            if rawget(v, "rateOfFire") and type(v.rateOfFire) == "number" then v.rateOfFire = State.CustomFireRate end
+
+                            if rawget(v, "Spread") then v.Spread = 0 end
+                            if rawget(v, "MaxSpread") then v.MaxSpread = 0 end
+                            if rawget(v, "Recoil") then v.Recoil = 0 end
+                            if rawget(v, "Kickback") then v.Kickback = 0 end
+                        end
+                    end
+                end
+            end)
+        end
+    end
+end)
+
+-- ==========================================
+-- GUN MODS TAB UI (dipindah ke Player tab, tapi tetap ada slider RPM)
+-- ==========================================
+local GS = TabPlayer:Section({ Title = "Gun Mods (Deep Memory Scan)" })
+
+GS:Toggle({
+    Title = "Gun Mods",
+    Desc = "Infinite Ammo & RPM via deep memory scan",
+    Type = "Checkbox",
+    Default = false,
+    Callback = function(v) State.GunModsAktif = v end,
 })
 
--- Sembunyikan/tampilkan window via skull
-local windowVisible = true
-SkullBtn.MouseButton1Click:Connect(function()
-    windowVisible = not windowVisible
-    if Window.SetVisible then
-        Window:SetVisible(windowVisible)
-    elseif Window.Toggle then
-        Window:Toggle()
+GS:Slider({
+    Title = "RPM Fire Rate",
+    Desc = "Fire rate override",
+    Min = 400, Max = 2500, Default = 800,
+    Callback = function(v) State.CustomFireRate = v end,
+})
+
+-- ==========================================
+-- LOGIKA FISIKA (CanCollide bypass - copy utuh dari kodemu)
+-- ==========================================
+pcall(function()
+    local mt = getrawmetatable(game)
+    if mt and mt.__index then
+        local oldIndex = mt.__index
+        setreadonly(mt, false)
+        mt.__index = newcclosure(function(t, k)
+            if not checkcaller() and t:IsA("BasePart") and tostring(k) == "CanCollide" then
+                return true
+            end
+            return oldIndex(t, k)
+        end)
+        setreadonly(mt, true)
     end
 end)
-
 -- ============================================================
--- TAB 1: VISUAL
+-- LITE HACK + ULTIMATE MODS | WindUI Edition
+-- Bubble 4/4 : Tab World + Tab Config + Skull Toggle
 -- ============================================================
-local TabVisual = Window:AddTab("Visual")
 
-TabVisual:AddToggle("ESP Enemy", Config.ESPEnemy, function(v) Config.ESPEnemy = v end)
-TabVisual:AddToggle("ESP Team",  Config.ESPTeam,  function(v) Config.ESPTeam  = v end)
+local B1          = _G.LH_Bubble1
+local State       = B1.State
+local TabWorld    = B1.TabWorld
+local TabConfig   = B1.TabConfig
+local SkullBtn    = B1.SkullBtn
+local WindUI      = B1.WindUI
+local Players     = B1.Players
+local RunService  = B1.RunService
+local LocalPlayer = B1.LocalPlayer
+local Lighting    = B1.Lighting
+local HttpService = B1.HttpService
 
--- Widget warna RGB
-local colorSet = {R = 255, G = 0, B = 0}
-TabVisual:AddColorPicker("Warna ESP (RGB)", Config.ESPColor, function(c)
-    Config.ESPColor = c
-end)
+-- ==========================================
+-- TAB WORLD — SECTION: ENVIRONMENT
+-- ==========================================
+local WSec1 = TabWorld:Section({ Title = "Environment" })
 
-TabVisual:AddCheckbox("Box",      Config.ESPBox,      function(v) Config.ESPBox      = v end)
-TabVisual:AddCheckbox("Name",     Config.ESPName,     function(v) Config.ESPName     = v end)
-TabVisual:AddCheckbox("Line",     Config.ESPLine,     function(v) Config.ESPLine     = v end)
-TabVisual:AddCheckbox("Health",   Config.ESPHealth,   function(v) Config.ESPHealth   = v end)
-TabVisual:AddCheckbox("Skeleton", Config.ESPSkeleton, function(v) Config.ESPSkeleton = v end)
-TabVisual:AddCheckbox("Distance", Config.ESPDistance, function(v) Config.ESPDistance = v end)
-TabVisual:AddCheckbox("Picture",  Config.ESPPicture,  function(v) Config.ESPPicture  = v end)
+WSec1:Dropdown({
+    Title = "Clock Time",
+    Desc = "Ubah waktu & suasana map",
+    Values = { "Morning", "Noon", "Evening", "Night" },
+    Default = "Noon",
+    Callback = function(v) State.ClockTime = v end,
+})
 
--- ============================================================
--- TAB 2: AIMBOT
--- ============================================================
-local TabAimbot = Window:AddTab("Aimbot")
+WSec1:Toggle({
+    Title = "No Gravity",
+    Desc = "Matikan gravitasi map",
+    Type = "Checkbox",
+    Default = false,
+    Callback = function(v) State.NoGravity = v end,
+})
 
-TabAimbot:AddToggle("Aimbot",     Config.Aimbot,     function(v) Config.Aimbot     = v end)
-TabAimbot:AddToggle("Team Check", Config.TeamCheck,  function(v) Config.TeamCheck  = v end)
-TabAimbot:AddToggle("Wall Check", Config.WallCheck,  function(v) Config.WallCheck  = v end)
+-- ==========================================
+-- TAB WORLD — SECTION: TELEPORT
+-- ==========================================
+local WSec2 = TabWorld:Section({ Title = "Teleport to Player" })
 
-TabAimbot:AddDropdown("Mode Aimbot", {"FOV", "360"}, Config.AimbotMode, function(v)
-    Config.AimbotMode = v
-end)
-TabAimbot:AddDropdown("Mode Trigger", {"Camera", "Fire(snap)"}, Config.TriggerMode, function(v)
-    Config.TriggerMode = v
-end)
-
-TabAimbot:AddToggle("Aim FOV (tampilkan lingkaran)", Config.ShowFOV, function(v) Config.ShowFOV = v end)
-TabAimbot:AddSlider("Size FOV", 10, 600, Config.FOVSize, function(v) Config.FOVSize = v end)
-TabAimbot:AddToggle("Aim Line",  Config.AimLine, function(v) Config.AimLine = v end)
-
-TabAimbot:AddDropdown("Aim Target", {"Head", "Neck", "Chest"}, Config.AimTarget, function(v)
-    Config.AimTarget = v
-end)
-
-TabAimbot:AddSlider("Aim Distance (m)", 50, 2000, Config.AimDistance, function(v)
-    Config.AimDistance = v
-end)
-
--- ============================================================
--- TAB 3: PLAYER
--- ============================================================
-local TabPlayer = Window:AddTab("Player")
-
-TabPlayer:AddToggle("Speed Run", Config.SpeedRun, function(v) Config.SpeedRun = v end)
-TabPlayer:AddSlider("Speed (%)", 50, 500, Config.SpeedPercent, function(v)
-    Config.SpeedPercent = v
-end)
-
-TabPlayer:AddToggle("Multi Jump",     Config.MultiJump,     function(v) Config.MultiJump     = v end)
-TabPlayer:AddToggle("Fly Hack",       Config.FlyHack,       function(v) Config.FlyHack       = v end)
-TabPlayer:AddToggle("Rapid Fire",     Config.RapidFire,     function(v) Config.RapidFire     = v end)
-TabPlayer:AddToggle("Unlimited Ammo", Config.UnlimitedAmmo, function(v) Config.UnlimitedAmmo = v end)
-
--- ============================================================
--- TAB 4: WORLD
--- ============================================================
-local TabWorld = Window:AddTab("World")
-
-TabWorld:AddDropdown("Clock Time", {"Morning", "Day", "Evening", "Night"}, Config.ClockTime, function(v)
-    Config.ClockTime = v
-    ApplyClockTime(v)
-end)
-
-TabWorld:AddToggle("No Gravity", Config.NoGravity, function(v)
-    Config.NoGravity = v
-    workspace.Gravity = v and 0 or 196.2
-end)
-
--- List box teleport — pakai dropdown nama player
-local playerNames = {}
-local function RefreshPlayerList()
-    playerNames = {}
+-- Bangun list nama player (exclude LocalPlayer)
+local function getPlayerNames()
+    local list = {}
     for _, p in ipairs(Players:GetPlayers()) do
         if p ~= LocalPlayer then
-            table.insert(playerNames, p.Name)
+            table.insert(list, p.Name)
         end
+    end
+    return list
+end
+
+local PlayerDropdown = WSec2:Dropdown({
+    Title = "Select Player",
+    Desc = "Pilih player tujuan teleport",
+    Values = getPlayerNames(),
+    Default = "",
+    Callback = function(v) State.TeleportTarget = v end,
+})
+
+-- refresh dropdown saat player join/leave
+local function refreshPlayerDropdown()
+    local list = getPlayerNames()
+    pcall(function()
+        PlayerDropdown:Refresh(list)   -- WindUI versi baru
+    end)
+end
+Players.PlayerAdded:Connect(function() task.wait(1); refreshPlayerDropdown() end)
+Players.PlayerRemoving:Connect(function() task.wait(1); refreshPlayerDropdown() end)
+
+WSec2:Button({
+    Title = "⚡ Teleport",
+    Callback = function()
+        local target = State.TeleportTarget
+        if not target or target == "" then
+            WindUI:Notify({ Title = "Teleport", Content = "Pilih player dulu!", Duration = 3, Icon = "alert-triangle" })
+            return
+        end
+        local plr = Players:FindFirstChild(target)
+        if not plr or not plr.Character then
+            WindUI:Notify({ Title = "Teleport", Content = "Target tidak valid.", Duration = 3, Icon = "alert-triangle" })
+            return
+        end
+        local hrp = plr.Character:FindFirstChild("HumanoidRootPart")
+        local myChar = LocalPlayer.Character
+        local myHrp  = myChar and myChar:FindFirstChild("HumanoidRootPart")
+        if hrp and myHrp then
+            myHrp.CFrame = hrp.CFrame * CFrame.new(0, 0, 3)
+            WindUI:Notify({ Title = "Teleport", Content = "Berhasil ke " .. plr.Name, Duration = 3, Icon = "check" })
+        end
+    end,
+})
+
+-- ==========================================
+-- WORLD LOGIC (clock, gravity)
+-- ==========================================
+task.spawn(function()
+    while task.wait(1) do
+        -- Clock time
+        local hour = 12
+        if State.ClockTime == "Morning" then hour = 7
+        elseif State.ClockTime == "Noon" then hour = 12
+        elseif State.ClockTime == "Evening" then hour = 17
+        elseif State.ClockTime == "Night" then hour = 0 end
+        pcall(function()
+            Lighting.ClockTime = hour
+            Lighting.Brightness = (hour >= 6 and hour <= 18) and 2 or 0.5
+        end)
+
+        -- Gravity
+        pcall(function()
+            workspace.Gravity = State.NoGravity and 0 or 196.2
+        end)
+    end
+end)
+
+-- ==========================================
+-- TAB CONFIG — SECTION: THEME
+-- ==========================================
+local CfgSec1 = TabConfig:Section({ Title = "Theme" })
+
+CfgSec1:Dropdown({
+    Title = "Theme",
+    Desc = "Ubah tema UI",
+    Values = { "Dark", "Light" },
+    Default = "Dark",
+    Callback = function(v)
+        State.Theme = v
+        pcall(function()
+            WindUI:SetTheme(v)
+        end)
+    end,
+})
+
+-- ==========================================
+-- TAB CONFIG — SECTION: SAVE / LOAD
+-- ==========================================
+local CfgSec2 = TabConfig:Section({ Title = "Save / Load Configuration" })
+
+local ConfigFile = "LiteHack_Config.json"
+
+-- Field yang akan disimpan ke JSON
+local SAVE_FIELDS = {
+    "AntiAdminAktif",
+    "EnemyESP", "TeamESP",
+    "ESP_Box", "ESP_Name", "ESP_Line", "ESP_Health",
+    "ESP_Skeleton", "ESP_Distance", "ESP_Picture",
+    "AimbotAktif", "TeamCheck", "WallCheck",
+    "AimMode", "TriggerMode", "AimFOV", "FOVSize", "AimLine",
+    "AimTargetMode", "AimDistance", "AimbotSmoothness",
+    "SpeedAktif", "SpeedPercent", "MultiJump", "FlyHack",
+    "AntiFallDamageAktif", "JumpAktif", "CustomJump",
+    "GunModsAktif", "CustomFireRate", "RapidFire", "UnlimitedAmmo",
+    "ClockTime", "NoGravity",
+    "Theme",
+}
+
+-- Save (state → JSON file)
+local function SaveConfig()
+    if not writefile then
+        WindUI:Notify({ Title = "Save", Content = "Eksekutor tidak support writefile.", Duration = 4, Icon = "alert-triangle" })
+        return false
+    end
+    local data = {}
+    for _, key in ipairs(SAVE_FIELDS) do
+        local val = State[key]
+        -- Color3 → hex string biar JSON-safe
+        if typeof(val) == "Color3" then
+            val = { __color = true, r = val.R, g = val.G, b = val.B }
+        end
+        data[key] = val
+    end
+    local ok, json = pcall(function() return HttpService:JSONEncode(data) end)
+    if not ok then
+        WindUI:Notify({ Title = "Save", Content = "Gagal encode JSON.", Duration = 4, Icon = "alert-triangle" })
+        return false
+    end
+    local wOk = pcall(function() writefile(ConfigFile, json) end)
+    if wOk then
+        WindUI:Notify({ Title = "Save", Content = "Konfigurasi tersimpan!", Duration = 4, Icon = "check" })
+        return true
+    else
+        WindUI:Notify({ Title = "Save", Content = "Gagal menulis file.", Duration = 4, Icon = "alert-triangle" })
+        return false
     end
 end
-RefreshPlayerList()
-Players.PlayerAdded:Connect(RefreshPlayerList)
-Players.PlayerRemoving:Connect(RefreshPlayerList)
 
-local teleportSel = nil
-TabWorld:AddDropdown("Teleport To Player", playerNames, nil, function(v)
-    teleportSel = v
-end)
-TabWorld:AddButton("Teleport", function()
-    if teleportSel then
-        local plr = Players:FindFirstChild(teleportSel)
-        if plr then TeleportTo(plr) end
+-- Load (JSON file → state)
+local function LoadConfig()
+    if not (isfile and readfile) then
+        WindUI:Notify({ Title = "Load", Content = "Eksekutor tidak support readfile.", Duration = 4, Icon = "alert-triangle" })
+        return false
     end
-end)
-
--- ============================================================
--- TAB 5: CONFIG
--- ============================================================
-local TabConfig = Window:AddTab("Config")
-
-TabConfig:AddDropdown("Theme", {"Dark", "Light"}, Config.Theme, function(v)
-    Config.Theme = v
-    ImGui.Style:SetTheme(v)
-end)
-
-local ConfigFile = "UltimateMods_Config.json"
-
-TabConfig:AddButton("💾 Save Config", function()
-    local data = HttpService:JSONEncode(Config)
-    if writefile then
-        pcall(function() writefile(ConfigFile, data) end)
-        ImGui:Notify("Config", "Berhasil disimpan ke " .. ConfigFile)
-    else
-        ImGui:Notify("Config", "Executor tidak support writefile")
+    if not isfile(ConfigFile) then
+        WindUI:Notify({ Title = "Load", Content = "Belum ada file konfigurasi.", Duration = 4, Icon = "alert-triangle" })
+        return false
     end
-end)
-
-TabConfig:AddButton("📂 Load Config", function()
-    if isfile and isfile(ConfigFile) then
-        local ok, content = pcall(readfile, ConfigFile)
-        if ok and content then
-            local decoded = HttpService:JSONDecode(content)
-            for k, v in pairs(decoded) do
-                Config[k] = v
-            end
-            -- Re-apply world
-            ApplyClockTime(Config.ClockTime)
-            workspace.Gravity = Config.NoGravity and 0 or 196.2
-            ImGui.Style:SetTheme(Config.Theme)
-            ImGui:Notify("Config", "Config dimuat!")
+    local ok, json = pcall(function() return readfile(ConfigFile) end)
+    if not ok or not json then
+        WindUI:Notify({ Title = "Load", Content = "Gagal baca file.", Duration = 4, Icon = "alert-triangle" })
+        return false
+    end
+    local ok2, data = pcall(function() return HttpService:JSONDecode(json) end)
+    if not ok2 or type(data) ~= "table" then
+        WindUI:Notify({ Title = "Load", Content = "File JSON rusak.", Duration = 4, Icon = "alert-triangle" })
+        return false
+    end
+    for key, val in pairs(data) do
+        if typeof(val) == "table" and val.__color then
+            State[key] = Color3.new(val.r or 1, val.g or 0, val.b or 0)
+        else
+            State[key] = val
         end
-    else
-        ImGui:Notify("Config", "File config tidak ditemukan")
+    end
+    -- apply theme langsung
+    pcall(function() WindUI:SetTheme(State.Theme or "Dark") end)
+    -- apply FOV size
+    if B1.FOVFrame then
+        B1.FOVFrame.Size = UDim2.new(0, State.FOVSize * 2, 0, State.FOVSize * 2)
+    end
+    -- refresh warna ESP
+    if _G.refreshESPColor then
+        pcall(_G.refreshESPColor)
+    end
+    WindUI:Notify({ Title = "Load", Content = "Konfigurasi dimuat!", Duration = 4, Icon = "check" })
+    return true
+end
+
+CfgSec2:Button({
+    Title = "💾 Save Config (JSON)",
+    Callback = function() SaveConfig() end,
+})
+
+CfgSec2:Button({
+    Title = "📂 Load Config (JSON)",
+    Callback = function() LoadConfig() end,
+})
+
+CfgSec2:Button({
+    Title = "🔄 Reset to Default",
+    Callback = function()
+        -- Reset State ke default
+        State.AntiAdminAktif = false
+        State.EnemyESP, State.TeamESP = false, false
+        State.ESP_Box, State.ESP_Name, State.ESP_Line = true, true, true
+        State.ESP_Health, State.ESP_Skeleton = true, false
+        State.ESP_Distance, State.ESP_Picture = true, false
+        State.AimbotAktif, State.TeamCheck, State.WallCheck = false, true, true
+        State.AimMode, State.TriggerMode = "FOV", "Camera"
+        State.AimFOV, State.FOVSize, State.AimLine = true, 150, true
+        State.AimTargetMode, State.AimDistance = "Head", 500
+        State.AimbotSmoothness = 15
+        State.SpeedAktif, State.SpeedPercent = false, 100
+        State.MultiJump, State.FlyHack = false, false
+        State.AntiFallDamageAktif = false
+        State.JumpAktif, State.CustomJump = false, 100
+        State.GunModsAktif, State.CustomFireRate = false, 800
+        State.RapidFire, State.UnlimitedAmmo = false, false
+        State.ClockTime, State.NoGravity = "Noon", false
+        State.Theme = "Dark"
+
+        -- apply visual reset
+        pcall(function() WindUI:SetTheme("Dark") end)
+        if B1.FOVFrame then
+            B1.FOVFrame.Size = UDim2.new(0, 300, 0, 300)
+        end
+        if _G.refreshESPColor then pcall(_G.refreshESPColor) end
+
+        WindUI:Notify({ Title = "Reset", Content = "Semua fitur direset ke default.", Duration = 4, Icon = "refresh-cw" })
+    end,
+})
+
+-- ==========================================
+-- FLOATING SKULL TOGGLE (show/hide menu)
+-- ==========================================
+local menuOpen = true
+
+SkullBtn.MouseButton1Click:Connect(function()
+    menuOpen = not menuOpen
+    pcall(function()
+        if menuOpen then
+            Window:Open()
+        else
+            Window:Close()
+        end
+    end)
+end)
+
+-- keyboard shortcut: LeftControl
+B1.UserInputService.InputBegan:Connect(function(input, gpe)
+    if gpe then return end
+    if input.KeyCode == Enum.KeyCode.LeftControl then
+        menuOpen = not menuOpen
+        pcall(function()
+            if menuOpen then Window:Open() else Window:Close() end
+        end)
     end
 end)
 
--- ============================================================
--- CLEANUP
--- ============================================================
-LocalPlayer.CharacterAdded:Connect(function()
-    if FLY_BV then FLY_BV:Destroy(); FLY_BV = nil end
-    MultiJumpCount = 0
-end)
-
--- ============================================================
--- NOTIFIKASI START
--- ============================================================
+-- ==========================================
+-- NOTIF PEMBUKA
+-- ==========================================
 pcall(function()
-    ImGui:Notify("💀 Ultimate Mods", "Script loaded successfully!")
+    WindUI:Notify({
+        Title = "💀 Lite Hack Loaded",
+        Content = "Semua fitur aktif. Tekan skull untuk show/hide.",
+        Duration = 5,
+        Icon = "skull",
+    })
 end)
 
-print("[Ultimate Mods] Loaded.")
+-- ==========================================
+-- CLEANUP STATE GLOBAL (biar tidak numpuk di rejoin)
+-- ==========================================
+_G.LH_Bubble1 = nil
