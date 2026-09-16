@@ -72,7 +72,6 @@ end
 -- CONFIG GLOBAL
 -- ==========================================
 _G.LiteHackCfg = {
-    -- Visual
     ESPEnemy = false,
     ESPTeam = false,
     ESPBox = true,
@@ -83,7 +82,6 @@ _G.LiteHackCfg = {
     ESPDistance = true,
     ESPPicture = false,
     ESPColor = Color3.fromRGB(255, 60, 60),
-    -- Aimbot
     Aimbot = false,
     AimTeamCheck = true,
     AimWallCheck = true,
@@ -94,7 +92,6 @@ _G.LiteHackCfg = {
     AimLine = true,
     AimTarget = "Head",
     AimDistance = 500,
-    -- Player
     SpeedRun = false,
     SpeedRunValue = 50,
     MultiJump = false,
@@ -102,10 +99,8 @@ _G.LiteHackCfg = {
     RapidFire = false,
     UnlimitedAmmo = false,
     WallHack = false,
-    -- World
     ClockTime = "Default",
     NoGravity = false,
-    -- Config
     Theme = "Dark",
 }
 
@@ -188,7 +183,6 @@ local iconGlow = make("ImageLabel", {
     Parent = IconBtn
 })
 
--- Pulsing glow
 task.spawn(function()
     while IconBtn.Parent do
         TweenService:Create(iconStroke, TweenInfo.new(1.2, Enum.EasingStyle.Sine), {Transparency = 0.5}):Play()
@@ -219,13 +213,13 @@ local MainFrame = make("Frame", {
     BorderSizePixel = 0,
     ClipsDescendants = true,
     Active = true,
+    ZIndex = 1,
     Parent = WinGui
 })
 corner(MainFrame, 14)
 stroke(MainFrame, Color3.fromRGB(60, 60, 80), 1.5, 0.2)
 padding(MainFrame, 8)
 
--- TopBar
 local TopBar = make("Frame", {
     Size = UDim2.new(1, 0, 0, 32),
     BackgroundTransparency = 1,
@@ -254,7 +248,6 @@ local CloseBtn = make("TextButton", {
 })
 corner(CloseBtn, 6)
 
--- TabBar (wrapped horizontal scroll)
 local TabScroll = make("ScrollingFrame", {
     Size = UDim2.new(1, 0, 0, 40),
     Position = UDim2.new(0, 0, 0, 36),
@@ -276,12 +269,12 @@ local TabLayout = make("UIListLayout", {
 })
 padding(TabScroll, 6)
 
--- Content area
 local Content = make("Frame", {
     Size = UDim2.new(1, 0, 1, -84),
     Position = UDim2.new(0, 0, 0, 84),
     BackgroundColor3 = Color3.fromRGB(24, 24, 32),
     BorderSizePixel = 0,
+    ZIndex = 1,
     Parent = MainFrame
 })
 corner(Content, 10)
@@ -317,7 +310,7 @@ local function CreateTab(name, icon)
         Visible = false,
         Parent = Content
     })
-    local pageLayout = make("UIListLayout", {
+    make("UIListLayout", {
         Padding = UDim.new(0, 6),
         SortOrder = Enum.SortOrder.LayoutOrder,
         Parent = page
@@ -347,7 +340,7 @@ local function Section(page, text)
         BackgroundTransparency = 1,
         Parent = page
     })
-    local lbl = make("TextLabel", {
+    make("TextLabel", {
         Size = UDim2.new(1, 0, 1, 0),
         BackgroundTransparency = 1,
         Text = "▸ " .. text,
@@ -368,7 +361,7 @@ local function Toggle(page, text, default, callback)
         Parent = page
     })
     corner(row, 8)
-    local lbl = make("TextLabel", {
+    make("TextLabel", {
         Size = UDim2.new(1, -60, 1, 0),
         Position = UDim2.new(0, 12, 0, 0),
         BackgroundTransparency = 1,
@@ -500,7 +493,7 @@ local function Slider(page, text, min, max, default, suffix, callback)
     }
 end
 
--- ComboBox anti bentrok (ZIndex tinggi + tutup saat klik luar)
+-- ComboBox anti bentrok
 local function ComboBox(page, text, options, default, callback)
     local row = make("Frame", {
         Size = UDim2.new(1, 0, 0, 30),
@@ -510,7 +503,7 @@ local function ComboBox(page, text, options, default, callback)
         Parent = page
     })
     corner(row, 8)
-    local lbl = make("TextLabel", {
+    make("TextLabel", {
         Size = UDim2.new(0, 100, 1, 0),
         Position = UDim2.new(0, 12, 0, 0),
         BackgroundTransparency = 1,
@@ -531,6 +524,7 @@ local function ComboBox(page, text, options, default, callback)
         TextSize = 11,
         Font = FONT_BOLD,
         AutoButtonColor = false,
+        ZIndex = 20,
         Parent = row
     })
     corner(btn, 6)
@@ -551,24 +545,27 @@ local function ComboBox(page, text, options, default, callback)
             Size = UDim2.new(1, 0, 1, 0),
             BackgroundTransparency = 1,
             Text = "",
-            ZIndex = 50,
+            AutoButtonColor = false,
+            ZIndex = 998,
             Parent = WinGui
         })
         overlay.MouseButton1Click:Connect(closeList)
 
+        local absPos = btn.AbsolutePosition
+        local absSize = btn.AbsoluteSize
         listFrame = make("ScrollingFrame", {
-            Size = UDim2.new(0, 150, 0, math.min(#options * 26 + 6, 130)),
-            Position = UDim2.new(0, 0, 1, 4),
+            Size = UDim2.new(0, absSize.X, 0, math.min(#options * 26 + 8, 140)),
+            Position = UDim2.new(0, absPos.X, 0, absPos.Y + absSize.Y + 4),
             BackgroundColor3 = Color3.fromRGB(20, 20, 28),
             BorderSizePixel = 0,
             ScrollBarThickness = 3,
             CanvasSize = UDim2.new(0, 0, 0, 0),
             AutomaticCanvasSize = Enum.AutomaticSize.Y,
-            ZIndex = 60,
-            Parent = btn
+            ZIndex = 999,
+            Parent = WinGui
         })
         corner(listFrame, 6)
-        stroke(listFrame, Color3.fromRGB(255, 60, 60), 1, 0.4)
+        stroke(listFrame, Color3.fromRGB(255, 60, 60), 1, 0.3)
         make("UIListLayout", {Padding = UDim.new(0, 2), Parent = listFrame})
         padding(listFrame, 4)
 
@@ -581,7 +578,7 @@ local function ComboBox(page, text, options, default, callback)
                 TextSize = 11,
                 Font = FONT_BOLD,
                 AutoButtonColor = false,
-                ZIndex = 61,
+                ZIndex = 1000,
                 Parent = listFrame
             })
             corner(ob, 4)
@@ -604,7 +601,7 @@ local function ComboBox(page, text, options, default, callback)
     }
 end
 
--- ListBox (bisa scroll, anti-bentrok juga)
+-- ListBox
 local function ListBox(page, text, getItems, callback)
     local row = make("Frame", {
         Size = UDim2.new(1, 0, 0, 110),
@@ -613,7 +610,7 @@ local function ListBox(page, text, getItems, callback)
         Parent = page
     })
     corner(row, 8)
-    local lbl = make("TextLabel", {
+    make("TextLabel", {
         Size = UDim2.new(1, -20, 0, 20),
         Position = UDim2.new(0, 10, 0, 4),
         BackgroundTransparency = 1,
@@ -632,6 +629,7 @@ local function ListBox(page, text, getItems, callback)
         ScrollBarThickness = 3,
         CanvasSize = UDim2.new(0, 0, 0, 0),
         AutomaticCanvasSize = Enum.AutomaticSize.Y,
+        ZIndex = 5,
         Parent = row
     })
     corner(scroll, 6)
@@ -651,6 +649,7 @@ local function ListBox(page, text, getItems, callback)
                 TextSize = 11,
                 Font = FONT_BOLD,
                 AutoButtonColor = false,
+                ZIndex = 6,
                 Parent = scroll
             })
             corner(ob, 4)
@@ -692,7 +691,6 @@ local PlayerTab = CreateTab("Player", "🏃")
 local WorldTab  = CreateTab("World", "🌍")
 local ConfigTab = CreateTab("Config", "⚙")
 
--- Default buka Visual
 TabButtons["Visual"].BackgroundColor3 = Color3.fromRGB(255, 60, 60)
 TabButtons["Visual"].TextColor3 = Color3.fromRGB(255, 255, 255)
 VisualTab.Visible = true
@@ -790,8 +788,6 @@ end)
 -- ==========================================
 -- TAB CONFIG
 -- ==========================================
-local ThemeState = {Light = false}
-
 Section(ConfigTab, "UI Theme")
 ComboBox(ConfigTab, "Theme", {"Dark", "Light"}, Cfg.Theme, function(v)
     Cfg.Theme = v
@@ -810,7 +806,7 @@ end)
 
 Section(ConfigTab, "Save / Load")
 Button(ConfigTab, "💾 SAVE CONFIG", function()
-    local ok = pcall(function()
+    pcall(function()
         local data = HttpService:JSONEncode({
             ESPEnemy = Cfg.ESPEnemy, ESPTeam = Cfg.ESPTeam,
             ESPBox = Cfg.ESPBox, ESPName = Cfg.ESPName, ESPLine = Cfg.ESPLine,
@@ -826,7 +822,6 @@ Button(ConfigTab, "💾 SAVE CONFIG", function()
         })
         if writefile then writefile("LiteHack_Config.json", data) end
     end)
-    return ok
 end)
 
 Button(ConfigTab, "📂 LOAD CONFIG", function()
@@ -899,18 +894,10 @@ local AimLineGui = make("Frame", {
 })
 
 -- ==========================================
--- ENTITY CACHE
+-- ESP ENGINE
 -- ==========================================
-local ValidEntities = {}
-task.spawn(function()
-    while task.wait(0.4) do
-        local list = {}
-        for _, p in ipairs(Players:GetPlayers()) do
-            if p ~= LocalPlayer and p.Character then table.insert(list, p.Character) end
-        end
-        ValidEntities = list
-    end
-end)
+local ESPGui = make("ScreenGui", {Name = "LiteHack_ESP", ResetOnSpawn = false, IgnoreGuiInset = true, Parent = getGuiParent()})
+local ESPData = {}
 
 local function isEnemy(model)
     local plr = Players:GetPlayerFromCharacter(model)
@@ -926,52 +913,61 @@ local function isTeam(model)
     return false
 end
 
--- ==========================================
--- ESP ENGINE (Box, Name, Line, Health, Skeleton, Distance, Picture)
--- ==========================================
-local ESPGui = make("ScreenGui", {Name = "LiteHack_ESP", ResetOnSpawn = false, IgnoreGuiInset = true, Parent = getGuiParent()})
-local ESPData = {}
-
 local function createESP(model)
     local box = make("Frame", {
-        BackgroundTransparency = 1, BorderSizePixel = 0, Visible = false, Parent = ESPGui,
-        Name = "Box"
+        BackgroundTransparency = 1, BorderSizePixel = 0, Visible = false,
+        ZIndex = 3, Parent = ESPGui, Name = "Box"
     })
-    -- Corner putus-putus
-    local c1 = make("Frame", {Size = UDim2.new(0, 10, 0, 2), BackgroundColor3 = Color3.white, Parent = box})
-    local c2 = make("Frame", {Size = UDim2.new(0, 2, 0, 10), BackgroundColor3 = Color3.white, Parent = box})
-    local c3 = make("Frame", {Size = UDim2.new(0, 10, 0, 2), BackgroundColor3 = Color3.white, AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, 0, 0, 0), Parent = box})
-    local c4 = make("Frame", {Size = UDim2.new(0, 2, 0, 10), BackgroundColor3 = Color3.white, AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, 0, 0, 0), Parent = box})
-    local c5 = make("Frame", {Size = UDim2.new(0, 10, 0, 2), BackgroundColor3 = Color3.white, AnchorPoint = Vector2.new(0, 1), Position = UDim2.new(0, 0, 1, 0), Parent = box})
-    local c6 = make("Frame", {Size = UDim2.new(0, 2, 0, 10), BackgroundColor3 = Color3.white, AnchorPoint = Vector2.new(0, 1), Position = UDim2.new(0, 0, 1, 0), Parent = box})
-    local c7 = make("Frame", {Size = UDim2.new(0, 10, 0, 2), BackgroundColor3 = Color3.white, AnchorPoint = Vector2.new(1, 1), Position = UDim2.new(1, 0, 1, 0), Parent = box})
-    local c8 = make("Frame", {Size = UDim2.new(0, 2, 0, 10), BackgroundColor3 = Color3.white, AnchorPoint = Vector2.new(1, 1), Position = UDim2.new(1, 0, 1, 0), Parent = box})
+    local corners = {}
+    local segSize, segLen = 2, 10
+    local positions = {
+        {UDim2.new(0,0,0,0), UDim2.new(0,segLen,0,segSize), Vector2.new(0,0)},
+        {UDim2.new(0,0,0,0), UDim2.new(0,segSize,0,segLen), Vector2.new(0,0)},
+        {UDim2.new(1,0,0,0), UDim2.new(0,segLen,0,segSize), Vector2.new(1,0)},
+        {UDim2.new(1,0,0,0), UDim2.new(0,segSize,0,segLen), Vector2.new(1,0)},
+        {UDim2.new(0,0,1,0), UDim2.new(0,segLen,0,segSize), Vector2.new(0,1)},
+        {UDim2.new(0,0,1,0), UDim2.new(0,segSize,0,segLen), Vector2.new(0,1)},
+        {UDim2.new(1,0,1,0), UDim2.new(0,segLen,0,segSize), Vector2.new(1,1)},
+        {UDim2.new(1,0,1,0), UDim2.new(0,segSize,0,segLen), Vector2.new(1,1)},
+    }
+    for i, p in ipairs(positions) do
+        corners[i] = make("Frame", {
+            Size = p[2], Position = p[1], AnchorPoint = p[3],
+            BackgroundColor3 = Color3.white, BorderSizePixel = 0,
+            ZIndex = 4, Parent = box
+        })
+    end
 
     local name = make("TextLabel", {
         BackgroundTransparency = 1, TextSize = 13, Font = Enum.Font.GothamBold,
-        TextColor3 = Color3.white, TextStrokeTransparency = 0.4, Visible = false, Parent = ESPGui
+        TextColor3 = Color3.white, TextStrokeTransparency = 0.4, Visible = false,
+        ZIndex = 10, Parent = ESPGui
     })
 
     local dist = make("TextLabel", {
         BackgroundTransparency = 1, TextSize = 12, Font = Enum.Font.GothamBold,
-        TextColor3 = Color3.fromRGB(220,220,220), TextStrokeTransparency = 0.5, Visible = false, Parent = ESPGui
+        TextColor3 = Color3.fromRGB(220,220,220), TextStrokeTransparency = 0.5, Visible = false,
+        ZIndex = 10, Parent = ESPGui
     })
 
     local pic = make("Frame", {
-        Size = UDim2.new(0, 36, 0, 36), BackgroundTransparency = 0.3,
-        BackgroundColor3 = Color3.fromRGB(40,40,50), Visible = false, Parent = ESPGui
+        Size = UDim2.new(0, 42, 0, 42),
+        BackgroundTransparency = 0.3,
+        BackgroundColor3 = Color3.fromRGB(40,40,50),
+        Visible = false, ZIndex = 5, Parent = ESPGui
     })
-    corner(pic, 18)
+    corner(pic, 21)
     stroke(pic, Color3.fromRGB(255,80,80), 2, 0.2)
     local img = make("ImageLabel", {
-        Size = UDim2.new(1,-4,1,-4), Position = UDim2.new(0,2,0,2),
-        BackgroundTransparency = 1, Visible = false, Parent = pic
+        Size = UDim2.new(1,-6,1,-6),
+        Position = UDim2.new(0,3,0,3),
+        BackgroundTransparency = 1, Visible = false, ZIndex = 6, Parent = pic
     })
-    corner(img, 16)
+    corner(img, 19)
 
     local healthBar = make("Frame", {
         Size = UDim2.new(0, 5, 0, 40), BackgroundColor3 = Color3.fromRGB(20,20,20),
-        BorderSizePixel = 0, Visible = false, Parent = ESPGui
+        BorderSizePixel = 0, Visible = false, ZIndex = 5, Parent = ESPGui
     })
     corner(healthBar, 2)
     local healthFill = make("Frame", {
@@ -985,37 +981,77 @@ local function createESP(model)
     for i = 1, 9 do
         table.insert(skeletonParts, make("Frame", {
             BackgroundColor3 = Color3.fromRGB(255,80,80), BorderSizePixel = 0,
-            Visible = false, Parent = ESPGui, Size = UDim2.new(0,0,0,0)
+            Visible = false, ZIndex = 6, Parent = ESPGui, Size = UDim2.new(0,0,0,0)
         }))
     end
 
     local line = make("Frame", {
         BackgroundColor3 = Color3.fromRGB(255,80,80), BorderSizePixel = 0,
-        Size = UDim2.new(0,2,0,0), AnchorPoint = Vector2.new(0.5,1), Visible = false, Parent = ESPGui
+        Size = UDim2.new(0,2,0,0), AnchorPoint = Vector2.new(0.5,1),
+        Visible = false, ZIndex = 4, Parent = ESPGui
     })
 
     return {
-        Box = box, Corners = {c1,c2,c3,c4,c5,c6,c7,c8},
+        Box = box, Corners = corners,
         Name = name, Dist = dist, Pic = pic, Img = img,
         HealthBar = healthBar, HealthFill = healthFill,
         Skeleton = skeletonParts, Line = line
     }
 end
 
-local R15 = {
-    Head = "Head", UpperTorso = "UpperTorso", LowerTorso = "LowerTorso",
-    LeftHand = "LeftHand", RightHand = "RightHand",
-    LeftLowerArm = "LeftLowerArm", RightLowerArm = "RightLowerArm",
-    LeftUpperArm = "LeftUpperArm", RightUpperArm = "RightUpperArm",
-    LeftFoot = "LeftFoot", RightFoot = "RightFoot",
-    LeftLowerLeg = "LeftLowerLeg", RightLowerLeg = "RightLowerLeg",
-    LeftUpperLeg = "LeftUpperLeg", RightUpperLeg = "RightUpperLeg"
-}
-local R6 = {
-    Head = "Head", Torso = "Torso",
-    LeftArm = "Left Arm", RightArm = "Right Arm",
-    LeftLeg = "Left Leg", RightLeg = "Right Leg"
-}
+local function destroyESP(data)
+    for _, v in pairs(data) do
+        if typeof(v) == "Instance" then
+            pcall(function() v:Destroy() end)
+        elseif typeof(v) == "table" then
+            for _, x in ipairs(v) do pcall(function() x:Destroy() end) end
+        end
+    end
+end
+
+-- Entity Cache + Cleanup
+local ValidEntities = {}
+task.spawn(function()
+    while task.wait(0.4) do
+        local list = {}
+        local aliveModels = {}
+        for _, p in ipairs(Players:GetPlayers()) do
+            if p ~= LocalPlayer and p.Character and p.Character.Parent then
+                local hum = p.Character:FindFirstChildOfClass("Humanoid")
+                if hum and hum.Health > 0 then
+                    table.insert(list, p.Character)
+                    aliveModels[p.Character] = true
+                end
+            end
+        end
+        ValidEntities = list
+
+        for model, data in pairs(ESPData) do
+            if not aliveModels[model] or not model.Parent then
+                destroyESP(data)
+                ESPData[model] = nil
+            end
+        end
+    end
+end)
+
+Players.PlayerRemoving:Connect(function(p)
+    if p.Character and ESPData[p.Character] then
+        destroyESP(ESPData[p.Character])
+        ESPData[p.Character] = nil
+    end
+end)
+
+LocalPlayer.CharacterAdded:Connect(function()
+    for model, data in pairs(ESPData) do
+        destroyESP(data)
+        ESPData[model] = nil
+    end
+end)
+
+-- Helper R6/R15
+local R15 = {"Head","UpperTorso","LowerTorso","LeftHand","RightHand","LeftLowerArm","RightLowerArm","LeftUpperArm","RightUpperArm","LeftFoot","RightFoot","LeftLowerLeg","RightLowerLeg","LeftUpperLeg","RightUpperLeg"}
+local R6 = {"Head","Torso","Left Arm","Right Arm","Left Leg","Right Leg"}
 
 local function pos2d(part)
     if not part then return nil end
@@ -1044,12 +1080,10 @@ RunService.RenderStepped:Connect(function()
         local hum = model:FindFirstChildOfClass("Humanoid")
         local root = model:FindFirstChild("HumanoidRootPart")
         local head = model:FindFirstChild("Head")
-        if not hum or not root or not head or hum.Health <= 0 then
+        if not hum or not root or not head or hum.Health <= 0 or not model.Parent then
             if ESPData[model] then
-                for _, v in pairs(ESPData[model]) do
-                    if typeof(v) == "Instance" then v.Visible = false
-                    elseif typeof(v) == "table" then for _, x in ipairs(v) do x.Visible = false end end
-                end
+                destroyESP(ESPData[model])
+                ESPData[model] = nil
             end
             continue
         end
@@ -1057,36 +1091,44 @@ RunService.RenderStepped:Connect(function()
         local isE = isEnemy(model)
         local isT = isTeam(model)
         local showESP = (isE and Cfg.ESPEnemy) or (isT and Cfg.ESPTeam)
-        if not showESP then continue end
+        if not showESP then
+            if ESPData[model] then
+                local d = ESPData[model]
+                d.Box.Visible = false; d.Name.Visible = false; d.Dist.Visible = false
+                d.Pic.Visible = false; d.HealthBar.Visible = false; d.Line.Visible = false
+                for _, s in ipairs(d.Skeleton) do s.Visible = false end
+            end
+            continue
+        end
 
         local d = ESPData[model] or createESP(model)
         ESPData[model] = d
         local color = Cfg.ESPColor
 
-        -- Box
         local topLeft = pos2d(head)
-        local bottom = pos2d(model:FindFirstChild("HumanoidRootPart"))
         local isR15 = model:FindFirstChild("UpperTorso") ~= nil
-        local foot = isR15 and model:FindFirstChild("LeftFoot") or model:FindFirstChild("Left Leg")
+        local footName = isR15 and "LeftFoot" or "Left Leg"
+        local foot = model:FindFirstChild(footName)
         local footPos = pos2d(foot)
+
         if topLeft and footPos then
             local height = (footPos.Y - topLeft.Y) + 16
             local width = height * 0.55
-            local boxPos = UDim2.new(0, topLeft.X - width/2, 0, topLeft.Y - 8)
-            d.Box.Position = boxPos
+            d.Box.Position = UDim2.new(0, topLeft.X - width/2, 0, topLeft.Y - 8)
             d.Box.Size = UDim2.new(0, width, 0, height)
             d.Box.Visible = Cfg.ESPBox
             for _, c in ipairs(d.Corners) do c.BackgroundColor3 = color end
 
-            -- Name
+            -- Name (di atas box, tidak ketutupan picture)
             d.Name.Position = UDim2.new(0, topLeft.X, 0, topLeft.Y - 26)
             d.Name.Size = UDim2.new(0, 200, 0, 16)
             d.Name.AnchorPoint = Vector2.new(0.5, 0)
             d.Name.Text = model.Name
             d.Name.TextColor3 = color
+            d.Name.ZIndex = 10
             d.Name.Visible = Cfg.ESPName
 
-            -- Distance
+            -- Distance (di bawah box)
             d.Dist.Position = UDim2.new(0, topLeft.X, 0, topLeft.Y + height + 4)
             d.Dist.Size = UDim2.new(0, 200, 0, 14)
             d.Dist.AnchorPoint = Vector2.new(0.5, 0)
@@ -1103,10 +1145,11 @@ RunService.RenderStepped:Connect(function()
             d.HealthFill.BackgroundColor3 = hcol
             d.HealthBar.Visible = Cfg.ESPHealth
 
-            -- Picture
+            -- Picture (LEBIH TINGGI dari name)
             if Cfg.ESPPicture then
                 d.Pic.Visible = true
-                d.Pic.Position = UDim2.new(0, topLeft.X - 18, 0, topLeft.Y - 52)
+                d.Pic.Size = UDim2.new(0, 42, 0, 42)
+                d.Pic.Position = UDim2.new(0, topLeft.X - 21, 0, topLeft.Y - 78)
                 d.Img.Visible = true
                 local plr = Players:GetPlayerFromCharacter(model)
                 if plr then
@@ -1121,11 +1164,13 @@ RunService.RenderStepped:Connect(function()
                 d.Pic.Visible = false
             end
 
-            -- Line (dari tengah atas layar ke titik atas picture)
+            -- Line (mentok ke picture / kepala)
             if Cfg.ESPLine then
                 local screenTop = Vector2.new(Camera.ViewportSize.X / 2, 0)
-                local targetPt = Vector2.new(topLeft.X, topLeft.Y - (Cfg.ESPPicture and 52 or 8))
+                local anchorY = Cfg.ESPPicture and (topLeft.Y - 36) or (topLeft.Y - 8)
+                local targetPt = Vector2.new(topLeft.X, anchorY)
                 d.Line.Visible = true
+                d.Line.ZIndex = 4
                 local diff = targetPt - screenTop
                 local dist2 = diff.Magnitude
                 local ang = math.atan2(diff.Y, diff.X)
@@ -1140,34 +1185,31 @@ RunService.RenderStepped:Connect(function()
             -- Skeleton
             if Cfg.ESPSkeleton then
                 local parts = {}
+                local bones = {}
                 if isR15 then
-                    for k in pairs(R15) do parts[k] = pos2d(model:FindFirstChild(k)) end
-                    local bones = {
+                    for _, k in ipairs(R15) do parts[k] = pos2d(model:FindFirstChild(k)) end
+                    bones = {
                         {parts.Head, parts.UpperTorso},
                         {parts.UpperTorso, parts.LowerTorso},
                         {parts.UpperTorso, parts.LeftUpperArm}, {parts.LeftUpperArm, parts.LeftLowerArm}, {parts.LeftLowerArm, parts.LeftHand},
                         {parts.UpperTorso, parts.RightUpperArm}, {parts.RightUpperArm, parts.RightLowerArm}, {parts.RightLowerArm, parts.RightHand},
-                        {parts.LowerTorso, parts.LeftUpperLeg}, {parts.LeftUpperLeg, parts.LeftLowerLeg}, {parts.LeftLowerLeg, parts.LeftFoot},
-                        {parts.LowerTorso, parts.RightUpperLeg}, {parts.RightUpperLeg, parts.RightLowerLeg}, {parts.RightLowerLeg, parts.RightFoot},
+                        {parts.LowerTorso, parts.LeftUpperLeg},
                     }
-                    for i = 1, 9 do d.Skeleton[i].Visible = false end
-                    for i, b in ipairs(bones) do
-                        if i > 9 then break end
-                        drawLine(d.Skeleton[i], b[1], b[2])
-                        d.Skeleton[i].BackgroundColor3 = color
-                    end
                 else
-                    for k in pairs(R6) do parts[k] = pos2d(model:FindFirstChild(k)) end
-                    local bones = {
+                    for _, k in ipairs(R6) do parts[k] = pos2d(model:FindFirstChild(k)) end
+                    bones = {
                         {parts.Head, parts.Torso},
                         {parts.Torso, parts["Left Arm"]}, {parts.Torso, parts["Right Arm"]},
                         {parts.Torso, parts["Left Leg"]}, {parts.Torso, parts["Right Leg"]},
                     }
-                    for i = 1, 9 do d.Skeleton[i].Visible = false end
-                    for i, b in ipairs(bones) do
-                        if i > 9 then break end
-                        drawLine(d.Skeleton[i], b[1], b[2])
+                end
+                for i = 1, 9 do
+                    if bones[i] then
+                        drawLine(d.Skeleton[i], bones[i][1], bones[i][2])
                         d.Skeleton[i].BackgroundColor3 = color
+                        d.Skeleton[i].Visible = true
+                    else
+                        d.Skeleton[i].Visible = false
                     end
                 end
             else
@@ -1205,9 +1247,10 @@ local function validTarget(model)
     local hum = model:FindFirstChildOfClass("Humanoid")
     if not hum or hum.Health <= 0 then return false end
     if Cfg.AimTeamCheck and isTeam(model) then return false end
+    local rootPart = model:FindFirstChild("HumanoidRootPart")
     local myRoot = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-    if myRoot then
-        local d = (myRoot.Position - model:FindFirstChild("HumanoidRootPart").Position).Magnitude
+    if myRoot and rootPart then
+        local d = (myRoot.Position - rootPart.Position).Magnitude
         if d > Cfg.AimDistance then return false end
     end
     if Cfg.AimWallCheck then
@@ -1218,7 +1261,6 @@ local function validTarget(model)
 end
 
 RunService.RenderStepped:Connect(function()
-    -- FOV Circle
     if Cfg.Aimbot and Cfg.AimFOV then
         FOVCircle.Visible = true
         FOVCircle.Size = UDim2.new(0, Cfg.AimFOVSize * 2, 0, Cfg.AimFOVSize * 2)
@@ -1232,7 +1274,6 @@ RunService.RenderStepped:Connect(function()
     local myRoot = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
     if not myRoot then return end
 
-    -- Pilih target terbaik
     local best, bestDist = nil, Cfg.AimMode == "FOV" and Cfg.AimFOVSize or math.huge
     local screenCenter = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
 
@@ -1284,7 +1325,6 @@ end)
 -- ==========================================
 -- PLAYER HACKS
 -- ==========================================
--- Speed Run
 RunService.Stepped:Connect(function()
     local char = LocalPlayer.Character
     if not char then return end
@@ -1292,13 +1332,9 @@ RunService.Stepped:Connect(function()
     if not hum then return end
     if Cfg.SpeedRun then
         hum.WalkSpeed = 16 * (Cfg.SpeedRunValue / 100)
-    elseif not Cfg.SpeedRun and hum.WalkSpeed ~= 16 and Cfg.SpeedRunValue == 50 then
-        hum.WalkSpeed = 16
     end
 end)
 
--- Multi Jump
-local jumpCount = 0
 UserInputService.JumpRequest:Connect(function()
     if Cfg.MultiJump and LocalPlayer.Character then
         local hum = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
@@ -1308,7 +1344,6 @@ UserInputService.JumpRequest:Connect(function()
     end
 end)
 
--- Fly Hack (tahan Jump)
 local flyBV
 RunService.RenderStepped:Connect(function()
     if not LocalPlayer.Character then return end
@@ -1328,7 +1363,6 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
--- Wall Hack (Noclip)
 RunService.Stepped:Connect(function()
     if Cfg.WallHack and LocalPlayer.Character then
         for _, part in ipairs(LocalPlayer.Character:GetDescendants()) do
@@ -1338,9 +1372,8 @@ RunService.Stepped:Connect(function()
 end)
 
 -- ==========================================
--- GUN MODS: RAPID FIRE + UNLIMITED AMMO
+-- GUN MODS
 -- ==========================================
--- 1. Scan Value & Attribute
 local function ScanValueMods(tool)
     pcall(function()
         local function SetSafe(attr, value)
@@ -1386,7 +1419,6 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
--- 2. Deep Memory GC Scanner
 task.spawn(function()
     while task.wait(1) do
         if Cfg.UnlimitedAmmo or Cfg.RapidFire then
@@ -1419,8 +1451,4 @@ task.spawn(function()
     end
 end)
 
--- ==========================================
--- SCRIPT LOADED NOTIFICATION
--- ==========================================
-IconBtn.Text = "☠"
-print("[LiteHack] UI Loaded. Tekan ikon tengkorak untuk show/hide.")
+print("[LiteHack] UI Loaded (FIXED). Tekan ikon tengkorak untuk show/hide.")
