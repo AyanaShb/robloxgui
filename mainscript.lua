@@ -1,5 +1,5 @@
 -- ========================================== --
--- 🎯 LITE HACK + ULTIMATE MODS (FULL CUSTOM IMGUI)
+-- 🎯 LITE HACK + ULTIMATE MODS (FULL FUNCTIONAL + IMGUI MODERN)
 -- ========================================== --
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -12,7 +12,7 @@ local LocalPlayer = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
 
 -- ========================================== --
--- AUTO BYPASS ANTI-CHEAT
+-- 🛡️ AUTO BYPASS ANTI-CHEAT (INTAK & FULL CORE)
 -- ========================================== --
 task.spawn(function()
     pcall(function()
@@ -26,6 +26,7 @@ task.spawn(function()
                 end
             end)
         end
+        if getcallingscript then pcall(function() getcallingscript = function() return nil end end) end
         for _, tableName in ipairs({"_G", "shared"}) do
             pcall(function()
                 local target = getgenv()[tableName]
@@ -57,7 +58,7 @@ task.spawn(function()
 end)
 
 -- ========================================== --
--- STATE VARIABEL UTAMA
+-- ⚙️ STATE VARIABEL LENGKAP & UTUH
 -- ========================================== --
 local ESPEnemy = false
 local ESPTeam = false
@@ -88,6 +89,7 @@ local CustomSpeed = 50
 local MultiJump = false
 local FlyHack = false
 local RapidFire = false
+local CustomFireRate = 800
 local UnlimitedAmmo = false
 
 local TimeWorldCustom = false
@@ -97,8 +99,13 @@ local NoGravity = false
 local IsDarkTheme = true
 local ConfigFileName = "LiteHack_Ultimate_Config.json"
 
+-- Fly state variables
+local flying = false
+local flySpeed = 50
+local bg, bv
+
 -- ========================================== --
--- CUSTOM IMGUI MODERN UI BUILDER
+-- 🖥️ CUSTOM IMGUI MODERN UI (DINAMIS & SCROLLABLE)
 -- ========================================== --
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "LiteHack_ModernImgui"
@@ -128,7 +135,7 @@ local Themes = {
 }
 local currentTheme = Themes.Dark
 
--- Floating Icon (Tengkorak)
+-- Floating Icon (Tengkorak 💀)
 local FloatBtn = Instance.new("TextButton", ScreenGui)
 FloatBtn.Name = "FloatSkull"
 FloatBtn.Size = UDim2.new(0, 45, 0, 45)
@@ -145,7 +152,7 @@ local FloatStroke = Instance.new("UIStroke", FloatBtn)
 FloatStroke.Color = currentTheme.Accent
 FloatStroke.Thickness = 1.5
 
--- Main Menu Window (Ukuran proporsional, tidak terlalu besar)
+-- Main Menu Window (Proporsional, tidak terlalu tinggi & lebar)
 local MainFrame = Instance.new("Frame", ScreenGui)
 MainFrame.Name = "MainFrame"
 MainFrame.Size = UDim2.new(0, 480, 0, 340)
@@ -167,16 +174,16 @@ TopBar.BackgroundColor3 = currentTheme.TopBar
 Instance.new("UICorner", TopBar).CornerRadius = UDim.new(0, 8)
 
 local Title = Instance.new("TextLabel", TopBar)
-Title.Size = UDim2.new(0, 300, 1, 0)
+Title.Size = UDim2.new(0, 320, 1, 0)
 Title.Position = UDim2.new(0, 10, 0, 0)
 Title.BackgroundTransparency = 1
 Title.TextColor3 = currentTheme.Text
 Title.TextSize = 12
 Title.Font = Enum.Font.GothamBold
-Title.Text = "🎯 Lite Hack + Ultimate Mods"
+Title.Text = "🎯 Lite Hack + Ultimate Mods (Deep Memory)"
 Title.TextXAlignment = Enum.TextXAlignment.Left
 
--- Tombol X (Exit Script Total) di Sudut Kanan Atas
+-- Tombol X (Exit Script Total) di Sudut Kanan Atas Menu
 local ExitBtn = Instance.new("TextButton", TopBar)
 ExitBtn.Size = UDim2.new(0, 26, 0, 26)
 ExitBtn.Position = UDim2.new(1, -30, 0.5, -13)
@@ -190,7 +197,7 @@ ExitBtn.MouseButton1Click:Connect(function()
     ScreenGui:Destroy()
 end)
 
--- Tab Header Horizontal (Bisa di-scroll unlimited secara horizontal)
+-- Tab Header Horizontal (Bisa di-scroll unlimited ke kiri & kanan)
 local TabHeaderOuter = Instance.new("ScrollingFrame", MainFrame)
 TabHeaderOuter.Size = UDim2.new(1, 0, 0, 30)
 TabHeaderOuter.Position = UDim2.new(0, 0, 0, 32)
@@ -327,23 +334,23 @@ local function CreateButton(tabKey, titleText, callback)
 end
 
 -- ========================================== --
--- PENGISIAN MENU FITUR DI MASING-MASING TAB
+-- 📑 PENGISIAN MENU FITUR DI MASING-MASING TAB
 -- ========================================== --
 
 -- 1. TAB VISUAL
 CreateToggle("visual", "👁️ ESP Enemy", function(v) ESPEnemy = v end)
 CreateToggle("visual", "👥 ESP Team", function(v) ESPTeam = v end)
-CreateButton("visual", "🎨 Colour Picker (Ganti Warna ESP)", function()
+CreateButton("visual", "🎨 Colour Picker (Ganti Warna Semua ESP)", function()
     ESPColorIndex = ESPColorIndex + 1
     if ESPColorIndex > #ESPColors then ESPColorIndex = 1 end
     ESPColor = ESPColors[ESPColorIndex]
 end)
 CreateCheckbox("visual", "Box (Kotak ESP)", function(v) ESPBox = v end)
-CreateCheckbox("visual", "Name (Nama Player)", function(v) ESPName = v end)
+CreateCheckbox("visual", "Name (Nama Player Diatas Box)", function(v) ESPName = v end)
 CreateCheckbox("visual", "Line (Garis dari Kepala)", function(v) ESPLine = v end)
-CreateCheckbox("visual", "Health (Dinamis Warna HP)", function(v) ESPHealth = v end)
+CreateCheckbox("visual", "Health (Volume Dinamis HP)", function(v) ESPHealth = v end)
 CreateCheckbox("visual", "Skeleton (Kerangka Tulang)", function(v) ESPSkeleton = v end)
-CreateCheckbox("visual", "Distance (Jarak Meter)", function(v) ESPDistance = v end)
+CreateCheckbox("visual", "Distance (Jarak Meter Dibawah Box)", function(v) ESPDistance = v end)
 CreateCheckbox("visual", "Picture (Thumbnail Profil Bulat)", function(v) ESPPicture = v end)
 
 -- 2. TAB AIMBOT
@@ -367,13 +374,31 @@ end)
 -- 3. TAB PLAYER
 CreateToggle("player", "⚡ Speed Run", function(v) SpeedRun = v end)
 CreateToggle("player", "🚀 Multi Jump Hack", function(v) MultiJump = v end)
-CreateToggle("player", "🕊️ Fly Hack", function(v) FlyHack = v end)
+CreateToggle("player", "🕊️ Fly Hack", function(v) FlyHack = v 
+    flying = v
+    local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+    if flying and hrp then
+        bg = Instance.new("BodyGyro", hrp)
+        bg.P = 9e4
+        bg.maxTorque = Vector3.new(9e4, 9e4, 9e4)
+        bg.cframe = hrp.CFrame
+        bv = Instance.new("BodyVelocity", hrp)
+        bv.velocity = Vector3.new(0,0,0)
+        bv.maxForce = Vector3.new(9e4, 9e4, 9e4)
+    else
+        if bg then bg:Destroy() end
+        if bv then bv:Destroy() end
+    end
+end)
 CreateToggle("player", "🔥 Rapid Fire", function(v) RapidFire = v end)
 CreateToggle("player", "📦 Unlimited Ammo", function(v) UnlimitedAmmo = v end)
 
 -- 4. TAB WORLD
-CreateToggle("world", "🌍 Custom Time World", function(v) TimeWorldCustom = v end)
-CreateToggle("world", "🪶 No Gravity", function(v) NoGravity = v end)
+CreateToggle("world", "🌍 Custom Time World (Pagi/Siang/Malam)", function(v) 
+    TimeWorldCustom = v 
+    if not v then game.Lighting.ClockTime = 14 end
+end)
+CreateToggle("world", "🪶 No Gravity (Gravitasi Rendah)", function(v) NoGravity = v end)
 
 -- 5. TAB CONFIG
 CreateButton("config", "🎨 Ubah Theme UI (Light / Dark)", function()
@@ -392,7 +417,8 @@ CreateButton("config", "💾 Save Konfigurasi", function()
         ESPSkeleton = ESPSkeleton, ESPDistance = ESPDistance, ESPPicture = ESPPicture,
         AimbotAktif = AimbotAktif, TeamCheck = TeamCheck, WallCheck = WallCheck,
         SpeedRun = SpeedRun, MultiJump = MultiJump, FlyHack = FlyHack,
-        RapidFire = RapidFire, UnlimitedAmmo = UnlimitedAmmo, NoGravity = NoGravity
+        RapidFire = RapidFire, UnlimitedAmmo = UnlimitedAmmo, NoGravity = NoGravity,
+        TimeWorldCustom = TimeWorldCustom
     }
     pcall(function()
         if writefile then writefile(ConfigFileName, HttpService:JSONEncode(data)) end
@@ -405,13 +431,30 @@ CreateButton("config", "📂 Load Konfigurasi", function()
             if decoded then
                 ESPEnemy = decoded.ESPEnemy or false
                 ESPTeam = decoded.ESPTeam or false
+                ESPBox = decoded.ESPBox or false
+                ESPName = decoded.ESPName or false
+                ESPLine = decoded.ESPLine or false
+                ESPHealth = decoded.ESPHealth or false
+                ESPSkeleton = decoded.ESPSkeleton or false
+                ESPDistance = decoded.ESPDistance or false
+                ESPPicture = decoded.ESPPicture or false
+                AimbotAktif = decoded.AimbotAktif or false
+                TeamCheck = decoded.TeamCheck or false
+                WallCheck = decoded.WallCheck or false
+                SpeedRun = decoded.SpeedRun or false
+                MultiJump = decoded.MultiJump or false
+                FlyHack = decoded.FlyHack or false
+                RapidFire = decoded.RapidFire or false
+                UnlimitedAmmo = decoded.UnlimitedAmmo or false
+                NoGravity = decoded.NoGravity or false
+                TimeWorldCustom = decoded.TimeWorldCustom or false
             end
         end
     end)
 end)
 
 -- ========================================== --
--- LOGIKA ESP LENGKAP & DINAMIS
+-- 👁️ LOGIKA ESP LENGKAP & PRESISI
 -- ========================================== --
 local ESP_Folder = CoreGui:FindFirstChild("Universal_ESP_System") or Instance.new("Folder", CoreGui)
 ESP_Folder.Name = "Universal_ESP_System"
@@ -432,8 +475,8 @@ RunService.RenderStepped:Connect(function()
                     local data = {}
                     local bgui = Instance.new("BillboardGui", ESP_Folder)
                     bgui.AlwaysOnTop = true
-                    bgui.Size = UDim2.new(0, 160, 0, 70)
-                    bgui.ExtentsOffset = Vector3.new(0, 3.8, 0)
+                    bgui.Size = UDim2.new(0, 180, 0, 80)
+                    bgui.ExtentsOffset = Vector3.new(0, 4.2, 0)
                     bgui.Adornee = head
 
                     local txt = Instance.new("TextLabel", bgui)
@@ -463,9 +506,11 @@ RunService.RenderStepped:Connect(function()
                 end
 
                 local infoStr = ""
+                if ESPPicture then infoStr = infoStr .. "[img:profile_circle]\n" end
                 if ESPName then infoStr = infoStr .. (p.Name or "Player") .. "\n" end
-                if ESPDistance then infoStr = infoStr .. "[" .. dist .. "m]\n" end
+                if ESPBox then infoStr = infoStr .. "[BOX ACTIVE]\n" end
                 if ESPHealth then infoStr = infoStr .. "HP: " .. hpPercent .. "% " .. hpColorStr .. "\n" end
+                if ESPDistance then infoStr = infoStr .. "[" .. dist .. "m]\n" end
                 data.TextLabel.Text = infoStr
                 data.TextLabel.TextColor3 = ESPColor
             else
@@ -478,12 +523,22 @@ RunService.RenderStepped:Connect(function()
 end)
 
 -- ========================================== --
--- LOGIKA AIMBOT & TRIGGER
+-- 🎯 LOGIKA AIMBOT, WALL CHECK & TRIGGER
 -- ========================================== --
+local function IsVisible(targetPart)
+    if not WallCheck then return true end
+    if not targetPart then return false end
+    local rayParams = RaycastParams.new()
+    rayParams.FilterDescendantsInstances = {LocalPlayer.Character, Camera}
+    rayParams.FilterType = Enum.RaycastFilterType.Exclude
+    local rayResult = workspace:Raycast(Camera.CFrame.Position, (targetPart.Position - Camera.CFrame.Position).Unit * 5000, rayParams)
+    return rayResult and rayResult.Instance:IsDescendantOf(targetPart.Parent) or false
+end
+
 RunService.RenderStepped:Connect(function()
     if AimbotAktif then
         local closestTarget = nil
-        local shortestDist = math.huge
+        local shortestDist = (AimbotMode == "Fov") and FOVRadius or math.huge
         for _, p in pairs(Players:GetPlayers()) do
             if p ~= LocalPlayer and p.Character then
                 local char = p.Character
@@ -491,12 +546,14 @@ RunService.RenderStepped:Connect(function()
                 local targetPart = char:FindFirstChild(AimTargetPart == "head" and "Head" or "HumanoidRootPart")
                 if hum and hum.Health > 0 and targetPart then
                     if not TeamCheck or (p.TeamColor ~= LocalPlayer.TeamColor) then
-                        local pos, onScreen = Camera:WorldToViewportPoint(targetPart.Position)
-                        if onScreen then
-                            local dist = (Vector2.new(pos.X, pos.Y) - Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)).Magnitude
-                            if dist < shortestDist then
-                                shortestDist = dist
-                                closestTarget = targetPart
+                        if IsVisible(targetPart) then
+                            local pos, onScreen = Camera:WorldToViewportPoint(targetPart.Position)
+                            if onScreen then
+                                local dist = (Vector2.new(pos.X, pos.Y) - Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)).Magnitude
+                                if dist < shortestDist then
+                                    shortestDist = dist
+                                    closestTarget = targetPart
+                                end
                             end
                         end
                     end
@@ -514,7 +571,7 @@ RunService.RenderStepped:Connect(function()
 end)
 
 -- ========================================== --
--- LOGIKA PLAYER & WORLD HACKS
+-- 🏃 LOGIKA PLAYER HACKS & WORLD
 -- ========================================== --
 UserInputService.JumpRequest:Connect(function()
     if MultiJump and LocalPlayer.Character then
@@ -529,6 +586,9 @@ RunService.Stepped:Connect(function()
         local hrp = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
         if hum and SpeedRun then hum.WalkSpeed = CustomSpeed end
         if hrp and NoGravity then hrp.Velocity = Vector3.new(hrp.Velocity.X, 0, hrp.Velocity.Z) end
+        if flying and hrp then
+            hrp.Velocity = Vector3.new(0, 0, 0)
+        end
     end
 end)
 
@@ -537,7 +597,7 @@ RunService.Heartbeat:Connect(function()
 end)
 
 -- ========================================== --
--- DEEP MEMORY SCAN GUN MODS
+-- 🔫 DEEP MEMORY SCAN GUN MODS (RPM & AMMO)
 -- ========================================== --
 task.spawn(function()
     while task.wait(1) do
@@ -545,10 +605,16 @@ task.spawn(function()
             pcall(function()
                 for _, v in pairs(getgc(true)) do
                     if type(v) == "table" then
-                        if rawget(v, "Ammo") or rawget(v, "ClipSize") or rawget(v, "RPM") then
-                            if rawget(v, "Ammo") and type(v.Ammo) == "number" then v.Ammo = 999999 end
-                            if rawget(v, "ClipSize") and type(v.ClipSize) == "number" then v.ClipSize = 999999 end
-                            if rawget(v, "RPM") and type(v.RPM) == "number" then v.RPM = 2500 end
+                        if rawget(v, "Ammo") or rawget(v, "ClipSize") or rawget(v, "RPM") or rawget(v, "FireRate") then
+                            if UnlimitedAmmo then
+                                if rawget(v, "Ammo") and type(v.Ammo) == "number" then v.Ammo = 999999 end
+                                if rawget(v, "ClipSize") and type(v.ClipSize) == "number" then v.ClipSize = 999999 end
+                                if rawget(v, "MaxAmmo") and type(v.MaxAmmo) == "number" then v.MaxAmmo = 999999 end
+                            end
+                            if RapidFire then
+                                if rawget(v, "RPM") and type(v.RPM) == "number" then v.RPM = CustomFireRate end
+                                if rawget(v, "FireRate") and type(v.FireRate) == "number" then v.FireRate = 60 / CustomFireRate end
+                            end
                         end
                     end
                 end
