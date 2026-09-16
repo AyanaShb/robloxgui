@@ -260,7 +260,7 @@ local TabScroll = make("ScrollingFrame", {
     Parent = MainFrame
 })
 corner(TabScroll, 8)
-local TabLayout = make("UIListLayout", {
+make("UIListLayout", {
     FillDirection = Enum.FillDirection.Horizontal,
     Padding = UDim.new(0, 6),
     SortOrder = Enum.SortOrder.LayoutOrder,
@@ -398,10 +398,7 @@ local function Toggle(page, text, default, callback)
         if fire and callback then callback(v) end
     end
 
-    btn.MouseButton1Click:Connect(function()
-        update(not state, true)
-    end)
-
+    btn.MouseButton1Click:Connect(function() update(not state, true) end)
     return {
         Set = function(_, v) update(v, true) end,
         Get = function() return state end
@@ -493,7 +490,6 @@ local function Slider(page, text, min, max, default, suffix, callback)
     }
 end
 
--- ComboBox anti bentrok
 local function ComboBox(page, text, options, default, callback)
     local row = make("Frame", {
         Size = UDim2.new(1, 0, 0, 30),
@@ -601,7 +597,6 @@ local function ComboBox(page, text, options, default, callback)
     }
 end
 
--- ListBox
 local function ListBox(page, text, getItems, callback)
     local row = make("Frame", {
         Size = UDim2.new(1, 0, 0, 110),
@@ -676,9 +671,7 @@ local function Button(page, text, callback)
         Parent = page
     })
     corner(btn, 8)
-    btn.MouseButton1Click:Connect(function()
-        if callback then pcall(callback) end
-    end)
+    btn.MouseButton1Click:Connect(function() if callback then pcall(callback) end end)
     return btn
 end
 
@@ -738,14 +731,30 @@ Toggle(PlayerTab, "Speed Run", Cfg.SpeedRun, function(v)
     end
 end)
 Slider(PlayerTab, "Speed %", 100, 500, Cfg.SpeedRunValue, "%", function(v) Cfg.SpeedRunValue = v end)
-
 Toggle(PlayerTab, "Multi Jump", Cfg.MultiJump, function(v) Cfg.MultiJump = v end)
-Toggle(PlayerTab, "Fly Hack (tahan Jump)", Cfg.FlyHack, function(v) Cfg.FlyHack = v end)
+Toggle(PlayerTab, "Fly Hack (tahan Jump)", Cfg.FlyHack, function(v)
+    Cfg.FlyHack = v
+    if not v then
+        -- reset saat dimatikan
+        if _G.__FlyBV then pcall(function() _G.__FlyBV:Destroy() end); _G.__FlyBV = nil end
+    end
+end)
 
 Section(PlayerTab, "Combat")
 Toggle(PlayerTab, "Rapid Fire", Cfg.RapidFire, function(v) Cfg.RapidFire = v end)
 Toggle(PlayerTab, "Unlimited Ammo", Cfg.UnlimitedAmmo, function(v) Cfg.UnlimitedAmmo = v end)
-Toggle(PlayerTab, "Wall Hack (Noclip)", Cfg.WallHack, function(v) Cfg.WallHack = v end)
+Toggle(PlayerTab, "Wall Hack (Noclip)", Cfg.WallHack, function(v)
+    Cfg.WallHack = v
+    if not v and LocalPlayer.Character then
+        for _, part in ipairs(LocalPlayer.Character:GetDescendants()) do
+            if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
+                part.CanCollide = true
+            end
+        end
+        local root = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+        if root then root.CanCollide = true end
+    end
+end)
 
 -- ==========================================
 -- TAB WORLD
@@ -763,7 +772,10 @@ ComboBox(WorldTab, "Clock Time", {"Default", "Pagi", "Siang", "Sore", "Malam"}, 
     elseif v == "Malam" then
         Lighting.ClockTime = 0; Lighting.Brightness = 1; Lighting.OutdoorAmbient = Color3.fromRGB(30,30,50)
     else
+        -- Default: kembalikan ke nilai umum
         Lighting.ClockTime = 14
+        Lighting.Brightness = 2
+        Lighting.OutdoorAmbient = Color3.fromRGB(70, 70, 70)
     end
 end)
 
@@ -780,7 +792,8 @@ ListBox(WorldTab, "Teleport ke Pemain", function()
     return list
 end, function(name)
     local target = Players:FindFirstChild(name)
-    if target and target.Character and target.Character:FindFirstChild("HumanoidRootPart") and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+    if target and target.Character and target.Character:FindFirstChild("HumanoidRootPart")
+       and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
         LocalPlayer.Character.HumanoidRootPart.CFrame = target.Character.HumanoidRootPart.CFrame + Vector3.new(0, 3, 0)
     end
 end)
@@ -807,19 +820,7 @@ end)
 Section(ConfigTab, "Save / Load")
 Button(ConfigTab, "💾 SAVE CONFIG", function()
     pcall(function()
-        local data = HttpService:JSONEncode({
-            ESPEnemy = Cfg.ESPEnemy, ESPTeam = Cfg.ESPTeam,
-            ESPBox = Cfg.ESPBox, ESPName = Cfg.ESPName, ESPLine = Cfg.ESPLine,
-            ESPHealth = Cfg.ESPHealth, ESPSkeleton = Cfg.ESPSkeleton,
-            ESPDistance = Cfg.ESPDistance, ESPPicture = Cfg.ESPPicture,
-            Aim = Cfg.Aimbot, AimTC = Cfg.AimTeamCheck, AimWC = Cfg.AimWallCheck,
-            AimMode = Cfg.AimMode, AimTrigger = Cfg.AimTrigger, AimFOV = Cfg.AimFOV,
-            AimFOVSize = Cfg.AimFOVSize, AimLine = Cfg.AimLine, AimTarget = Cfg.AimTarget, AimDist = Cfg.AimDistance,
-            SpeedRun = Cfg.SpeedRun, SpeedRunValue = Cfg.SpeedRunValue,
-            MultiJump = Cfg.MultiJump, FlyHack = Cfg.FlyHack, RapidFire = Cfg.RapidFire,
-            UnlimitedAmmo = Cfg.UnlimitedAmmo, WallHack = Cfg.WallHack,
-            ClockTime = Cfg.ClockTime, NoGravity = Cfg.NoGravity, Theme = Cfg.Theme
-        })
+        local data = HttpService:JSONEncode(Cfg)
         if writefile then writefile("LiteHack_Config.json", data) end
     end)
 end)
@@ -836,7 +837,7 @@ Button(ConfigTab, "📂 LOAD CONFIG", function()
 end)
 
 -- ==========================================
--- DRAG: WINDOW + FLOATING ICON
+-- DRAG
 -- ==========================================
 local function makeDraggable(frame, handle)
     local dragging, startPos, startInput = false, nil, nil
@@ -861,16 +862,11 @@ end
 makeDraggable(MainFrame, TopBar)
 makeDraggable(IconBtn, IconBtn)
 
-CloseBtn.MouseButton1Click:Connect(function()
-    MainFrame.Visible = false
-end)
-
-IconBtn.MouseButton1Click:Connect(function()
-    MainFrame.Visible = not MainFrame.Visible
-end)
+CloseBtn.MouseButton1Click:Connect(function() MainFrame.Visible = false end)
+IconBtn.MouseButton1Click:Connect(function() MainFrame.Visible = not MainFrame.Visible end)
 
 -- ==========================================
--- FOV CIRCLE DRAW
+-- FOV CIRCLE
 -- ==========================================
 local FOVGui = make("ScreenGui", {Name = "LiteHack_FOV", ResetOnSpawn = false, IgnoreGuiInset = true, Parent = getGuiParent()})
 local FOVCircle = make("Frame", {
@@ -882,6 +878,7 @@ local FOVCircle = make("Frame", {
 })
 corner(FOVCircle, 9999)
 stroke(FOVCircle, Color3.fromRGB(255, 80, 80), 2, 0.3)
+
 local AimLineGui = make("Frame", {
     Size = UDim2.new(0, 2, 0, 0),
     BackgroundColor3 = Color3.fromRGB(255, 80, 80),
@@ -913,30 +910,22 @@ local function isTeam(model)
     return false
 end
 
+-- ====== ESP BOX & HEALTH (VERSI ASLI KAMU - TIDAK DIUBAH) ======
 local function createESP(model)
     local box = make("Frame", {
         BackgroundTransparency = 1, BorderSizePixel = 0, Visible = false,
         ZIndex = 3, Parent = ESPGui, Name = "Box"
     })
     local corners = {}
-    local segSize, segLen = 2, 10
-    local positions = {
-        {UDim2.new(0,0,0,0), UDim2.new(0,segLen,0,segSize), Vector2.new(0,0)},
-        {UDim2.new(0,0,0,0), UDim2.new(0,segSize,0,segLen), Vector2.new(0,0)},
-        {UDim2.new(1,0,0,0), UDim2.new(0,segLen,0,segSize), Vector2.new(1,0)},
-        {UDim2.new(1,0,0,0), UDim2.new(0,segSize,0,segLen), Vector2.new(1,0)},
-        {UDim2.new(0,0,1,0), UDim2.new(0,segLen,0,segSize), Vector2.new(0,1)},
-        {UDim2.new(0,0,1,0), UDim2.new(0,segSize,0,segLen), Vector2.new(0,1)},
-        {UDim2.new(1,0,1,0), UDim2.new(0,segLen,0,segSize), Vector2.new(1,1)},
-        {UDim2.new(1,0,1,0), UDim2.new(0,segSize,0,segLen), Vector2.new(1,1)},
-    }
-    for i, p in ipairs(positions) do
-        corners[i] = make("Frame", {
-            Size = p[2], Position = p[1], AnchorPoint = p[3],
-            BackgroundColor3 = Color3.white, BorderSizePixel = 0,
-            ZIndex = 4, Parent = box
-        })
-    end
+    local c1 = make("Frame", {Size = UDim2.new(0, 10, 0, 2), BackgroundColor3 = Color3.white, BorderSizePixel = 0, ZIndex = 4, Parent = box})
+    local c2 = make("Frame", {Size = UDim2.new(0, 2, 0, 10), BackgroundColor3 = Color3.white, BorderSizePixel = 0, ZIndex = 4, Parent = box})
+    local c3 = make("Frame", {Size = UDim2.new(0, 10, 0, 2), BackgroundColor3 = Color3.white, AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, 0, 0, 0), BorderSizePixel = 0, ZIndex = 4, Parent = box})
+    local c4 = make("Frame", {Size = UDim2.new(0, 2, 0, 10), BackgroundColor3 = Color3.white, AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, 0, 0, 0), BorderSizePixel = 0, ZIndex = 4, Parent = box})
+    local c5 = make("Frame", {Size = UDim2.new(0, 10, 0, 2), BackgroundColor3 = Color3.white, AnchorPoint = Vector2.new(0, 1), Position = UDim2.new(0, 0, 1, 0), BorderSizePixel = 0, ZIndex = 4, Parent = box})
+    local c6 = make("Frame", {Size = UDim2.new(0, 2, 0, 10), BackgroundColor3 = Color3.white, AnchorPoint = Vector2.new(0, 1), Position = UDim2.new(0, 0, 1, 0), BorderSizePixel = 0, ZIndex = 4, Parent = box})
+    local c7 = make("Frame", {Size = UDim2.new(0, 10, 0, 2), BackgroundColor3 = Color3.white, AnchorPoint = Vector2.new(1, 1), Position = UDim2.new(1, 0, 1, 0), BorderSizePixel = 0, ZIndex = 4, Parent = box})
+    local c8 = make("Frame", {Size = UDim2.new(0, 2, 0, 10), BackgroundColor3 = Color3.white, AnchorPoint = Vector2.new(1, 1), Position = UDim2.new(1, 0, 1, 0), BorderSizePixel = 0, ZIndex = 4, Parent = box})
+    corners = {c1,c2,c3,c4,c5,c6,c7,c8}
 
     local name = make("TextLabel", {
         BackgroundTransparency = 1, TextSize = 13, Font = Enum.Font.GothamBold,
@@ -1049,7 +1038,6 @@ LocalPlayer.CharacterAdded:Connect(function()
     end
 end)
 
--- Helper R6/R15
 local R15 = {"Head","UpperTorso","LowerTorso","LeftHand","RightHand","LeftLowerArm","RightLowerArm","LeftUpperArm","RightUpperArm","LeftFoot","RightFoot","LeftLowerLeg","RightLowerLeg","LeftUpperLeg","RightUpperLeg"}
 local R6 = {"Head","Torso","Left Arm","Right Arm","Left Leg","Right Leg"}
 
@@ -1119,16 +1107,15 @@ RunService.RenderStepped:Connect(function()
             d.Box.Visible = Cfg.ESPBox
             for _, c in ipairs(d.Corners) do c.BackgroundColor3 = color end
 
-            -- Name (di atas box, tidak ketutupan picture)
+            -- Name (di atas box, TIDAK ketutupan picture)
             d.Name.Position = UDim2.new(0, topLeft.X, 0, topLeft.Y - 26)
             d.Name.Size = UDim2.new(0, 200, 0, 16)
             d.Name.AnchorPoint = Vector2.new(0.5, 0)
             d.Name.Text = model.Name
             d.Name.TextColor3 = color
-            d.Name.ZIndex = 10
             d.Name.Visible = Cfg.ESPName
 
-            -- Distance (di bawah box)
+            -- Distance (bawah box)
             d.Dist.Position = UDim2.new(0, topLeft.X, 0, topLeft.Y + height + 4)
             d.Dist.Size = UDim2.new(0, 200, 0, 14)
             d.Dist.AnchorPoint = Vector2.new(0.5, 0)
@@ -1136,7 +1123,7 @@ RunService.RenderStepped:Connect(function()
             d.Dist.Text = meters .. " m"
             d.Dist.Visible = Cfg.ESPDistance
 
-            -- Health
+            -- Health (VERSI ASLI KAMU)
             local hp = math.clamp(hum.Health / hum.MaxHealth, 0, 1)
             local hcol = hp > 0.7 and Color3.fromRGB(0,255,80) or (hp > 0.4 and Color3.fromRGB(255,150,0) or Color3.fromRGB(180,0,0))
             d.HealthBar.Position = UDim2.new(0, topLeft.X + width + 4, 0, topLeft.Y - 8)
@@ -1145,7 +1132,7 @@ RunService.RenderStepped:Connect(function()
             d.HealthFill.BackgroundColor3 = hcol
             d.HealthBar.Visible = Cfg.ESPHealth
 
-            -- Picture (LEBIH TINGGI dari name)
+            -- Picture (lebih tinggi dari name)
             if Cfg.ESPPicture then
                 d.Pic.Visible = true
                 d.Pic.Size = UDim2.new(0, 42, 0, 42)
@@ -1164,10 +1151,12 @@ RunService.RenderStepped:Connect(function()
                 d.Pic.Visible = false
             end
 
-            -- Line (mentok ke picture / kepala)
+            -- LINE: ditarik turun sampai mentok picture / kepala
             if Cfg.ESPLine then
                 local screenTop = Vector2.new(Camera.ViewportSize.X / 2, 0)
-                local anchorY = Cfg.ESPPicture and (topLeft.Y - 36) or (topLeft.Y - 8)
+                -- kalau picture aktif -> ujung bawah picture = topLeft.Y - 78 + 42 = topLeft.Y - 36
+                -- kalau tidak -> ujung atas kepala = topLeft.Y
+                local anchorY = Cfg.ESPPicture and (topLeft.Y - 36) or topLeft.Y
                 local targetPt = Vector2.new(topLeft.X, anchorY)
                 d.Line.Visible = true
                 d.Line.ZIndex = 4
@@ -1220,7 +1209,7 @@ RunService.RenderStepped:Connect(function()
 end)
 
 -- ==========================================
--- AIMBOT ENGINE
+-- AIMBOT
 -- ==========================================
 local LockedTarget = nil
 
@@ -1323,7 +1312,7 @@ RunService.RenderStepped:Connect(function()
 end)
 
 -- ==========================================
--- PLAYER HACKS
+-- PLAYER HACKS (dengan reset bersih)
 -- ==========================================
 RunService.Stepped:Connect(function()
     local char = LocalPlayer.Character
@@ -1338,31 +1327,33 @@ end)
 UserInputService.JumpRequest:Connect(function()
     if Cfg.MultiJump and LocalPlayer.Character then
         local hum = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
-        if hum then
-            hum:ChangeState(Enum.HumanoidStateType.Jumping)
-        end
+        if hum then hum:ChangeState(Enum.HumanoidStateType.Jumping) end
     end
 end)
 
-local flyBV
+-- Fly
 RunService.RenderStepped:Connect(function()
-    if not LocalPlayer.Character then return end
+    if not LocalPlayer.Character then
+        if _G.__FlyBV then pcall(function() _G.__FlyBV:Destroy() end); _G.__FlyBV = nil end
+        return
+    end
     local root = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
     if not root then return end
     if Cfg.FlyHack and UserInputService:IsKeyDown(Enum.KeyCode.Space) then
-        if not flyBV or flyBV.Parent ~= root then
-            if flyBV then flyBV:Destroy() end
-            flyBV = Instance.new("BodyVelocity", root)
-            flyBV.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
-            flyBV.Velocity = Vector3.new(0, 50, 0)
+        if not _G.__FlyBV or _G.__FlyBV.Parent ~= root then
+            if _G.__FlyBV then _G.__FlyBV:Destroy() end
+            _G.__FlyBV = Instance.new("BodyVelocity", root)
+            _G.__FlyBV.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
+            _G.__FlyBV.Velocity = Vector3.new(0, 50, 0)
         else
-            flyBV.Velocity = Vector3.new(0, 50, 0)
+            _G.__FlyBV.Velocity = Vector3.new(0, 50, 0)
         end
     else
-        if flyBV then flyBV:Destroy(); flyBV = nil end
+        if _G.__FlyBV then _G.__FlyBV:Destroy(); _G.__FlyBV = nil end
     end
 end)
 
+-- WallHack (Noclip)
 RunService.Stepped:Connect(function()
     if Cfg.WallHack and LocalPlayer.Character then
         for _, part in ipairs(LocalPlayer.Character:GetDescendants()) do
@@ -1451,4 +1442,4 @@ task.spawn(function()
     end
 end)
 
-print("[LiteHack] UI Loaded (FIXED). Tekan ikon tengkorak untuk show/hide.")
+print("[LiteHack] UI Loaded (FIXED v3). Tekan ikon tengkorak untuk show/hide.")
