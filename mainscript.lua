@@ -1,5 +1,5 @@
 -- ========================================== --
--- 🎯 LITE HACK + ULTIMATE MODS (COMPLETE FULL CODE)
+-- 🎯 LITE HACK + ULTIMATE MODS (FULL CUSTOM IMGUI)
 -- ========================================== --
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -8,12 +8,11 @@ local HttpService = game:GetService("HttpService")
 local ScriptContext = game:GetService("ScriptContext")
 local CoreGui = game:GetService("CoreGui")
 local UserInputService = game:GetService("UserInputService")
-local TweenService = game:GetService("TweenService")
 local LocalPlayer = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
 
 -- ========================================== --
--- AUTO BYPASS ANTI-CHEAT (INTAK)
+-- AUTO BYPASS ANTI-CHEAT
 -- ========================================== --
 task.spawn(function()
     pcall(function()
@@ -58,11 +57,13 @@ task.spawn(function()
 end)
 
 -- ========================================== --
--- STATE VARIABEL LENGKAP
+-- STATE VARIABEL UTAMA
 -- ========================================== --
 local ESPEnemy = false
 local ESPTeam = false
-local ESPColor = Color3.fromRGB(255, 0, 0)
+local ESPColorIndex = 1
+local ESPColors = {Color3.fromRGB(255, 0, 0), Color3.fromRGB(0, 255, 0), Color3.fromRGB(0, 150, 255), Color3.fromRGB(255, 255, 0)}
+local ESPColor = ESPColors[1]
 local ESPBox = false
 local ESPName = false
 local ESPLine = false
@@ -74,8 +75,8 @@ local ESPPicture = false
 local AimbotAktif = false
 local TeamCheck = false
 local WallCheck = false
-local AimbotMode = "Fov" -- "360°" or "Fov"
-local TriggerMode = "camera" -- "fire(snap)" or "camera"
+local AimbotMode = "Fov" -- "Fov" / "360°"
+local TriggerMode = "camera" -- "camera" / "fire(snap)"
 local AimFOVToggle = false
 local AimLineTracer = false
 local AimTargetPart = "head" -- "head" / "neck" / "chest"
@@ -96,12 +97,8 @@ local NoGravity = false
 local IsDarkTheme = true
 local ConfigFileName = "LiteHack_Ultimate_Config.json"
 
--- Fly variables
-local bodyGyro, bodyVelocity
-local flying = false
-
 -- ========================================== --
--- CUSTOM IMGUI MODERN UI (DINAMIS & SCROLLABLE)
+-- CUSTOM IMGUI MODERN UI BUILDER
 -- ========================================== --
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "LiteHack_ModernImgui"
@@ -109,7 +106,6 @@ ScreenGui.Parent = (gethui and gethui()) or CoreGui
 ScreenGui.IgnoreGuiInset = true
 ScreenGui.ResetOnSpawn = false
 
--- Theme Palettes
 local Themes = {
     Dark = {
         Bg = Color3.fromRGB(15, 15, 20),
@@ -132,7 +128,7 @@ local Themes = {
 }
 local currentTheme = Themes.Dark
 
--- Floating Icon (Tengkorak / Floating Button)
+-- Floating Icon (Tengkorak)
 local FloatBtn = Instance.new("TextButton", ScreenGui)
 FloatBtn.Name = "FloatSkull"
 FloatBtn.Size = UDim2.new(0, 45, 0, 45)
@@ -149,11 +145,11 @@ local FloatStroke = Instance.new("UIStroke", FloatBtn)
 FloatStroke.Color = currentTheme.Accent
 FloatStroke.Thickness = 1.5
 
--- Main Menu Window
+-- Main Menu Window (Ukuran proporsional, tidak terlalu besar)
 local MainFrame = Instance.new("Frame", ScreenGui)
 MainFrame.Name = "MainFrame"
-MainFrame.Size = UDim2.new(0, 520, 0, 360)
-MainFrame.Position = UDim2.new(0.5, -260, 0.5, -180)
+MainFrame.Size = UDim2.new(0, 480, 0, 340)
+MainFrame.Position = UDim2.new(0.5, -240, 0.5, -170)
 MainFrame.BackgroundColor3 = currentTheme.Bg
 MainFrame.BorderSizePixel = 0
 MainFrame.Active = true
@@ -166,7 +162,7 @@ end)
 
 -- Topbar
 local TopBar = Instance.new("Frame", MainFrame)
-TopBar.Size = UDim2.new(1, 0, 0, 34)
+TopBar.Size = UDim2.new(1, 0, 0, 32)
 TopBar.BackgroundColor3 = currentTheme.TopBar
 Instance.new("UICorner", TopBar).CornerRadius = UDim.new(0, 8)
 
@@ -175,18 +171,18 @@ Title.Size = UDim2.new(0, 300, 1, 0)
 Title.Position = UDim2.new(0, 10, 0, 0)
 Title.BackgroundTransparency = 1
 Title.TextColor3 = currentTheme.Text
-Title.TextSize = 13
+Title.TextSize = 12
 Title.Font = Enum.Font.GothamBold
-Title.Text = "🎯 Lite Hack + Ultimate Mods (Deep Memory)"
+Title.Text = "🎯 Lite Hack + Ultimate Mods"
 Title.TextXAlignment = Enum.TextXAlignment.Left
 
 -- Tombol X (Exit Script Total) di Sudut Kanan Atas
 local ExitBtn = Instance.new("TextButton", TopBar)
-ExitBtn.Size = UDim2.new(0, 28, 0, 28)
-ExitBtn.Position = UDim2.new(1, -32, 0.5, -14)
+ExitBtn.Size = UDim2.new(0, 26, 0, 26)
+ExitBtn.Position = UDim2.new(1, -30, 0.5, -13)
 ExitBtn.BackgroundColor3 = Color3.fromRGB(220, 50, 50)
 ExitBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-ExitBtn.TextSize = 12
+ExitBtn.TextSize = 11
 ExitBtn.Font = Enum.Font.GothamBold
 ExitBtn.Text = "X"
 Instance.new("UICorner", ExitBtn).CornerRadius = UDim.new(0, 6)
@@ -194,10 +190,10 @@ ExitBtn.MouseButton1Click:Connect(function()
     ScreenGui:Destroy()
 end)
 
--- Tab Header Horizontal Scrollable (Visual, Player, Aimbot, World, Config)
+-- Tab Header Horizontal (Bisa di-scroll unlimited secara horizontal)
 local TabHeaderOuter = Instance.new("ScrollingFrame", MainFrame)
-TabHeaderOuter.Size = UDim2.new(1, 0, 0, 32)
-TabHeaderOuter.Position = UDim2.new(0, 0, 0, 34)
+TabHeaderOuter.Size = UDim2.new(1, 0, 0, 30)
+TabHeaderOuter.Position = UDim2.new(0, 0, 0, 32)
 TabHeaderOuter.BackgroundColor3 = currentTheme.Sidebar
 TabHeaderOuter.BorderSizePixel = 0
 TabHeaderOuter.CanvasSize = UDim2.new(0, 500, 0, 0)
@@ -212,18 +208,18 @@ local tabNames = {"visual", "player", "aimbot", "world", "config"}
 local tabFrames = {}
 local tabButtons = {}
 
--- Content Holder Container (Vertical Scrollable Unlimited)
+-- Content Container (Masing-masing tab punya ScrollingFrame vertical unlimited ke bawah)
 local ContentContainer = Instance.new("Frame", MainFrame)
-ContentContainer.Size = UDim2.new(1, -12, 1, -78)
-ContentContainer.Position = UDim2.new(0, 6, 0, 72)
+ContentContainer.Size = UDim2.new(1, -12, 1, -74)
+ContentContainer.Position = UDim2.new(0, 6, 0, 68)
 ContentContainer.BackgroundTransparency = 1
 
 for i, name in ipairs(tabNames) do
     local btn = Instance.new("TextButton", TabHeaderOuter)
-    btn.Size = UDim2.new(0, 95, 1, 0)
+    btn.Size = UDim2.new(0, 90, 1, 0)
     btn.BackgroundTransparency = 1
     btn.TextColor3 = i == 1 and currentTheme.Accent or currentTheme.TextDark
-    btn.TextSize = 12
+    btn.TextSize = 11
     btn.Font = Enum.Font.GothamBold
     btn.Text = name:upper()
     tabButtons[name] = btn
@@ -251,27 +247,27 @@ for i, name in ipairs(tabNames) do
     end)
 end
 
--- UI Builder Elements Helper Functions
+-- Helper Komponen UI
 local function CreateToggle(tabKey, titleText, callback)
     local parent = tabFrames[tabKey]
     local frame = Instance.new("Frame", parent)
-    frame.Size = UDim2.new(1, 0, 0, 32)
+    frame.Size = UDim2.new(1, 0, 0, 30)
     frame.BackgroundColor3 = currentTheme.Element
     Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 6)
 
     local lbl = Instance.new("TextLabel", frame)
-    lbl.Size = UDim2.new(1, -50, 1, 0)
+    lbl.Size = UDim2.new(1, -45, 1, 0)
     lbl.Position = UDim2.new(0, 10, 0, 0)
     lbl.BackgroundTransparency = 1
     lbl.TextColor3 = currentTheme.Text
-    lbl.TextSize = 12
+    lbl.TextSize = 11
     lbl.Font = Enum.Font.Gotham
     lbl.Text = titleText
     lbl.TextXAlignment = Enum.TextXAlignment.Left
 
     local toggleBtn = Instance.new("TextButton", frame)
-    toggleBtn.Size = UDim2.new(0, 36, 0, 18)
-    toggleBtn.Position = UDim2.new(1, -44, 0.5, -9)
+    toggleBtn.Size = UDim2.new(0, 32, 0, 16)
+    toggleBtn.Position = UDim2.new(1, -40, 0.5, -8)
     toggleBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 70)
     toggleBtn.Text = ""
     Instance.new("UICorner", toggleBtn).CornerRadius = UDim.new(1, 0)
@@ -287,7 +283,7 @@ end
 local function CreateCheckbox(tabKey, titleText, callback)
     local parent = tabFrames[tabKey]
     local frame = Instance.new("Frame", parent)
-    frame.Size = UDim2.new(1, 0, 0, 30)
+    frame.Size = UDim2.new(1, 0, 0, 28)
     frame.BackgroundColor3 = currentTheme.Element
     Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 6)
 
@@ -302,8 +298,8 @@ local function CreateCheckbox(tabKey, titleText, callback)
     lbl.TextXAlignment = Enum.TextXAlignment.Left
 
     local boxBtn = Instance.new("TextButton", frame)
-    boxBtn.Size = UDim2.new(0, 18, 0, 18)
-    boxBtn.Position = UDim2.new(1, -26, 0.5, -9)
+    boxBtn.Size = UDim2.new(0, 16, 0, 16)
+    boxBtn.Position = UDim2.new(1, -24, 0.5, -8)
     boxBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 70)
     boxBtn.Text = ""
     Instance.new("UICorner", boxBtn).CornerRadius = UDim.new(0, 4)
@@ -320,10 +316,10 @@ end
 local function CreateButton(tabKey, titleText, callback)
     local parent = tabFrames[tabKey]
     local btn = Instance.new("TextButton", parent)
-    btn.Size = UDim2.new(1, 0, 0, 32)
+    btn.Size = UDim2.new(1, 0, 0, 30)
     btn.BackgroundColor3 = currentTheme.Element
     btn.TextColor3 = currentTheme.Text
-    btn.TextSize = 12
+    btn.TextSize = 11
     btn.Font = Enum.Font.GothamBold
     btn.Text = titleText
     Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
@@ -331,29 +327,24 @@ local function CreateButton(tabKey, titleText, callback)
 end
 
 -- ========================================== --
--- POPULASI KONTEN MENU KE TAB MASING-MASING
+-- PENGISIAN MENU FITUR DI MASING-MASING TAB
 -- ========================================== --
 
 -- 1. TAB VISUAL
 CreateToggle("visual", "👁️ ESP Enemy", function(v) ESPEnemy = v end)
 CreateToggle("visual", "👥 ESP Team", function(v) ESPTeam = v end)
-CreateButton("visual", "🎨 Pilih Warna ESP (Merah/Biru/Hijau)", function()
-    -- Cyclic color switcher for simplicity
-    if ESPColor == Color3.fromRGB(255, 0, 0) then
-        ESPColor = Color3.fromRGB(0, 255, 0)
-    elseif ESPColor == Color3.fromRGB(0, 255, 0) then
-        ESPColor = Color3.fromRGB(0, 150, 255)
-    else
-        ESPColor = Color3.fromRGB(255, 0, 0)
-    end
+CreateButton("visual", "🎨 Colour Picker (Ganti Warna ESP)", function()
+    ESPColorIndex = ESPColorIndex + 1
+    if ESPColorIndex > #ESPColors then ESPColorIndex = 1 end
+    ESPColor = ESPColors[ESPColorIndex]
 end)
-CreateCheckbox("visual", "Kotak (Box ESP)", function(v) ESPBox = v end)
-CreateCheckbox("visual", "Nama Player (Name ESP)", function(v) ESPName = v end)
-CreateCheckbox("visual", "Garis ke Kepala (Line ESP)", function(v) ESPLine = v end)
-CreateCheckbox("visual", "HP Dinamis (Health ESP)", function(v) ESPHealth = v end)
-CreateCheckbox("visual", "Kerangka Tulang (Skeleton ESP)", function(v) ESPSkeleton = v end)
-CreateCheckbox("visual", "Jarak Meter (Distance ESP)", function(v) ESPDistance = v end)
-CreateCheckbox("visual", "Foto Thumbnail Profil (Picture ESP)", function(v) ESPPicture = v end)
+CreateCheckbox("visual", "Box (Kotak ESP)", function(v) ESPBox = v end)
+CreateCheckbox("visual", "Name (Nama Player)", function(v) ESPName = v end)
+CreateCheckbox("visual", "Line (Garis dari Kepala)", function(v) ESPLine = v end)
+CreateCheckbox("visual", "Health (Dinamis Warna HP)", function(v) ESPHealth = v end)
+CreateCheckbox("visual", "Skeleton (Kerangka Tulang)", function(v) ESPSkeleton = v end)
+CreateCheckbox("visual", "Distance (Jarak Meter)", function(v) ESPDistance = v end)
+CreateCheckbox("visual", "Picture (Thumbnail Profil Bulat)", function(v) ESPPicture = v end)
 
 -- 2. TAB AIMBOT
 CreateToggle("aimbot", "🎯 Aktifkan Aimbot", function(v) AimbotAktif = v end)
@@ -365,24 +356,24 @@ end)
 CreateButton("aimbot", "⚡ Mode Trigger: Camera / Fire(Snap)", function()
     TriggerMode = (TriggerMode == "camera") and "fire(snap)" or "camera"
 end)
-CreateToggle("aimbot", "⭕ Tampilkan Aim FOV Circle", function(v) AimFOVToggle = v end)
+CreateToggle("aimbot", "⭕ Aim FOV Circle", function(v) AimFOVToggle = v end)
 CreateToggle("aimbot", "📈 Aim Line Tracer (Dalam FOV)", function(v) AimLineTracer = v end)
-CreateButton("aimbot", "🎯 Target: Head / Neck / Chest", function()
+CreateButton("aimbot", "🎯 Aim Target: Head / Neck / Chest", function()
     if AimTargetPart == "head" then AimTargetPart = "neck"
     elseif AimTargetPart == "neck" then AimTargetPart = "chest"
     else AimTargetPart = "head" end
 end)
 
 -- 3. TAB PLAYER
-CreateToggle("player", "⚡ Speed Run (Lari Cepat)", function(v) SpeedRun = v end)
+CreateToggle("player", "⚡ Speed Run", function(v) SpeedRun = v end)
 CreateToggle("player", "🚀 Multi Jump Hack", function(v) MultiJump = v end)
-CreateToggle("player", "🕊️ Fly Hack (Terbang)", function(v) FlyHack = v end)
-CreateToggle("player", "🔥 Rapid Fire (Custom RPM)", function(v) RapidFire = v; RapidFire = v end)
+CreateToggle("player", "🕊️ Fly Hack", function(v) FlyHack = v end)
+CreateToggle("player", "🔥 Rapid Fire", function(v) RapidFire = v end)
 CreateToggle("player", "📦 Unlimited Ammo", function(v) UnlimitedAmmo = v end)
 
 -- 4. TAB WORLD
-CreateToggle("world", "🌍 Custom Time World (Siang/Malam)", function(v) TimeWorldCustom = v end)
-CreateToggle("world", "🪶 No Gravity (Gravitasi Rendah)", function(v) NoGravity = v end)
+CreateToggle("world", "🌍 Custom Time World", function(v) TimeWorldCustom = v end)
+CreateToggle("world", "🪶 No Gravity", function(v) NoGravity = v end)
 
 -- 5. TAB CONFIG
 CreateButton("config", "🎨 Ubah Theme UI (Light / Dark)", function()
@@ -420,7 +411,7 @@ CreateButton("config", "📂 Load Konfigurasi", function()
 end)
 
 -- ========================================== --
--- SISTEM LOGIKA ESP LENGKAP (BOX, NAME, LINE, HEALTH, SKELETON, DISTANCE, PICTURE)
+-- LOGIKA ESP LENGKAP & DINAMIS
 -- ========================================== --
 local ESP_Folder = CoreGui:FindFirstChild("Universal_ESP_System") or Instance.new("Folder", CoreGui)
 ESP_Folder.Name = "Universal_ESP_System"
@@ -439,17 +430,16 @@ RunService.RenderStepped:Connect(function()
             if char and hrp and head and hum and hum.Health > 0 and shouldShow then
                 if not Active_ESP[p] then
                     local data = {}
-                    -- Billboard Tag di atas kepala (Picture + Name + Distance)
                     local bgui = Instance.new("BillboardGui", ESP_Folder)
                     bgui.AlwaysOnTop = true
-                    bgui.Size = UDim2.new(0, 150, 0, 60)
-                    bgui.ExtentsOffset = Vector3.new(0, 3.5, 0)
+                    bgui.Size = UDim2.new(0, 160, 0, 70)
+                    bgui.ExtentsOffset = Vector3.new(0, 3.8, 0)
                     bgui.Adornee = head
 
                     local txt = Instance.new("TextLabel", bgui)
                     txt.Size = UDim2.new(1, 0, 1, 0)
                     txt.BackgroundTransparency = 1
-                    txt.TextSize = 12
+                    txt.TextSize = 11
                     txt.Font = Enum.Font.Code
                     txt.TextColor3 = Color3.fromRGB(255, 255, 255)
                     txt.TextStrokeTransparency = 0
@@ -464,18 +454,18 @@ RunService.RenderStepped:Connect(function()
                 local dist = math.floor((Camera.CFrame.Position - hrp.Position).Magnitude)
                 local hpPercent = math.floor((hum.Health / hum.MaxHealth) * 100)
 
-                -- Health Color Dinamis: 100%=Hijau, 70%=Orange, 40%=Merah Gelap
-                local hpColor = Color3.fromRGB(0, 255, 0)
+                -- Volume Dinamis HP: 100% Hijau | 70% Orange | 40% Merah Gelap
+                local hpColorStr = "🟢"
                 if hpPercent <= 70 and hpPercent > 40 then
-                    hpColor = Color3.fromRGB(255, 165, 0)
+                    hpColorStr = "🟠"
                 elseif hpPercent <= 40 then
-                    hpColor = Color3.fromRGB(139, 0, 0)
+                    hpColorStr = "🔴"
                 end
 
                 local infoStr = ""
                 if ESPName then infoStr = infoStr .. (p.Name or "Player") .. "\n" end
                 if ESPDistance then infoStr = infoStr .. "[" .. dist .. "m]\n" end
-                if ESPHealth then infoStr = infoStr .. "HP: " .. hpPercent .. "%\n" end
+                if ESPHealth then infoStr = infoStr .. "HP: " .. hpPercent .. "% " .. hpColorStr .. "\n" end
                 data.TextLabel.Text = infoStr
                 data.TextLabel.TextColor3 = ESPColor
             else
@@ -524,7 +514,7 @@ RunService.RenderStepped:Connect(function()
 end)
 
 -- ========================================== --
--- LOGIKA PLAYER (SPEED, MULTI JUMP, FLY, AMMO)
+-- LOGIKA PLAYER & WORLD HACKS
 -- ========================================== --
 UserInputService.JumpRequest:Connect(function()
     if MultiJump and LocalPlayer.Character then
@@ -537,26 +527,17 @@ RunService.Stepped:Connect(function()
     if LocalPlayer.Character then
         local hum = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
         local hrp = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-        if hum and SpeedRun then
-            hum.WalkSpeed = CustomSpeed
-        end
-        if hrp and NoGravity then
-            hrp.Velocity = Vector3.new(hrp.Velocity.X, 0, hrp.Velocity.Z)
-        end
+        if hum and SpeedRun then hum.WalkSpeed = CustomSpeed end
+        if hrp and NoGravity then hrp.Velocity = Vector3.new(hrp.Velocity.X, 0, hrp.Velocity.Z) end
     end
 end)
 
--- ========================================== --
--- LOGIKA WORLD (TIME & GRAVITY)
--- ========================================== --
 RunService.Heartbeat:Connect(function()
-    if TimeWorldCustom then
-        game.Lighting.ClockTime = WorldTimeValue
-    end
+    if TimeWorldCustom then game.Lighting.ClockTime = WorldTimeValue end
 end)
 
 -- ========================================== --
--- DEEP MEMORY SCAN GUN MODS (RPM & UNLIMITED AMMO)
+-- DEEP MEMORY SCAN GUN MODS
 -- ========================================== --
 task.spawn(function()
     while task.wait(1) do
