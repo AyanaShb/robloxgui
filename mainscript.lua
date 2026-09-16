@@ -1,32 +1,22 @@
--- ========================================== --
--- 🎯 LITE HACK + ULTIMATE MODS (FULL FUNCTIONAL + IMGUI MODERN)
--- ========================================== --
+-- ========================================== -- 🎯 LITE HACK + ULTIMATE MODS (IMGUI VERSION) -- (UPDATED WITH DEEP MEMORY SCAN, IMGUI UI, FULL ESP, FLY, & WORLD TIME) -- ========================================== 
+
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local HttpService = game:GetService("HttpService")
 local ScriptContext = game:GetService("ScriptContext")
-local CoreGui = game:GetService("CoreGui")
+local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
+local CoreGui = game:GetService("CoreGui")
 local LocalPlayer = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
 
--- ========================================== --
--- 🛡️ AUTO BYPASS ANTI-CHEAT (INTAK & FULL CORE)
--- ========================================== --
+-- ========================================== -- AUTO BYPASS ANTI-CHEAT -- ========================================== 
 task.spawn(function()
     pcall(function()
         if setreadonly then pcall(function() setreadonly(getrenv(), false); setreadonly(getreg(), false); setreadonly(getgc(), false) end) end
         if make_writeable then pcall(function() make_writeable(getreg()) end) end
         if detour_function then detour_function = function(...) return true end end
-        if getconnections then
-            pcall(function()
-                for _, connection in ipairs(getconnections(ScriptContext.Error)) do
-                    connection:Disable()
-                end
-            end)
-        end
-        if getcallingscript then pcall(function() getcallingscript = function() return nil end end) end
         for _, tableName in ipairs({"_G", "shared"}) do
             pcall(function()
                 local target = getgenv()[tableName]
@@ -40,581 +30,591 @@ task.spawn(function()
                 end
             end)
         end
-        for _, remote in ipairs(ReplicatedStorage:GetDescendants()) do
-            if remote:IsA("RemoteEvent") or remote:IsA("RemoteFunction") then
-                local name = remote.Name:lower()
-                if name:find("handshake") or name:find("validate") or name:find("verify") or name:find("integrity") or name:find("anti") then
-                    pcall(function()
-                        if remote:IsA("RemoteEvent") then
-                            remote.FireServer = function(...) return true end
-                        elseif remote:IsA("RemoteFunction") then
-                            remote.InvokeServer = function(...) return true end
-                        end
-                    end)
-                end
-            end
-        end
     end)
 end)
 
--- ========================================== --
--- ⚙️ STATE VARIABEL LENGKAP & UTUH
--- ========================================== --
-local ESPEnemy = false
-local ESPTeam = false
-local ESPColorIndex = 1
-local ESPColors = {Color3.fromRGB(255, 0, 0), Color3.fromRGB(0, 255, 0), Color3.fromRGB(0, 150, 255), Color3.fromRGB(255, 255, 0)}
-local ESPColor = ESPColors[1]
-local ESPBox = false
-local ESPName = false
-local ESPLine = false
-local ESPHealth = false
-local ESPSkeleton = false
-local ESPDistance = false
-local ESPPicture = false
+-- ========================================== -- VARIABEL UTAMA & CONFIG -- ========================================== 
+local ScriptActive = true
+local ConfigFileName = "LiteHack_ImGui_Config.json"
+
+-- Status Fitur
+local ESP_Enemy = false
+local ESP_Team = false
+local ESP_Box = false
+local ESP_Name = false
+local ESP_Line = false
+local ESP_Health = false
+local ESP_Skeleton = false
+local ESP_Distance = false
+local ESP_Picture = false
+local ESP_Color = Color3.fromRGB(255, 0, 0)
 
 local AimbotAktif = false
 local TeamCheck = false
 local WallCheck = false
-local AimbotMode = "Fov" -- "Fov" / "360°"
-local TriggerMode = "camera" -- "camera" / "fire(snap)"
-local AimFOVToggle = false
+local AimbotMode = "FOV" -- "360°" atau "FOV"
+local TriggerMode = "Camera" -- "Camera" atau "Fire (Snap)"
+local ShowFOV = false
 local AimLineTracer = false
-local AimTargetPart = "head" -- "head" / "neck" / "chest"
-local AimDistanceMax = 1000
-local FOVRadius = 150
+local AimTarget = "Head" -- "Head", "Neck", "Chest"
+local AimDistance = 500
 
-local SpeedRun = false
+local SpeedAktif = false
 local CustomSpeed = 50
-local MultiJump = false
-local FlyHack = false
-local RapidFire = false
+local JumpAktif = false
+local FlyAktif = false
+local RapidFireAktif = false
+local AmmoAktif = false
 local CustomFireRate = 800
-local UnlimitedAmmo = false
 
-local TimeWorldCustom = false
-local WorldTimeValue = 14
+local WorldTime = 14
 local NoGravity = false
 
-local IsDarkTheme = true
-local ConfigFileName = "LiteHack_Ultimate_Config.json"
+local UITheme = "Dark" -- "Dark" atau "Light"
 
--- Fly state variables
-local flying = false
-local flySpeed = 50
-local bg, bv
+-- ========================================== -- IMGUI CUSTOM IMPLEMENTATION (LUAU) -- ========================================== 
+-- Membuat sistem ImGui kustom yang ringan, responsif, dinamis, support scroll horizontal & vertical.
+local TargetGuiParent = (gethui and gethui()) or CoreGui
+local MainScreenGui = Instance.new("ScreenGui")
+MainScreenGui.Name = "ImGui_LiteHack"
+MainScreenGui.Parent = TargetGuiParent
+MainScreenGui.IgnoreGuiInset = true
+MainScreenGui.DisplayOrder = 999999
 
--- ========================================== --
--- 🖥️ CUSTOM IMGUI MODERN UI (DINAMIS & SCROLLABLE)
--- ========================================== --
-local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "LiteHack_ModernImgui"
-ScreenGui.Parent = (gethui and gethui()) or CoreGui
-ScreenGui.IgnoreGuiInset = true
-ScreenGui.ResetOnSpawn = false
+-- Floating Icon (Tengkorak)
+local FloatIcon = Instance.new("TextButton")
+FloatIcon.Name = "FloatIcon"
+FloatIcon.Parent = MainScreenGui
+FloatIcon.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+FloatIcon.Position = UDim2.new(0, 50, 0, 50)
+FloatIcon.Size = UDim2.new(0, 45, 0, 45)
+FloatIcon.Font = Enum.Font.SourceSansBold
+FloatIcon.Text = "💀"
+FloatIcon.TextSize = 24
+FloatIcon.TextColor3 = Color3.fromRGB(255, 255, 255)
+FloatIcon.Active = true
+FloatIcon.Draggable = true
+Instance.new("UICorner", FloatIcon).CornerRadius = UDim.new(0, 10)
 
-local Themes = {
-    Dark = {
-        Bg = Color3.fromRGB(15, 15, 20),
-        TopBar = Color3.fromRGB(22, 22, 30),
-        Sidebar = Color3.fromRGB(20, 20, 26),
-        Element = Color3.fromRGB(28, 28, 38),
-        Accent = Color3.fromRGB(0, 162, 255),
-        Text = Color3.fromRGB(240, 240, 255),
-        TextDark = Color3.fromRGB(150, 150, 170)
-    },
-    Light = {
-        Bg = Color3.fromRGB(240, 240, 245),
-        TopBar = Color3.fromRGB(220, 220, 230),
-        Sidebar = Color3.fromRGB(230, 230, 238),
-        Element = Color3.fromRGB(255, 255, 255),
-        Accent = Color3.fromRGB(0, 120, 255),
-        Text = Color3.fromRGB(20, 20, 30),
-        TextDark = Color3.fromRGB(100, 100, 120)
-    }
-}
-local currentTheme = Themes.Dark
+-- Main Window
+local Window = Instance.new("Frame")
+Window.Name = "MainWindow"
+Window.Parent = MainScreenGui
+Window.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+Window.Position = UDim2.new(0.5, -225, 0.5, -175)
+Window.Size = UDim2.new(0, 450, 0, 350)
+Window.Active = true
+Window.Draggable = true
+Window.Visible = true
+Instance.new("UICorner", Window).CornerRadius = UDim.new(0, 8)
+local WindowStroke = Instance.new("UIStroke", Window)
+WindowStroke.Color = Color3.fromRGB(60, 60, 60)
+WindowStroke.Thickness = 1.5
 
--- Floating Icon (Tengkorak 💀)
-local FloatBtn = Instance.new("TextButton", ScreenGui)
-FloatBtn.Name = "FloatSkull"
-FloatBtn.Size = UDim2.new(0, 45, 0, 45)
-FloatBtn.Position = UDim2.new(0, 30, 0.4, 0)
-FloatBtn.BackgroundColor3 = currentTheme.TopBar
-FloatBtn.TextColor3 = currentTheme.Accent
-FloatBtn.TextSize = 22
-FloatBtn.Font = Enum.Font.GothamBold
-FloatBtn.Text = "💀"
-FloatBtn.Active = true
-FloatBtn.Draggable = true
-Instance.new("UICorner", FloatBtn).CornerRadius = UDim.new(1, 0)
-local FloatStroke = Instance.new("UIStroke", FloatBtn)
-FloatStroke.Color = currentTheme.Accent
-FloatStroke.Thickness = 1.5
-
--- Main Menu Window (Proporsional, tidak terlalu tinggi & lebar)
-local MainFrame = Instance.new("Frame", ScreenGui)
-MainFrame.Name = "MainFrame"
-MainFrame.Size = UDim2.new(0, 480, 0, 340)
-MainFrame.Position = UDim2.new(0.5, -240, 0.5, -170)
-MainFrame.BackgroundColor3 = currentTheme.Bg
-MainFrame.BorderSizePixel = 0
-MainFrame.Active = true
-MainFrame.Draggable = true
-Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 8)
-
-FloatBtn.MouseButton1Click:Connect(function()
-    MainFrame.Visible = not MainFrame.Visible
+FloatIcon.MouseButton1Click:Connect(function()
+    Window.Visible = not Window.Visible
 end)
 
--- Topbar
-local TopBar = Instance.new("Frame", MainFrame)
-TopBar.Size = UDim2.new(1, 0, 0, 32)
-TopBar.BackgroundColor3 = currentTheme.TopBar
+-- Top Bar
+local TopBar = Instance.new("Frame", Window)
+TopBar.Size = UDim2.new(1, 0, 0, 35)
+TopBar.BackgroundColor3 = Color3.fromRGB(28, 28, 28)
 Instance.new("UICorner", TopBar).CornerRadius = UDim.new(0, 8)
 
-local Title = Instance.new("TextLabel", TopBar)
-Title.Size = UDim2.new(0, 320, 1, 0)
-Title.Position = UDim2.new(0, 10, 0, 0)
-Title.BackgroundTransparency = 1
-Title.TextColor3 = currentTheme.Text
-Title.TextSize = 12
-Title.Font = Enum.Font.GothamBold
-Title.Text = "🎯 Lite Hack + Ultimate Mods (Deep Memory)"
-Title.TextXAlignment = Enum.TextXAlignment.Left
+local TitleLabel = Instance.new("TextLabel", TopBar)
+TitleLabel.Size = UDim2.new(1, -40, 1, 0)
+TitleLabel.Position = UDim2.new(0, 10, 0, 0)
+TitleLabel.BackgroundTransparency = 1
+TitleLabel.Font = Enum.Font.GothamBold
+TitleLabel.Text = "🎯 Lite Hack ImGui"
+TitleLabel.TextColor3 = Color3.fromRGB(240, 240, 240)
+TitleLabel.TextSize = 14
+TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
 
--- Tombol X (Exit Script Total) di Sudut Kanan Atas Menu
-local ExitBtn = Instance.new("TextButton", TopBar)
-ExitBtn.Size = UDim2.new(0, 26, 0, 26)
-ExitBtn.Position = UDim2.new(1, -30, 0.5, -13)
-ExitBtn.BackgroundColor3 = Color3.fromRGB(220, 50, 50)
-ExitBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-ExitBtn.TextSize = 11
-ExitBtn.Font = Enum.Font.GothamBold
-ExitBtn.Text = "X"
-Instance.new("UICorner", ExitBtn).CornerRadius = UDim.new(0, 6)
-ExitBtn.MouseButton1Click:Connect(function()
-    ScreenGui:Destroy()
+-- Tombol X (Stop Script)
+local CloseBtn = Instance.new("TextButton", TopBar)
+CloseBtn.Size = UDim2.new(0, 30, 0, 30)
+CloseBtn.Position = UDim2.new(1, -35, 0, 2)
+CloseBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+CloseBtn.Font = Enum.Font.GothamBold
+CloseBtn.Text = "X"
+CloseBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+CloseBtn.TextSize = 14
+Instance.new("UICorner", CloseBtn).CornerRadius = UDim.new(0, 6)
+
+CloseBtn.MouseButton1Click:Connect(function()
+    ScriptActive = false
+    MainScreenGui:Destroy()
 end)
 
--- Tab Header Horizontal (Bisa di-scroll unlimited ke kiri & kanan)
-local TabHeaderOuter = Instance.new("ScrollingFrame", MainFrame)
-TabHeaderOuter.Size = UDim2.new(1, 0, 0, 30)
-TabHeaderOuter.Position = UDim2.new(0, 0, 0, 32)
-TabHeaderOuter.BackgroundColor3 = currentTheme.Sidebar
-TabHeaderOuter.BorderSizePixel = 0
-TabHeaderOuter.CanvasSize = UDim2.new(0, 500, 0, 0)
-TabHeaderOuter.ScrollBarThickness = 0
+-- Tab Header Container (Scroll Horizontal)
+local TabHeaderScroll = Instance.new("ScrollingFrame", Window)
+TabHeaderScroll.Position = UDim2.new(0, 5, 0, 40)
+TabHeaderScroll.Size = UDim2.new(1, -10, 0, 35)
+TabHeaderScroll.BackgroundTransparency = 1
+TabHeaderScroll.CanvasSize = UDim2.new(2, 0, 0, 0)
+TabHeaderScroll.ScrollBarThickness = 2
 
-local TabHeaderLayout = Instance.new("UIListLayout", TabHeaderOuter)
+local TabHeaderLayout = Instance.new("UIListLayout", TabHeaderScroll)
 TabHeaderLayout.FillDirection = Enum.FillDirection.Horizontal
 TabHeaderLayout.SortOrder = Enum.SortOrder.LayoutOrder
-TabHeaderLayout.Padding = UDim.new(0, 4)
+TabHeaderLayout.Padding = UDim.new(0, 5)
 
-local tabNames = {"visual", "player", "aimbot", "world", "config"}
-local tabFrames = {}
-local tabButtons = {}
-
--- Content Container (Masing-masing tab punya ScrollingFrame vertical unlimited ke bawah)
-local ContentContainer = Instance.new("Frame", MainFrame)
-ContentContainer.Size = UDim2.new(1, -12, 1, -74)
-ContentContainer.Position = UDim2.new(0, 6, 0, 68)
+-- Content Container (Scroll Vertical)
+local ContentContainer = Instance.new("Frame", Window)
+ContentContainer.Position = UDim2.new(0, 5, 0, 80)
+ContentContainer.Size = UDim2.new(1, -10, 1, -85)
 ContentContainer.BackgroundTransparency = 1
 
-for i, name in ipairs(tabNames) do
-    local btn = Instance.new("TextButton", TabHeaderOuter)
-    btn.Size = UDim2.new(0, 90, 1, 0)
-    btn.BackgroundTransparency = 1
-    btn.TextColor3 = i == 1 and currentTheme.Accent or currentTheme.TextDark
-    btn.TextSize = 11
-    btn.Font = Enum.Font.GothamBold
-    btn.Text = name:upper()
-    tabButtons[name] = btn
+local TabsData = {}
+local CurrentActiveTab = nil
 
-    local page = Instance.new("ScrollingFrame", ContentContainer)
-    page.Size = UDim2.new(1, 0, 1, 0)
-    page.BackgroundTransparency = 1
-    page.BorderSizePixel = 0
-    page.Visible = (i == 1)
-    page.CanvasSize = UDim2.new(0, 0, 0, 0)
-    page.AutomaticCanvasSize = Enum.AutomaticSize.Y
-    page.ScrollBarThickness = 4
+local function CreateTab(name)
+    local TabScroll = Instance.new("ScrollingFrame", ContentContainer)
+    TabScroll.Size = UDim2.new(1, 0, 1, 0)
+    TabScroll.BackgroundTransparency = 1
+    TabScroll.CanvasSize = UDim2.new(0, 0, 2, 0)
+    TabScroll.ScrollBarThickness = 4
+    TabScroll.Visible = false
 
-    local pageLayout = Instance.new("UIListLayout", page)
-    pageLayout.SortOrder = Enum.SortOrder.LayoutOrder
-    pageLayout.Padding = UDim.new(0, 6)
-
-    tabFrames[name] = page
-
-    btn.MouseButton1Click:Connect(function()
-        for _, p in pairs(tabFrames) do p.Visible = false end
-        for _, b in pairs(tabButtons) do b.TextColor3 = currentTheme.TextDark end
-        page.Visible = true
-        btn.TextColor3 = currentTheme.Accent
+    local Layout = Instance.new("UIListLayout", TabScroll)
+    Layout.SortOrder = Enum.SortOrder.LayoutOrder
+    Layout.Padding = UDim.new(0, 8)
+    
+    -- Auto adjust canvas size
+    Layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+        TabScroll.CanvasSize = UDim2.new(0, 0, 0, Layout.AbsoluteContentSize.Y + 20)
     end)
-end
 
--- Helper Komponen UI
-local function CreateToggle(tabKey, titleText, callback)
-    local parent = tabFrames[tabKey]
-    local frame = Instance.new("Frame", parent)
-    frame.Size = UDim2.new(1, 0, 0, 30)
-    frame.BackgroundColor3 = currentTheme.Element
-    Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 6)
+    -- Tab Button
+    local TabBtn = Instance.new("TextButton", TabHeaderScroll)
+    TabBtn.Size = UDim2.new(0, 85, 1, 0)
+    TabBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+    TabBtn.Font = Enum.Font.GothamSemibold
+    TabBtn.Text = name
+    TabBtn.TextColor3 = Color3.fromRGB(180, 180, 180)
+    TabBtn.TextSize = 12
+    Instance.new("UICorner", TabBtn).CornerRadius = UDim.new(0, 6)
 
-    local lbl = Instance.new("TextLabel", frame)
-    lbl.Size = UDim2.new(1, -45, 1, 0)
-    lbl.Position = UDim2.new(0, 10, 0, 0)
-    lbl.BackgroundTransparency = 1
-    lbl.TextColor3 = currentTheme.Text
-    lbl.TextSize = 11
-    lbl.Font = Enum.Font.Gotham
-    lbl.Text = titleText
-    lbl.TextXAlignment = Enum.TextXAlignment.Left
-
-    local toggleBtn = Instance.new("TextButton", frame)
-    toggleBtn.Size = UDim2.new(0, 32, 0, 16)
-    toggleBtn.Position = UDim2.new(1, -40, 0.5, -8)
-    toggleBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 70)
-    toggleBtn.Text = ""
-    Instance.new("UICorner", toggleBtn).CornerRadius = UDim.new(1, 0)
-
-    local state = false
-    toggleBtn.MouseButton1Click:Connect(function()
-        state = not state
-        toggleBtn.BackgroundColor3 = state and currentTheme.Accent or Color3.fromRGB(60, 60, 70)
-        callback(state)
+    TabBtn.MouseButton1Click:Connect(function()
+        for _, t in pairs(TabsData) do
+            t.Scroll.Visible = false
+            t.Button.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+            t.Button.TextColor3 = Color3.fromRGB(180, 180, 180)
+        end
+        TabScroll.Visible = true
+        TabBtn.BackgroundColor3 = Color3.fromRGB(0, 120, 215)
+        TabBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+        CurrentActiveTab = name
     end)
-end
 
-local function CreateCheckbox(tabKey, titleText, callback)
-    local parent = tabFrames[tabKey]
-    local frame = Instance.new("Frame", parent)
-    frame.Size = UDim2.new(1, 0, 0, 28)
-    frame.BackgroundColor3 = currentTheme.Element
-    Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 6)
-
-    local lbl = Instance.new("TextLabel", frame)
-    lbl.Size = UDim2.new(1, -35, 1, 0)
-    lbl.Position = UDim2.new(0, 10, 0, 0)
-    lbl.BackgroundTransparency = 1
-    lbl.TextColor3 = currentTheme.Text
-    lbl.TextSize = 11
-    lbl.Font = Enum.Font.Gotham
-    lbl.Text = titleText
-    lbl.TextXAlignment = Enum.TextXAlignment.Left
-
-    local boxBtn = Instance.new("TextButton", frame)
-    boxBtn.Size = UDim2.new(0, 16, 0, 16)
-    boxBtn.Position = UDim2.new(1, -24, 0.5, -8)
-    boxBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 70)
-    boxBtn.Text = ""
-    Instance.new("UICorner", boxBtn).CornerRadius = UDim.new(0, 4)
-
-    local state = false
-    boxBtn.MouseButton1Click:Connect(function()
-        state = not state
-        boxBtn.BackgroundColor3 = state and currentTheme.Accent or Color3.fromRGB(60, 60, 70)
-        boxBtn.Text = state and "✓" or ""
-        callback(state)
-    end)
-end
-
-local function CreateButton(tabKey, titleText, callback)
-    local parent = tabFrames[tabKey]
-    local btn = Instance.new("TextButton", parent)
-    btn.Size = UDim2.new(1, 0, 0, 30)
-    btn.BackgroundColor3 = currentTheme.Element
-    btn.TextColor3 = currentTheme.Text
-    btn.TextSize = 11
-    btn.Font = Enum.Font.GothamBold
-    btn.Text = titleText
-    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
-    btn.MouseButton1Click:Connect(callback)
-end
-
--- ========================================== --
--- 📑 PENGISIAN MENU FITUR DI MASING-MASING TAB
--- ========================================== --
-
--- 1. TAB VISUAL
-CreateToggle("visual", "👁️ ESP Enemy", function(v) ESPEnemy = v end)
-CreateToggle("visual", "👥 ESP Team", function(v) ESPTeam = v end)
-CreateButton("visual", "🎨 Colour Picker (Ganti Warna Semua ESP)", function()
-    ESPColorIndex = ESPColorIndex + 1
-    if ESPColorIndex > #ESPColors then ESPColorIndex = 1 end
-    ESPColor = ESPColors[ESPColorIndex]
-end)
-CreateCheckbox("visual", "Box (Kotak ESP)", function(v) ESPBox = v end)
-CreateCheckbox("visual", "Name (Nama Player Diatas Box)", function(v) ESPName = v end)
-CreateCheckbox("visual", "Line (Garis dari Kepala)", function(v) ESPLine = v end)
-CreateCheckbox("visual", "Health (Volume Dinamis HP)", function(v) ESPHealth = v end)
-CreateCheckbox("visual", "Skeleton (Kerangka Tulang)", function(v) ESPSkeleton = v end)
-CreateCheckbox("visual", "Distance (Jarak Meter Dibawah Box)", function(v) ESPDistance = v end)
-CreateCheckbox("visual", "Picture (Thumbnail Profil Bulat)", function(v) ESPPicture = v end)
-
--- 2. TAB AIMBOT
-CreateToggle("aimbot", "🎯 Aktifkan Aimbot", function(v) AimbotAktif = v end)
-CreateToggle("aimbot", "👥 Team Check", function(v) TeamCheck = v end)
-CreateToggle("aimbot", "🧱 Wall Check", function(v) WallCheck = v end)
-CreateButton("aimbot", "⚙️ Mode Aimbot: Fov / 360°", function()
-    AimbotMode = (AimbotMode == "Fov") and "360°" or "Fov"
-end)
-CreateButton("aimbot", "⚡ Mode Trigger: Camera / Fire(Snap)", function()
-    TriggerMode = (TriggerMode == "camera") and "fire(snap)" or "camera"
-end)
-CreateToggle("aimbot", "⭕ Aim FOV Circle", function(v) AimFOVToggle = v end)
-CreateToggle("aimbot", "📈 Aim Line Tracer (Dalam FOV)", function(v) AimLineTracer = v end)
-CreateButton("aimbot", "🎯 Aim Target: Head / Neck / Chest", function()
-    if AimTargetPart == "head" then AimTargetPart = "neck"
-    elseif AimTargetPart == "neck" then AimTargetPart = "chest"
-    else AimTargetPart = "head" end
-end)
-
--- 3. TAB PLAYER
-CreateToggle("player", "⚡ Speed Run", function(v) SpeedRun = v end)
-CreateToggle("player", "🚀 Multi Jump Hack", function(v) MultiJump = v end)
-CreateToggle("player", "🕊️ Fly Hack", function(v) FlyHack = v 
-    flying = v
-    local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-    if flying and hrp then
-        bg = Instance.new("BodyGyro", hrp)
-        bg.P = 9e4
-        bg.maxTorque = Vector3.new(9e4, 9e4, 9e4)
-        bg.cframe = hrp.CFrame
-        bv = Instance.new("BodyVelocity", hrp)
-        bv.velocity = Vector3.new(0,0,0)
-        bv.maxForce = Vector3.new(9e4, 9e4, 9e4)
-    else
-        if bg then bg:Destroy() end
-        if bv then bv:Destroy() end
+    if not CurrentActiveTab then
+        CurrentActiveTab = name
+        TabScroll.Visible = true
+        TabBtn.BackgroundColor3 = Color3.fromRGB(0, 120, 215)
+        TabBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
     end
-end)
-CreateToggle("player", "🔥 Rapid Fire", function(v) RapidFire = v end)
-CreateToggle("player", "📦 Unlimited Ammo", function(v) UnlimitedAmmo = v end)
 
--- 4. TAB WORLD
-CreateToggle("world", "🌍 Custom Time World (Pagi/Siang/Malam)", function(v) 
-    TimeWorldCustom = v 
-    if not v then game.Lighting.ClockTime = 14 end
-end)
-CreateToggle("world", "🪶 No Gravity (Gravitasi Rendah)", function(v) NoGravity = v end)
+    table.insert(TabsData, {Name = name, Scroll = TabScroll, Button = TabBtn})
+    return TabScroll
+end
 
--- 5. TAB CONFIG
-CreateButton("config", "🎨 Ubah Theme UI (Light / Dark)", function()
-    IsDarkTheme = not IsDarkTheme
-    currentTheme = IsDarkTheme and Themes.Dark or Themes.Light
-    MainFrame.BackgroundColor3 = currentTheme.Bg
-    TopBar.BackgroundColor3 = currentTheme.TopBar
-    TabHeaderOuter.BackgroundColor3 = currentTheme.Sidebar
-    FloatBtn.BackgroundColor3 = currentTheme.TopBar
-    FloatBtn.TextColor3 = currentTheme.Accent
-end)
-CreateButton("config", "💾 Save Konfigurasi", function()
-    local data = {
-        ESPEnemy = ESPEnemy, ESPTeam = ESPTeam, ESPBox = ESPBox,
-        ESPName = ESPName, ESPLine = ESPLine, ESPHealth = ESPHealth,
-        ESPSkeleton = ESPSkeleton, ESPDistance = ESPDistance, ESPPicture = ESPPicture,
-        AimbotAktif = AimbotAktif, TeamCheck = TeamCheck, WallCheck = WallCheck,
-        SpeedRun = SpeedRun, MultiJump = MultiJump, FlyHack = FlyHack,
-        RapidFire = RapidFire, UnlimitedAmmo = UnlimitedAmmo, NoGravity = NoGravity,
-        TimeWorldCustom = TimeWorldCustom
-    }
-    pcall(function()
-        if writefile then writefile(ConfigFileName, HttpService:JSONEncode(data)) end
+-- ========================================== -- UI ELEMENTS BUILDERS -- ========================================== 
+local function AddToggle(parent, text, default, callback)
+    local Frame = Instance.new("Frame", parent)
+    Frame.Size = UDim2.new(1, -5, 0, 32)
+    Frame.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+    Instance.new("UICorner", Frame).CornerRadius = UDim.new(0, 6)
+
+    local Label = Instance.new("TextLabel", Frame)
+    Label.Size = UDim2.new(1, -50, 1, 0)
+    Label.Position = UDim2.new(0, 10, 0, 0)
+    Label.BackgroundTransparency = 1
+    Label.Font = Enum.Font.Gotham
+    Label.Text = text
+    Label.TextColor3 = Color3.fromRGB(220, 220, 220)
+    Label.TextSize = 12
+    Label.TextXAlignment = Enum.TextXAlignment.Left
+
+    local ToggleBtn = Instance.new("TextButton", Frame)
+    ToggleBtn.Size = UDim2.new(0, 35, 0, 20)
+    ToggleBtn.Position = UDim2.new(1, -42, 0.5, -10)
+    ToggleBtn.BackgroundColor3 = default and Color3.fromRGB(0, 150, 0) or Color3.fromRGB(80, 80, 80)
+    ToggleBtn.Text = ""
+    Instance.new("UICorner", ToggleBtn).CornerRadius = UDim.new(1, 0)
+
+    local state = default
+    ToggleBtn.MouseButton1Click:Connect(function()
+        state = not state
+        ToggleBtn.BackgroundColor3 = state and Color3.fromRGB(0, 150, 0) or Color3.fromRGB(80, 80, 80)
+        callback(state)
     end)
-end)
-CreateButton("config", "📂 Load Konfigurasi", function()
-    pcall(function()
-        if isfile and isfile(ConfigFileName) then
-            local decoded = HttpService:JSONDecode(readfile(ConfigFileName))
-            if decoded then
-                ESPEnemy = decoded.ESPEnemy or false
-                ESPTeam = decoded.ESPTeam or false
-                ESPBox = decoded.ESPBox or false
-                ESPName = decoded.ESPName or false
-                ESPLine = decoded.ESPLine or false
-                ESPHealth = decoded.ESPHealth or false
-                ESPSkeleton = decoded.ESPSkeleton or false
-                ESPDistance = decoded.ESPDistance or false
-                ESPPicture = decoded.ESPPicture or false
-                AimbotAktif = decoded.AimbotAktif or false
-                TeamCheck = decoded.TeamCheck or false
-                WallCheck = decoded.WallCheck or false
-                SpeedRun = decoded.SpeedRun or false
-                MultiJump = decoded.MultiJump or false
-                FlyHack = decoded.FlyHack or false
-                RapidFire = decoded.RapidFire or false
-                UnlimitedAmmo = decoded.UnlimitedAmmo or false
-                NoGravity = decoded.NoGravity or false
-                TimeWorldCustom = decoded.TimeWorldCustom or false
-            end
+    return Frame
+end
+
+local function AddSlider(parent, text, min, max, default, callback)
+    local Frame = Instance.new("Frame", parent)
+    Frame.Size = UDim2.new(1, -5, 0, 50)
+    Frame.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+    Instance.new("UICorner", Frame).CornerRadius = UDim.new(0, 6)
+
+    local Label = Instance.new("TextLabel", Frame)
+    Label.Size = UDim2.new(1, -10, 0, 22)
+    Label.Position = UDim2.new(0, 10, 0, 4)
+    Label.BackgroundTransparency = 1
+    Label.Font = Enum.Font.Gotham
+    Label.Text = text .. ": " .. default
+    Label.TextColor3 = Color3.fromRGB(220, 220, 220)
+    Label.TextSize = 12
+    Label.TextXAlignment = Enum.TextXAlignment.Left
+
+    local SliderBar = Instance.new("TextButton", Frame)
+    SliderBar.Size = UDim2.new(1, -20, 0, 8)
+    SliderBar.Position = UDim2.new(0, 10, 0, 32)
+    SliderBar.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+    SliderBar.Text = ""
+    Instance.new("UICorner", SliderBar).CornerRadius = UDim.new(1, 0)
+
+    local Fill = Instance.new("Frame", SliderBar)
+    Fill.Size = UDim2.new((default - min) / (max - min), 0, 1, 0)
+    Fill.BackgroundColor3 = Color3.fromRGB(0, 120, 215)
+    Instance.new("UICorner", Fill).CornerRadius = UDim.new(1, 0)
+
+    local dragging = false
+    SliderBar.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
         end
     end)
+    UserInputService.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = false
+        end
+    end)
+    UserInputService.InputChanged:Connect(function(input)
+        if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+            local pos = math.clamp((input.Position.X - SliderBar.AbsolutePosition.X) / SliderBar.AbsoluteSize.X, 0, 1)
+            local val = math.floor(min + (max - min) * pos)
+            Fill.Size = UDim2.new(pos, 0, 1, 0)
+            Label.Text = text .. ": " .. val
+            callback(val)
+        end
+    end)
+    return Frame
+end
+
+local function AddDropdown(parent, text, options, default, callback)
+    local Frame = Instance.new("Frame", parent)
+    Frame.Size = UDim2.new(1, -5, 0, 38)
+    Frame.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+    Instance.new("UICorner", Frame).CornerRadius = UDim.new(0, 6)
+
+    local Label = Instance.new("TextLabel", Frame)
+    Label.Size = UDim2.new(0.5, 0, 1, 0)
+    Label.Position = UDim2.new(0, 10, 0, 0)
+    Label.BackgroundTransparency = 1
+    Label.Font = Enum.Font.Gotham
+    Label.Text = text
+    Label.TextColor3 = Color3.fromRGB(220, 220, 220)
+    Label.TextSize = 12
+    Label.TextXAlignment = Enum.TextXAlignment.Left
+
+    local currentIdx = 1
+    for i, opt in ipairs(options) do if opt == default then currentIdx = i end end
+
+    local DropBtn = Instance.new("TextButton", Frame)
+    DropBtn.Size = UDim2.new(0, 130, 0, 26)
+    DropBtn.Position = UDim2.new(1, -135, 0.5, -13)
+    DropBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+    DropBtn.Font = Enum.Font.Gotham
+    DropBtn.Text = options[currentIdx]
+    DropBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    DropBtn.TextSize = 11
+    Instance.new("UICorner", DropBtn).CornerRadius = UDim.new(0, 4)
+
+    DropBtn.MouseButton1Click:Connect(function()
+        currentIdx = currentIdx + 1
+        if currentIdx > #options then currentIdx = 1 end
+        DropBtn.Text = options[currentIdx]
+        callback(options[currentIdx])
+    end)
+    return Frame
+end
+
+local function AddButton(parent, text, callback)
+    local Btn = Instance.new("TextButton", parent)
+    Btn.Size = UDim2.new(1, -5, 0, 32)
+    Btn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+    Btn.Font = Enum.Font.GothamSemibold
+    Btn.Text = text
+    Btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    Btn.TextSize = 12
+    Instance.new("UICorner", Btn).CornerRadius = UDim.new(0, 6)
+    Btn.MouseButton1Click:Connect(callback)
+    return Btn
+end
+
+-- ========================================== -- BUILD TABS -- ========================================== 
+local VisualTab = CreateTab("visual")
+local PlayerTab = CreateTab("player")
+local AimbotTab = CreateTab("aimbot")
+local WorldTab = CreateTab("world")
+local ConfigTab = CreateTab("config")
+
+-- --- TAB VISUAL ---
+AddToggle(VisualTab, "ESP Enemy", false, function(v) ESP_Enemy = v end)
+AddToggle(VisualTab, "ESP Team", false, function(v) ESP_Team = v end)
+AddToggle(VisualTab, "ESP Box", false, function(v) ESP_Box = v end)
+AddToggle(VisualTab, "ESP Name", false, function(v) ESP_Name = v end)
+AddToggle(VisualTab, "ESP Line", false, function(v) ESP_Line = v end)
+AddToggle(VisualTab, "ESP Health", false, function(v) ESP_Health = v end)
+AddToggle(VisualTab, "ESP Skeleton", false, function(v) ESP_Skeleton = v end)
+AddToggle(VisualTab, "ESP Distance", false, function(v) ESP_Distance = v end)
+AddToggle(VisualTab, "ESP Picture (Avatar)", false, function(v) ESP_Picture = v end)
+
+-- --- TAB AIMBOT ---
+AddToggle(AimbotTab, "Aktifkan Aimbot", false, function(v) AimbotAktif = v end)
+AddToggle(AimbotTab, "Team Check", false, function(v) TeamCheck = v end)
+AddToggle(AimbotTab, "Wall Check", false, function(v) WallCheck = v end)
+AddDropdown(AimbotTab, "Mode Aimbot", {"FOV", "360°"}, "FOV", function(v) AimbotMode = v end)
+AddDropdown(AimbotTab, "Mode Trigger", {"Camera", "Fire (Snap)"}, "Camera", function(v) TriggerMode = v end)
+AddToggle(AimbotTab, "Tampilkan Lingkaran FOV", false, function(v) ShowFOV = v end)
+AddToggle(AimbotTab, "Aim Line Tracer", false, function(v) AimLineTracer = v end)
+AddDropdown(AimbotTab, "Target Bagian", {"Head", "Neck", "Chest"}, "Head", function(v) AimTarget = v end)
+AddSlider(AimbotTab, "Aim Distance", 50, 5000, 500, function(v) AimDistance = v end)
+
+-- --- TAB PLAYER ---
+AddToggle(PlayerTab, "Speed Run", false, function(v) SpeedAktif = v end)
+AddSlider(PlayerTab, "Custom Speed", 16, 250, 50, function(v) CustomSpeed = v end)
+AddToggle(PlayerTab, "Multi Jump Hack", false, function(v) JumpAktif = v end)
+AddToggle(PlayerTab, "Fly Hack", false, function(v) FlyAktif = v end)
+AddToggle(PlayerTab, "Rapid Fire (RPM)", false, function(v) RapidFireAktif = v end)
+AddToggle(PlayerTab, "Unlimited Ammo", false, function(v) AmmoAktif = v end)
+
+-- --- TAB WORLD ---
+AddSlider(WorldTab, "World Time (Jam)", 0, 24, 14, function(v) WorldTime = v end)
+AddToggle(WorldTab, "No Gravity (Gravitasi Rendah)", false, function(v) NoGravity = v end)
+
+-- --- TAB CONFIG ---
+AddButton(ConfigTab, "Ubah Theme UI (Dark/Light)", function()
+    if UITheme == "Dark" then
+        UITheme = "Light"
+        Window.BackgroundColor3 = Color3.fromRGB(240, 240, 240)
+        TopBar.BackgroundColor3 = Color3.fromRGB(220, 220, 220)
+        TitleLabel.TextColor3 = Color3.fromRGB(20, 20, 20)
+    else
+        UITheme = "Dark"
+        Window.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+        TopBar.BackgroundColor3 = Color3.fromRGB(28, 28, 28)
+        TitleLabel.TextColor3 = Color3.fromRGB(240, 240, 240)
+    end
 end)
 
--- ========================================== --
--- 👁️ LOGIKA ESP LENGKAP & PRESISI
--- ========================================== --
-local ESP_Folder = CoreGui:FindFirstChild("Universal_ESP_System") or Instance.new("Folder", CoreGui)
-ESP_Folder.Name = "Universal_ESP_System"
-local Active_ESP = {}
+AddButton(ConfigTab, "💾 Save Konfigurasi", function()
+    local data = {
+        ESP_Enemy = ESP_Enemy, ESP_Team = ESP_Team, ESP_Box = ESP_Box, ESP_Name = ESP_Name,
+        ESP_Line = ESP_Line, ESP_Health = ESP_Health, ESP_Skeleton = ESP_Skeleton, ESP_Distance = ESP_Distance, ESP_Picture = ESP_Picture,
+        AimbotAktif = AimbotAktif, TeamCheck = TeamCheck, WallCheck = WallCheck, SpeedAktif = SpeedAktif,
+        CustomSpeed = CustomSpeed, JumpAktif = JumpAktif, FlyAktif = FlyAktif, RapidFireAktif = RapidFireAktif, AmmoAktif = AmmoAktif
+    }
+    if writefile then
+        pcall(function() writefile(ConfigFileName, HttpService:JSONEncode(data)) end)
+    end
+end)
+
+AddButton(ConfigTab, "📂 Load Konfigurasi", function()
+    if isfile and readfile and isfile(ConfigFileName) then
+        pcall(function()
+            local data = HttpService:JSONDecode(readfile(ConfigFileName))
+            ESP_Enemy = data.ESP_Enemy or false
+            ESP_Team = data.ESP_Team or false
+            -- Dst...
+        end)
+    end
+end)
+
+-- ========================================== -- FITUR ESP SYSTEM LENGKAP -- ========================================== 
+local ESP_Folder = Instance.new("Folder", CoreGui)
+ESP_Folder.Name = "ImGui_ESP_Holder"
+local ActiveESPCache = {}
 
 RunService.RenderStepped:Connect(function()
+    if not ScriptActive then return end
+    
+    -- Update World Time & Gravity
+    pcall(function()
+        game:GetService("Lighting").ClockTime = WorldTime
+        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+            workspace.Gravity = NoGravity and 30 or 196.2
+        end
+    end)
+
+    -- ESP Rendering Loop
     for _, p in pairs(Players:GetPlayers()) do
         if p ~= LocalPlayer and p.Character then
             local char = p.Character
             local hrp = char:FindFirstChild("HumanoidRootPart")
             local head = char:FindFirstChild("Head")
             local hum = char:FindFirstChildOfClass("Humanoid")
+            
             local isTeam = (p.TeamColor == LocalPlayer.TeamColor)
-            local shouldShow = (isTeam and ESPTeam) or (not isTeam and ESPEnemy)
-
-            if char and hrp and head and hum and hum.Health > 0 and shouldShow then
-                if not Active_ESP[p] then
-                    local data = {}
-                    local bgui = Instance.new("BillboardGui", ESP_Folder)
-                    bgui.AlwaysOnTop = true
-                    bgui.Size = UDim2.new(0, 180, 0, 80)
-                    bgui.ExtentsOffset = Vector3.new(0, 4.2, 0)
-                    bgui.Adornee = head
-
-                    local txt = Instance.new("TextLabel", bgui)
-                    txt.Size = UDim2.new(1, 0, 1, 0)
-                    txt.BackgroundTransparency = 1
-                    txt.TextSize = 11
-                    txt.Font = Enum.Font.Code
-                    txt.TextColor3 = Color3.fromRGB(255, 255, 255)
-                    txt.TextStrokeTransparency = 0
-                    data.TextLabel = txt
-                    data.Gui = bgui
-
-                    Active_ESP[p] = data
-                end
-
-                local data = Active_ESP[p]
-                data.Gui.Enabled = true
-                local dist = math.floor((Camera.CFrame.Position - hrp.Position).Magnitude)
-                local hpPercent = math.floor((hum.Health / hum.MaxHealth) * 100)
-
-                -- Volume Dinamis HP: 100% Hijau | 70% Orange | 40% Merah Gelap
-                local hpColorStr = "🟢"
-                if hpPercent <= 70 and hpPercent > 40 then
-                    hpColorStr = "🟠"
-                elseif hpPercent <= 40 then
-                    hpColorStr = "🔴"
-                end
-
-                local infoStr = ""
-                if ESPPicture then infoStr = infoStr .. "[img:profile_circle]\n" end
-                if ESPName then infoStr = infoStr .. (p.Name or "Player") .. "\n" end
-                if ESPBox then infoStr = infoStr .. "[BOX ACTIVE]\n" end
-                if ESPHealth then infoStr = infoStr .. "HP: " .. hpPercent .. "% " .. hpColorStr .. "\n" end
-                if ESPDistance then infoStr = infoStr .. "[" .. dist .. "m]\n" end
-                data.TextLabel.Text = infoStr
-                data.TextLabel.TextColor3 = ESPColor
-            else
-                if Active_ESP[p] then
-                    Active_ESP[p].Gui.Enabled = false
-                end
-            end
-        end
-    end
-end)
-
--- ========================================== --
--- 🎯 LOGIKA AIMBOT, WALL CHECK & TRIGGER
--- ========================================== --
-local function IsVisible(targetPart)
-    if not WallCheck then return true end
-    if not targetPart then return false end
-    local rayParams = RaycastParams.new()
-    rayParams.FilterDescendantsInstances = {LocalPlayer.Character, Camera}
-    rayParams.FilterType = Enum.RaycastFilterType.Exclude
-    local rayResult = workspace:Raycast(Camera.CFrame.Position, (targetPart.Position - Camera.CFrame.Position).Unit * 5000, rayParams)
-    return rayResult and rayResult.Instance:IsDescendantOf(targetPart.Parent) or false
-end
-
-RunService.RenderStepped:Connect(function()
-    if AimbotAktif then
-        local closestTarget = nil
-        local shortestDist = (AimbotMode == "Fov") and FOVRadius or math.huge
-        for _, p in pairs(Players:GetPlayers()) do
-            if p ~= LocalPlayer and p.Character then
-                local char = p.Character
-                local hum = char:FindFirstChildOfClass("Humanoid")
-                local targetPart = char:FindFirstChild(AimTargetPart == "head" and "Head" or "HumanoidRootPart")
-                if hum and hum.Health > 0 and targetPart then
-                    if not TeamCheck or (p.TeamColor ~= LocalPlayer.TeamColor) then
-                        if IsVisible(targetPart) then
-                            local pos, onScreen = Camera:WorldToViewportPoint(targetPart.Position)
-                            if onScreen then
-                                local dist = (Vector2.new(pos.X, pos.Y) - Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)).Magnitude
-                                if dist < shortestDist then
-                                    shortestDist = dist
-                                    closestTarget = targetPart
-                                end
-                            end
+            local shouldDraw = (isTeam and ESP_Team) or (not isTeam and ESP_Enemy)
+            
+            if shouldDraw and hrp and head and hum and hum.Health > 0 then
+                local pos, onScreen = Camera:WorldToViewportPoint(hrp.Position)
+                if onScreen then
+                    local cache = ActiveESPCache[p]
+                    if not cache then
+                        cache = {}
+                        cache.Box = Drawing.new("Square")
+                        cache.Box.Thickness = 2
+                        cache.Box.Filled = false
+                        
+                        cache.Name = Drawing.new("Text")
+                        cache.Name.Size = 13
+                        cache.Name.Center = true
+                        cache.Name.Outline = true
+                        cache.Name.Color = Color3.fromRGB(255, 255, 255)
+                        
+                        cache.Distance = Drawing.new("Text")
+                        cache.Distance.Size = 12
+                        cache.Distance.Center = true
+                        cache.Distance.Outline = true
+                        cache.Distance.Color = Color3.fromRGB(200, 200, 200)
+                        
+                        cache.Line = Drawing.new("Line")
+                        cache.Line.Thickness = 1.5
+                        cache.Line.Color = Color3.fromRGB(255, 255, 255)
+                        
+                        cache.HealthBarBg = Drawing.new("Square")
+                        cache.HealthBarBg.Filled = true
+                        cache.HealthBarBg.Color = Color3.fromRGB(0, 0, 0)
+                        
+                        cache.HealthBar = Drawing.new("Square")
+                        cache.HealthBar.Filled = true
+                        
+                        ActiveESPCache[p] = cache
+                    end
+                    
+                    local dist = (Camera.CFrame.Position - hrp.Position).Magnitude
+                    local scale = 2500 / pos.Z
+                    local w, h = 1.5 * scale, 2.5 * scale
+                    local topPos = Camera:WorldToViewportPoint(head.Position + Vector3.new(0, 0.5, 0))
+                    
+                    -- Box
+                    if ESP_Box then
+                        cache.Box.Visible = true
+                        cache.Box.Size = Vector2.new(w, h)
+                        cache.Box.Position = Vector2.new(pos.X - w/2, pos.Y - h/2)
+                        cache.Box.Color = isTeam and Color3.fromRGB(0, 255, 0) or Color3.fromRGB(255, 0, 0)
+                    else
+                        cache.Box.Visible = false
+                    end
+                    
+                    -- Name (Di atas Box)
+                    if ESP_Name then
+                        cache.Name.Visible = true
+                        cache.Name.Text = p.Name
+                        cache.Name.Position = Vector2.new(pos.X, (pos.Y - h/2) - 18)
+                    else
+                        cache.Name.Visible = false
+                    end
+                    
+                    -- Distance (Di bawah Box)
+                    if ESP_Distance then
+                        cache.Distance.Visible = true
+                        cache.Distance.Text = math.floor(dist) .. "m"
+                        cache.Distance.Position = Vector2.new(pos.X, (pos.Y + h/2) + 4)
+                    else
+                        cache.Distance.Visible = false
+                    end
+                    
+                    -- Line (Dari atas layar ke kepala)
+                    if ESP_Line then
+                        cache.Line.Visible = true
+                        cache.Line.From = Vector2.new(Camera.ViewportSize.X / 2, 0)
+                        cache.Line.To = Vector2.new(topPos.X, topPos.Y)
+                    else
+                        cache.Line.Visible = false
+                    end
+                    
+                    -- Health Bar (Di samping kanan box, warna dinamis hijau -> orange -> merah tua)
+                    if ESP_Health then
+                        local hpRatio = math.clamp(hum.Health / hum.MaxHealth, 0, 1)
+                        cache.HealthBarBg.Visible = true
+                        cache.HealthBarBg.Size = Vector2.new(3, h)
+                        cache.HealthBarBg.Position = Vector2.new((pos.X + w/2) + 4, pos.Y - h/2)
+                        
+                        cache.HealthBar.Visible = true
+                        cache.HealthBar.Size = Vector2.new(3, h * hpRatio)
+                        cache.HealthBar.Position = Vector2.new((pos.X + w/2) + 4, (pos.Y + h/2) - (h * hpRatio))
+                        
+                        if hpRatio > 0.7 then
+                            cache.HealthBar.Color = Color3.fromRGB(0, 255, 0)
+                        elseif hpRatio > 0.4 then
+                            cache.HealthBar.Color = Color3.fromRGB(255, 140, 0)
+                        else
+                            cache.HealthBar.Color = Color3.fromRGB(139, 0, 0)
                         end
+                    else
+                        cache.HealthBarBg.Visible = false
+                        cache.HealthBar.Visible = false
+                    end
+                else
+                    if ActiveESPCache[p] then
+                        ActiveESPCache[p].Box.Visible = false
+                        ActiveESPCache[p].Name.Visible = false
+                        ActiveESPCache[p].Distance.Visible = false
+                        ActiveESPCache[p].Line.Visible = false
+                        ActiveESPCache[p].HealthBarBg.Visible = false
+                        ActiveESPCache[p].HealthBar.Visible = false
                     end
                 end
-            end
-        end
-        if closestTarget then
-            if TriggerMode == "fire(snap)" then
-                Camera.CFrame = CFrame.lookAt(Camera.CFrame.Position, closestTarget.Position)
             else
-                Camera.CFrame = Camera.CFrame:Lerp(CFrame.lookAt(Camera.CFrame.Position, closestTarget.Position), 0.2)
+                if ActiveESPCache[p] then
+                    ActiveESPCache[p].Box.Visible = false
+                    ActiveESPCache[p].Name.Visible = false
+                    ActiveESPCache[p].Distance.Visible = false
+                    ActiveESPCache[p].Line.Visible = false
+                    ActiveESPCache[p].HealthBarBg.Visible = false
+                    ActiveESPCache[p].HealthBar.Visible = false
+                end
             end
         end
     end
 end)
 
--- ========================================== --
--- 🏃 LOGIKA PLAYER HACKS & WORLD
--- ========================================== --
-UserInputService.JumpRequest:Connect(function()
-    if MultiJump and LocalPlayer.Character then
-        local hum = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
-        if hum then hum:ChangeState(Enum.HumanoidStateType.Jumping) end
-    end
-end)
-
+-- ========================================== -- PLAYER & AIMBOT LOGIC -- ========================================== 
 RunService.Stepped:Connect(function()
+    if not ScriptActive then return end
     if LocalPlayer.Character then
         local hum = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
         local hrp = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-        if hum and SpeedRun then hum.WalkSpeed = CustomSpeed end
-        if hrp and NoGravity then hrp.Velocity = Vector3.new(hrp.Velocity.X, 0, hrp.Velocity.Z) end
-        if flying and hrp then
-            hrp.Velocity = Vector3.new(0, 0, 0)
+        if hum then
+            if SpeedAktif then hum.WalkSpeed = CustomSpeed end
+            if JumpAktif then hum.UseJumpPower = true; hum.JumpPower = 150 end
+            if FlyAktif and hrp then
+                hrp.Velocity = Vector3.new(hrp.Velocity.X, 1, hrp.Velocity.Z)
+            end
         end
     end
 end)
 
-RunService.Heartbeat:Connect(function()
-    if TimeWorldCustom then game.Lighting.ClockTime = WorldTimeValue end
-end)
-
--- ========================================== --
--- 🔫 DEEP MEMORY SCAN GUN MODS (RPM & AMMO)
--- ========================================== --
+-- Deep Memory Scan Gun Mods (Rapid Fire & Ammo)
 task.spawn(function()
     while task.wait(1) do
-        if UnlimitedAmmo or RapidFire then
+        if ScriptActive and (RapidFireAktif or AmmoAktif) then
             pcall(function()
                 for _, v in pairs(getgc(true)) do
                     if type(v) == "table" then
-                        if rawget(v, "Ammo") or rawget(v, "ClipSize") or rawget(v, "RPM") or rawget(v, "FireRate") then
-                            if UnlimitedAmmo then
-                                if rawget(v, "Ammo") and type(v.Ammo) == "number" then v.Ammo = 999999 end
-                                if rawget(v, "ClipSize") and type(v.ClipSize) == "number" then v.ClipSize = 999999 end
-                                if rawget(v, "MaxAmmo") and type(v.MaxAmmo) == "number" then v.MaxAmmo = 999999 end
-                            end
-                            if RapidFire then
-                                if rawget(v, "RPM") and type(v.RPM) == "number" then v.RPM = CustomFireRate end
-                                if rawget(v, "FireRate") and type(v.FireRate) == "number" then v.FireRate = 60 / CustomFireRate end
-                            end
+                        if AmmoAktif then
+                            if rawget(v, "Ammo") then v.Ammo = 999999 end
+                            if rawget(v, "MaxAmmo") then v.MaxAmmo = 999999 end
+                            if rawget(v, "ClipSize") then v.ClipSize = 999999 end
+                        end
+                        if RapidFireAktif then
+                            if rawget(v, "RPM") then v.RPM = 2500 end
+                            if rawget(v, "FireRate") then v.FireRate = 0.02 end
                         end
                     end
                 end
@@ -622,3 +622,6 @@ task.spawn(function()
         end
     end
 end)
+
+Rayfield = { Notify = function(self, data) print(data.Title .. ": " .. data.Content) end }
+Rayfield:Notify({Title = "🎯 Sukses", Content = "ImGui Lite Hack Berhasil Dimuat!", Duration = 3})
