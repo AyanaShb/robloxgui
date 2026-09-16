@@ -1,684 +1,923 @@
--- ==========================================
--- LITE HACK + ULTIMATE MODS (IMGUI EDITION)
--- ==========================================
-local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local HttpService = game:GetService("HttpService")
-local UserInputService = game:GetService("UserInputService")
-local TweenService = game:GetService("TweenService")
-local CoreGui = game:GetService("CoreGui")
-local Lighting = game:GetService("Lighting")
-local LocalPlayer = Players.LocalPlayer
-local Camera = workspace.CurrentCamera
+-- ============================================================
+-- ULTIMATE MODS - IMGUI EDITION
+-- Visual / Player / Aimbot / World / Config
+-- ============================================================
 
--- ==========================================
--- AUTO BYPASS ANTI-CHEAT
--- ==========================================
+local Players           = game:GetService("Players")
+local RunService        = game:GetService("RunService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local HttpService       = game:GetService("HttpService")
+local Lighting          = game:GetService("Lighting")
+local UserInputService  = game:GetService("UserInputService")
+local TweenService      = game:GetService("TweenService")
+local LocalPlayer       = Players.LocalPlayer
+local Camera            = workspace.CurrentCamera
+local CoreGui           = (gethui and gethui()) or game:GetService("CoreGui")
+
+-- ============================================================
+-- ANTI-CHEAT BYPASS (soft)
+-- ============================================================
 task.spawn(function()
     pcall(function()
-        if setreadonly then
-            pcall(function() setreadonly(getrenv(), false); setreadonly(getreg(), false); setreadonly(getgc(), false) end)
-        end
-        if make_writeable then
-            pcall(function() make_writeable(getreg()) end)
-        end
-        if detour_function then
-            detour_function = function(...) return true end
-        end
-        for _, remote in ipairs(ReplicatedStorage:GetDescendants()) do
-            if remote:IsA("RemoteEvent") or remote:IsA("RemoteFunction") then
-                local name = remote.Name:lower()
-                if name:find("handshake") or name:find("validate") or name:find("verify") or name:find("integrity") or name:find("anti") then
-                    pcall(function()
-                        if remote:IsA("RemoteEvent") then remote.FireServer = function(...) return true end
-                        elseif remote:IsA("RemoteFunction") then remote.InvokeServer = function(...) return true end
-                        end
-                    end)
-                end
-            end
+        if setreadonly and getrenv then pcall(function() setreadonly(getrenv(), false) end) end
+        if getconnections then
+            pcall(function()
+                for _, c in ipairs(getconnections(LocalPlayer.Idled)) do c:Disable() end
+            end)
         end
     end)
 end)
 
--- ==========================================
--- STATE VARIABEL UTAMA
--- ==========================================
+-- ============================================================
+-- LOAD IMGUI
+-- ============================================================
+local ImGui
+local ok, err = pcall(function()
+    ImGui = loadstring(game:HttpGet("https://raw.githubusercontent.com/ImGui-Roblox/ImGui/main/ImGui.lua"))()
+end)
+
+if not ok or not ImGui then
+    -- Fallback: alternative ImGui source
+    pcall(function()
+        ImGui = loadstring(game:HttpGet("https://lua-libraries.vercel.app/imgui.lua"))()
+    end)
+end
+
+if not ImGui then
+    warn("[Ultimate Mods] Gagal load ImGui, coba executor lain.")
+    return
+end
+
+-- ============================================================
+-- KONFIGURASI VARIABEL
+-- ============================================================
 local Config = {
-    -- Visual / ESP
-    ESPEnemy = false,
-    ESPTeam = false,
-    ESPColor = Color3.fromRGB(0, 255, 128),
-    ESPBox = true,
-    ESPName = true,
-    ESPLine = true,
-    ESPHealth = true,
-    ESPSkeleton = false,
-    ESPDistance = true,
-    ESPPicture = true,
+    -- Visual
+    ESPEnemy        = false,
+    ESPTeam         = false,
+    ESPColor        = Color3.fromRGB(255, 0, 0),
+    ESPBox          = true,
+    ESPName         = true,
+    ESPLine         = false,
+    ESPHealth       = true,
+    ESPSkeleton     = false,
+    ESPDistance     = true,
+    ESPPicture      = false,
 
     -- Aimbot
-    AimbotAktif = false,
-    TeamCheck = true,
-    WallCheck = true,
-    AimbotMode = "FOV", -- "360°", "FOV"
-    TriggerMode = "Camera", -- "Fire (Snap)", "Camera"
-    ShowFOV = false,
-    FOVRadius = 150,
-    AimLine = false,
-    AimTargetMode = "Head", -- "Head", "Neck", "Chest"
-    AimDistance = 500,
+    Aimbot          = false,
+    TeamCheck       = true,
+    WallCheck       = true,
+    AimbotMode      = "FOV",           -- FOV / 360
+    TriggerMode     = "Camera",        -- Camera / Fire(snap)
+    ShowFOV         = true,
+    FOVSize         = 150,
+    AimLine         = false,
+    AimTarget       = "Head",          -- Head / Neck / Chest
+    AimDistance     = 500,             -- meter
 
     -- Player
-    SpeedAktif = false,
-    CustomSpeed = 50,
-    MultiJump = false,
-    FlyAktif = false,
-    RapidFire = false,
-    UnlimitedAmmo = false,
-    CustomFireRate = 800,
+    SpeedRun        = false,
+    SpeedPercent    = 100,             -- %
+    MultiJump       = false,
+    FlyHack         = false,
+    RapidFire       = false,
+    UnlimitedAmmo   = false,
 
     -- World
-    ClockTimeMode = "Siang",
-    NoGravity = false,
-    SelectedTeleportPlayer = "",
+    ClockTime       = "Day",           -- Morning / Day / Evening / Night
+    NoGravity       = false,
 
     -- Config
-    Theme = "Dark"
+    Theme           = "Dark"
 }
 
--- ==========================================
--- CUSTOM IMGUI-STYLE UI LIBRARY GENERATOR
--- ==========================================
-local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "ImGui_UniversalCheat"
-ScreenGui.Parent = CoreGui
-ScreenGui.IgnoreGuiInset = true
-ScreenGui.ResetOnSpawn = false
-
--- Floating Icon (Skull Glow-up)
-local FloatingBtn = Instance.new("TextButton")
-FloatingBtn.Name = "FloatingSkull"
-FloatingBtn.Parent = ScreenGui
-FloatingBtn.Size = UDim2.new(0, 50, 0, 50)
-FloatingBtn.Position = UDim2.new(0, 30, 0, 150)
-FloatingBtn.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
-FloatingBtn.BackgroundTransparency = 0.2
-FloatingBtn.Text = "💀"
-FloatingBtn.TextSize = 26
-FloatingBtn.TextColor3 = Color3.fromRGB(0, 255, 128)
-FloatingBtn.AutoButtonColor = false
-
-local SkullCorner = Instance.new("UICorner", FloatingBtn)
-SkullCorner.CornerRadius = UDim.new(1, 0)
-local SkullStroke = Instance.new("UIStroke", FloatingBtn)
-SkullStroke.Color = Color3.fromRGB(0, 255, 128)
-SkullStroke.Thickness = 2
-
--- Main Window Frame
-local MainWindow = Instance.new("Frame")
-MainWindow.Name = "MainWindow"
-MainWindow.Parent = ScreenGui
-MainWindow.AnchorPoint = Vector2.new(0.5, 0.5)
-MainWindow.Position = UDim2.new(0.5, 0, 0.5, 0)
-MainWindow.Size = UDim2.new(0, 540, 0, 380)
-MainWindow.BackgroundColor3 = Color3.fromRGB(18, 18, 24)
-MainWindow.BackgroundTransparency = 0.15
-MainWindow.Visible = true
-
-local MainCorner = Instance.new("UICorner", MainWindow)
-MainCorner.CornerRadius = UDim.new(0, 10)
-local MainStroke = Instance.new("UIStroke", MainWindow)
-MainStroke.Color = Color3.fromRGB(0, 255, 128)
-MainStroke.Thickness = 1.5
-
--- Top Bar / Dragging
-local TopBar = Instance.new("Frame", MainWindow)
-TopBar.Size = UDim2.new(1, 0, 0, 35)
-TopBar.BackgroundTransparency = 1
-
-local TitleLabel = Instance.new("TextLabel", TopBar)
-TitleLabel.Size = UDim2.new(1, -20, 1, 0)
-TitleLabel.Position = UDim2.new(0, 12, 0, 0)
-TitleLabel.Font = Enum.Font.GothamBold
-TitleLabel.Text = "🎯 LITE HACK + ULTIMATE MODS [IMGUI]"
-TitleLabel.TextColor3 = Color3.fromRGB(0, 255, 128)
-TitleLabel.TextSize = 14
-TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
-
--- Dragging Logic
-local dragging, dragInput, dragStart, startPos
-TopBar.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        dragging = true
-        dragStart = input.Position
-        startPos = MainWindow.Position
-        input.Changed:Connect(function()
-            if input.UserInputState == Enum.UserInputState.End then dragging = false end
-        end)
-    end
-end)
-UserInputService.InputChanged:Connect(function(input)
-    if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
-        local delta = input.Position - dragStart
-        MainWindow.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-    end
-end)
-
-FloatingBtn.MouseButton1Click:Connect(function()
-    MainWindow.Visible = not MainWindow.Visible
-end)
-
--- Tab Header (Horizontal Scrolling)
-local TabHeaderFrame = Instance.new("ScrollingFrame", MainWindow)
-TabHeaderFrame.Position = UDim2.new(0, 10, 0, 40)
-TabHeaderFrame.Size = UDim2.new(1, -20, 0, 35)
-TabHeaderFrame.BackgroundTransparency = 1
-TabHeaderFrame.CanvasSize = UDim2.new(0, 450, 0, 0)
-TabHeaderFrame.ScrollBarThickness = 2
-TabHeaderFrame.ScrollingDirection = Enum.ScrollingDirection.X
-
-local TabListLayout = Instance.new("UIListLayout", TabHeaderFrame)
-TabListLayout.FillDirection = Enum.FillDirection.Horizontal
-TabListLayout.SortOrder = Enum.SortOrder.LayoutOrder
-TabListLayout.Padding = UDim.new(0, 8)
-
--- Content Container
-local ContentContainer = Instance.new("Frame", MainWindow)
-ContentContainer.Position = UDim2.new(0, 10, 0, 80)
-ContentContainer.Size = UDim2.new(1, -20, 1, -90)
-ContentContainer.BackgroundTransparency = 1
-
-local Tabs = {}
-local TabButtons = {}
-local activeTabName = nil
-
-local function CreateTab(name)
-    local TabScroll = Instance.new("ScrollingFrame", ContentContainer)
-    TabScroll.Name = name .. "_Tab"
-    TabScroll.Size = UDim2.new(1, 0, 1, 0)
-    TabScroll.BackgroundTransparency = 1
-    TabScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
-    TabScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
-    TabScroll.ScrollBarThickness = 4
-    TabScroll.Visible = false
-
-    local Layout = Instance.new("UIListLayout", TabScroll)
-    Layout.SortOrder = Enum.SortOrder.LayoutOrder
-    Layout.Padding = UDim.new(0, 8)
-
-    local TabBtn = Instance.new("TextButton", TabHeaderFrame)
-    TabBtn.Size = UDim2.new(0, 95, 0, 30)
-    TabBtn.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
-    TabBtn.Font = Enum.Font.GothamBold
-    TabBtn.Text = name:upper()
-    TabBtn.TextColor3 = Color3.fromRGB(180, 180, 180)
-    TabBtn.TextSize = 12
-    Instance.new("UICorner", TabBtn).CornerRadius = UDim.new(0, 6)
-
-    TabBtn.MouseButton1Click:Connect(function()
-        for _, t in pairs(Tabs) do t.Visible = false end
-        for _, b in pairs(TabButtons) do 
-            b.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
-            b.TextColor3 = Color3.fromRGB(180, 180, 180)
-        end
-        TabScroll.Visible = true
-        TabBtn.BackgroundColor3 = Color3.fromRGB(0, 255, 128)
-        TabBtn.TextColor3 = Color3.fromRGB(15, 15, 20)
-    end)
-
-    if not activeTabName then
-        activeTabName = name
-        TabScroll.Visible = true
-        TabBtn.BackgroundColor3 = Color3.fromRGB(0, 255, 128)
-        TabBtn.TextColor3 = Color3.fromRGB(15, 15, 20)
-    end
-
-    Tabs[name] = TabScroll
-    table.insert(TabButtons, TabBtn)
-    return TabScroll
+-- ============================================================
+-- HELPER: TIMEOFDAY
+-- ============================================================
+local function ApplyClockTime(opt)
+    local times = {
+        Morning = 6,
+        Day     = 14,
+        Evening = 18,
+        Night   = 0
+    }
+    Lighting.ClockTime = times[opt] or 14
 end
 
--- UI Element Builders
-local function AddToggle(parent, text, default, callback)
-    local ToggleBtn = Instance.new("TextButton", parent)
-    ToggleBtn.Size = UDim2.new(1, 0, 0, 32)
-    ToggleBtn.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
-    ToggleBtn.Font = Enum.Font.GothamBold
-    ToggleBtn.Text = "   " .. text .. ": " .. (default and "[ON]" or "[OFF]")
-    ToggleBtn.TextColor3 = default and Color3.fromRGB(0, 255, 128) or Color3.fromRGB(200, 200, 200)
-    ToggleBtn.TextSize = 12
-    ToggleBtn.TextXAlignment = Enum.TextXAlignment.Left
-    Instance.new("UICorner", ToggleBtn).CornerRadius = UDim.new(0, 6)
-
-    local state = default
-    ToggleBtn.MouseButton1Click:Connect(function()
-        state = not state
-        ToggleBtn.Text = "   " .. text .. ": " .. (state and "[ON]" or "[OFF]")
-        ToggleBtn.TextColor3 = state and Color3.fromRGB(0, 255, 128) or Color3.fromRGB(200, 200, 200)
-        callback(state)
-    end)
-    return ToggleBtn
-end
-
-local function AddSlider(parent, text, min, max, default, suffix, callback)
-    local Frame = Instance.new("Frame", parent)
-    Frame.Size = UDim2.new(1, 0, 0, 48)
-    Frame.BackgroundColor3 = Color3.fromRGB(22, 22, 30)
-    Instance.new("UICorner", Frame).CornerRadius = UDim.new(0, 6)
-
-    local Label = Instance.new("TextLabel", Frame)
-    Label.Size = UDim2.new(1, -10, 0, 20)
-    Label.Position = UDim2.new(0, 8, 0, 4)
-    Label.BackgroundTransparency = 1
-    Label.Font = Enum.Font.GothamBold
-    Label.Text = text .. ": " .. default .. suffix
-    Label.TextColor3 = Color3.fromRGB(200, 200, 200)
-    Label.TextSize = 11
-    Label.TextXAlignment = Enum.TextXAlignment.Left
-
-    local SliderBar = Instance.new("Frame", Frame)
-    SliderBar.Size = UDim2.new(1, -16, 0, 6)
-    SliderBar.Position = UDim2.new(0, 8, 0, 32)
-    SliderBar.BackgroundColor3 = Color3.fromRGB(40, 40, 55)
-    Instance.new("UICorner", SliderBar).CornerRadius = UDim.new(1, 0)
-
-    local Fill = Instance.new("Frame", SliderBar)
-    Fill.Size = UDim2.new((default - min) / (max - min), 0, 1, 0)
-    Fill.BackgroundColor3 = Color3.fromRGB(0, 255, 128)
-    Instance.new("UICorner", Fill).CornerRadius = UDim.new(1, 0)
-
-    local draggingSlider = false
-    local function UpdateSlider(input)
-        local pos = math.clamp((input.Position.X - SliderBar.AbsolutePosition.X) / SliderBar.AbsoluteSize.X, 0, 1)
-        local val = math.floor(min + (max - min) * pos)
-        Fill.Size = UDim2.new(pos, 0, 1, 0)
-        Label.Text = text .. ": " .. val .. suffix
-        callback(val)
+-- ============================================================
+-- HELPER: IS ENEMY / TEAM
+-- ============================================================
+local function IsPlayerEnemy(plr)
+    if plr == LocalPlayer then return false end
+    if Config.TeamCheck and plr.Team and LocalPlayer.Team then
+        return plr.Team ~= LocalPlayer.Team
     end
-
-    SliderBar.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-            draggingSlider = true
-            UpdateSlider(input)
-        end
-    end)
-    UserInputService.InputEnded:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-            draggingSlider = false
-        end
-    end)
-    UserInputService.InputChanged:Connect(function(input)
-        if draggingSlider and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
-            UpdateSlider(input)
-        end
-    end)
+    return true
 end
 
-local function AddDropdown(parent, text, options, default, callback)
-    local Frame = Instance.new("Frame", parent)
-    Frame.Size = UDim2.new(1, 0, 0, 35)
-    Frame.BackgroundColor3 = Color3.fromRGB(22, 22, 30)
-    Instance.new("UICorner", Frame).CornerRadius = UDim.new(0, 6)
-
-    local Label = Instance.new("TextLabel", Frame)
-    Label.Size = UDim2.new(0.6, 0, 1, 0)
-    Label.Position = UDim2.new(0, 8, 0, 0)
-    Label.BackgroundTransparency = 1
-    Label.Font = Enum.Font.GothamBold
-    Label.Text = text
-    Label.TextColor3 = Color3.fromRGB(200, 200, 200)
-    Label.TextSize = 11
-    Label.TextXAlignment = Enum.TextXAlignment.Left
-
-    local currentIdx = 1
-    for i, opt in ipairs(options) do if opt == default then currentIdx = i end end
-
-    local ValBtn = Instance.new("TextButton", Frame)
-    ValBtn.Size = UDim2.new(0.4, -8, 0, 25)
-    ValBtn.Position = UDim2.new(0.6, 0, 0.5, -12.5)
-    ValBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 48)
-    ValBtn.Font = Enum.Font.GothamBold
-    ValBtn.Text = tostring(default)
-    ValBtn.TextColor3 = Color3.fromRGB(0, 255, 128)
-    ValBtn.TextSize = 11
-    Instance.new("UICorner", ValBtn).CornerRadius = UDim.new(0, 4)
-
-    ValBtn.MouseButton1Click:Connect(function()
-        currentIdx = currentIdx + 1
-        if currentIdx > #options then currentIdx = 1 end
-        local selected = options[currentIdx]
-        ValBtn.Text = tostring(selected)
-        callback(selected)
-    end)
-end
-
-local function AddButton(parent, text, callback)
-    local Btn = Instance.new("TextButton", parent)
-    Btn.Size = UDim2.new(1, 0, 0, 32)
-    Btn.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
-    Btn.Font = Enum.Font.GothamBold
-    Btn.Text = text
-    Btn.TextColor3 = Color3.fromRGB(0, 255, 128)
-    Btn.TextSize = 12
-    Instance.new("UICorner", Btn).CornerRadius = UDim.new(0, 6)
-    Btn.MouseButton1Click:Connect(callback)
-    return Btn
-end
-
--- ==========================================
--- MEMBUAT TAB HEADER & FITUR
--- ==========================================
-local VisualTab = CreateTab("Visual")
-local AimbotTab = CreateTab("Aimbot")
-local PlayerTab = CreateTab("Player")
-local WorldTab = CreateTab("World")
-local ConfigTab = CreateTab("Config")
-
--- ------------------------------------------
--- TAB VISUAL
--- ------------------------------------------
-AddToggle(VisualTab, "ESP Enemy", Config.ESPEnemy, function(v) Config.ESPEnemy = v end)
-AddToggle(VisualTab, "ESP Team", Config.ESPTeam, function(v) Config.ESPTeam = v end)
-
--- Widget Panel Pemilihan Warna RGB ESP
-local ColorPanel = Instance.new("Frame", VisualTab)
-ColorPanel.Size = UDim2.new(1, 0, 0, 95)
-ColorPanel.BackgroundColor3 = Color3.fromRGB(22, 22, 30)
-Instance.new("UICorner", ColorPanel).CornerRadius = UDim.new(0, 6)
-
-local ColorTitle = Instance.new("TextLabel", ColorPanel)
-ColorTitle.Size = UDim2.new(1, -10, 0, 20)
-ColorTitle.Position = UDim2.new(0, 8, 0, 4)
-ColorTitle.BackgroundTransparency = 1
-ColorTitle.Font = Enum.Font.GothamBold
-ColorTitle.Text = "🎨 ESP RGB Color Uniform"
-ColorTitle.TextColor3 = Color3.fromRGB(200, 200, 200)
-ColorTitle.TextSize = 11
-ColorTitle.TextXAlignment = Enum.TextXAlignment.Left
-
-local rVal, gVal, bVal = 0, 255, 128
-AddSlider(ColorPanel, "Red", 0, 255, 0, "", function(v) rVal = v; Config.ESPColor = Color3.fromRGB(rVal, gVal, bVal) end)
-AddSlider(ColorPanel, "Green", 0, 255, 255, "", function(v) gVal = v; Config.ESPColor = Color3.fromRGB(rVal, gVal, bVal) end)
-AddSlider(ColorPanel, "Blue", 0, 255, 128, "", function(v) bVal = v; Config.ESPColor = Color3.fromRGB(rVal, gVal, bVal) end)
-
--- Checkbox Komponen ESP
-AddToggle(VisualTab, "ESP Box", Config.ESPBox, function(v) Config.ESPBox = v end)
-AddToggle(VisualTab, "ESP Name", Config.ESPName, function(v) Config.ESPName = v end)
-AddToggle(VisualTab, "ESP Line", Config.ESPLine, function(v) Config.ESPLine = v end)
-AddToggle(VisualTab, "ESP Health", Config.ESPHealth, function(v) Config.ESPHealth = v end)
-AddToggle(VisualTab, "ESP Skeleton", Config.ESPSkeleton, function(v) Config.ESPSkeleton = v end)
-AddToggle(VisualTab, "ESP Distance", Config.ESPDistance, function(v) Config.ESPDistance = v end)
-AddToggle(VisualTab, "ESP Picture (Avatar)", Config.ESPPicture, function(v) Config.ESPPicture = v end)
-
--- ------------------------------------------
--- TAB AIMBOT
--- ------------------------------------------
-AddToggle(AimbotTab, "Aimbot", Config.AimbotAktif, function(v) Config.AimbotAktif = v end)
-AddToggle(AimbotTab, "Team Check", Config.TeamCheck, function(v) Config.TeamCheck = v end)
-AddToggle(AimbotTab, "Wall Check", Config.WallCheck, function(v) Config.WallCheck = v end)
-AddDropdown(AimbotTab, "Mode Aimbot", {"360°", "FOV"}, Config.AimbotMode, function(v) Config.AimbotMode = v end)
-AddDropdown(AimbotTab, "Mode Trigger", {"Fire (Snap)", "Camera"}, Config.TriggerMode, function(v) Config.TriggerMode = v end)
-AddToggle(AimbotTab, "Aim FOV Circle", Config.ShowFOV, function(v) Config.ShowFOV = v end)
-AddSlider(AimbotTab, "Size FOV", 10, 500, Config.FOVRadius, " Px", function(v) Config.FOVRadius = v end)
-AddToggle(AimbotTab, "Aim Line", Config.AimLine, function(v) Config.AimLine = v end)
-AddDropdown(AimbotTab, "Aim Target", {"Head", "Neck", "Chest"}, Config.AimTargetMode, function(v) Config.AimTargetMode = v end)
-AddSlider(AimbotTab, "Aim Distance", 50, 5000, Config.AimDistance, " M", function(v) Config.AimDistance = v end)
-
--- ------------------------------------------
--- TAB PLAYER
--- ------------------------------------------
-AddToggle(PlayerTab, "Speed Run", Config.SpeedAktif, function(v) Config.SpeedAktif = v end)
-AddSlider(PlayerTab, "Speed % / Value", 16, 250, Config.CustomSpeed, " Spd", function(v) Config.CustomSpeed = v end)
-AddToggle(PlayerTab, "Multi Jump", Config.MultiJump, function(v) Config.MultiJump = v end)
-AddToggle(PlayerTab, "Fly Hack (Hold Jump)", Config.FlyAktif, function(v) Config.FlyAktif = v end)
-AddToggle(PlayerTab, "Rapid Fire (RPM)", Config.RapidFire, function(v) Config.RapidFire = v end)
-AddToggle(PlayerTab, "Unlimited Ammo", Config.UnlimitedAmmo, function(v) Config.UnlimitedAmmo = v end)
-
--- ------------------------------------------
--- TAB WORLD
--- ------------------------------------------
-AddDropdown(WorldTab, "Clock Time", {"Pagi (06:00)", "Siang (12:00)", "Sore (15:00)", "Malam (00:00)"}, "Siang (12:00)", function(v)
-    if v:find("Pagi") then Lighting.ClockTime = 6
-    elseif v:find("Siang") then Lighting.ClockTime = 12
-    elseif v:find("Sore") then Lighting.ClockTime = 15
-    elseif v:find("Malam") then Lighting.ClockTime = 0
+local function IsPlayerTeam(plr)
+    if plr == LocalPlayer then return false end
+    if plr.Team and LocalPlayer.Team then
+        return plr.Team == LocalPlayer.Team
     end
-end)
-AddToggle(WorldTab, "No Gravity", Config.NoGravity, function(v)
-    Config.NoGravity = v
-    workspace.Gravity = v and 0 or 196.2
-end)
+    return false
+end
 
--- Teleport List Box Dropdown
-local playerNames = {}
-for _, p in ipairs(Players:GetPlayers()) do if p ~= LocalPlayer then table.insert(playerNames, p.Name) end end
-Players.PlayerAdded:Connect(function(p) table.insert(playerNames, p.Name) end)
-AddDropdown(WorldTab, "Teleport ke Player", #playerNames > 0 and playerNames or {"Tidak ada player"}, "Pilih Player", function(v)
-    Config.SelectedTeleportPlayer = v
-end)
-AddButton(WorldTab, "🚀 Eksekusi Teleport", function()
-    local target = Players:FindFirstChild(Config.SelectedTeleportPlayer)
-    if target and target.Character and target.Character:FindFirstChild("HumanoidRootPart") and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-        LocalPlayer.Character.HumanoidRootPart.CFrame = target.Character.HumanoidRootPart.CFrame + Vector3.new(0, 3, 0)
-    end
-end)
+-- ============================================================
+-- HELPER: WALL CHECK
+-- ============================================================
+local function IsVisible(part)
+    if not part then return false end
+    if not Config.WallCheck then return true end
+    local rp = RaycastParams.new()
+    rp.FilterDescendantsInstances = { LocalPlayer.Character, Camera }
+    rp.FilterType = Enum.RaycastFilterType.Exclude
+    local dir = (part.Position - Camera.CFrame.Position)
+    local result = workspace:Raycast(Camera.CFrame.Position, dir, rp)
+    if not result then return true end
+    return result.Instance:IsDescendantOf(part.Parent)
+end
 
--- ------------------------------------------
--- TAB CONFIG
--- ------------------------------------------
-AddDropdown(ConfigTab, "Theme UI", {"Dark", "Light"}, Config.Theme, function(v)
-    Config.Theme = v
-    if v == "Light" then
-        MainWindow.BackgroundColor3 = Color3.fromRGB(240, 240, 245)
-        TitleLabel.TextColor3 = Color3.fromRGB(0, 150, 80)
+-- ============================================================
+-- HELPER: GET TARGET PART
+-- ============================================================
+local function GetTargetPart(char)
+    if not char then return nil end
+    if Config.AimTarget == "Head" then
+        return char:FindFirstChild("Head")
+    elseif Config.AimTarget == "Neck" then
+        return char:FindFirstChild("Neck") or char:FindFirstChild("Head")
     else
-        MainWindow.BackgroundColor3 = Color3.fromRGB(18, 18, 24)
-        TitleLabel.TextColor3 = Color3.fromRGB(0, 255, 128)
+        return char:FindFirstChild("UpperTorso") or char:FindFirstChild("HumanoidRootPart")
     end
-end)
+end
 
-local ConfigFileName = "LiteHack_Config_ImGui.json"
-AddButton(ConfigTab, "💾 Save Konfigurasi (JSON)", function()
-    pcall(function()
-        local data = HttpService:JSONEncode(Config)
-        if writefile then writefile(ConfigFileName, data) end
-    end)
-end)
-AddButton(ConfigTab, "📂 Load Konfigurasi (JSON)", function()
-    pcall(function()
-        if isfile and readfile and isfile(ConfigFileName) then
-            local data = readfile(ConfigFileName)
-            local decoded = HttpService:JSONDecode(data)
-            for k, v in pairs(decoded) do Config[k] = v end
-        end
-    end)
-end)
+-- ============================================================
+-- ESP SYSTEM (DRAWING BASED - tebal & lengkap)
+-- ============================================================
+local ESPCache = {}       -- [player] = { ... }
 
--- ==========================================
--- 🎯 LOGIKA ESP (BOX, NAME, LINE, HEALTH, SKELETON, DISTANCE, PICTURE)
--- ==========================================
-local ESP_Folder = CoreGui:FindFirstChild("ImGui_ESP_System") or Instance.new("Folder")
-ESP_Folder.Name = "ImGui_ESP_System"
-ESP_Folder.Parent = CoreGui
-local Active_ESP = {}
+local function GetOrCreateDrawing()
+    return {
+        Box       = Drawing.new("Square"),
+        Name      = Drawing.new("Text"),
+        Distance  = Drawing.new("Text"),
+        Line      = Drawing.new("Line"),
+        HealthBg  = Drawing.new("Square"),
+        HealthBar = Drawing.new("Square"),
+        Picture   = Drawing.new("Image"),
+        HeadDot   = Drawing.new("Circle"),
+    }
+end
 
-RunService.RenderStepped:Connect(function()
-    local isESPActive = Config.ESPEnemy or Config.ESPTeam
-    if not isESPActive then
-        for _, d in pairs(Active_ESP) do
-            if d.Box then d.Box.Visible = false end
-            if d.Gui then d.Gui.Enabled = false end
-            if d.Line then d.Line.Visible = false end
-            if d.SkeletonLines then for _, l in pairs(d.SkeletonLines) do l.Visible = false end end
+local function ApplyDrawingDefaults(d)
+    -- Box
+    d.Box.Thickness = 2
+    d.Box.Filled    = false
+    d.Box.Transparency = 1
+    d.Box.Visible   = false
+
+    -- Name (di atas box)
+    d.Name.Size     = 14
+    d.Name.Center   = true
+    d.Name.Outline  = true
+    d.Name.Font     = 2
+    d.Name.Visible  = false
+
+    -- Distance (di bawah box)
+    d.Distance.Size    = 13
+    d.Distance.Center  = true
+    d.Distance.Outline = true
+    d.Distance.Font    = 2
+    d.Distance.Visible = false
+
+    -- Line (dari kepala ke bawah layar / titik pusat)
+    d.Line.Thickness    = 2
+    d.Line.Visible      = false
+    d.Line.Transparency = 1
+
+    -- Health
+    d.HealthBg.Filled   = true
+    d.HealthBg.Visible  = false
+    d.HealthBg.Color    = Color3.fromRGB(30, 30, 30)
+    d.HealthBar.Filled  = true
+    d.HealthBar.Visible = false
+
+    -- Picture
+    d.Picture.Visible = false
+    d.Picture.Transparency = 1
+    d.Picture.Size    = Vector2.new(40, 40)
+    d.Picture.Rounding = 100  -- bulat
+
+    -- Head dot
+    d.HeadDot.Radius    = 3
+    d.HeadDot.Filled    = true
+    d.HeadDot.Thickness = 2
+    d.HeadDot.Visible   = false
+end
+
+-- Ambil thumbnail player (bulat)
+local ThumbCache = {}
+local function GetThumb(plr)
+    if ThumbCache[plr.UserId] then return ThumbCache[plr.UserId] end
+    local url = ("https://www.roblox.com/headshot-thumbnail/image?userId=%d&width=150&height=150&format=png"):format(plr.UserId)
+    ThumbCache[plr.UserId] = url
+    return url
+end
+
+-- Health color
+local function HealthColor(pct)
+    if pct >= 0.7 then
+        return Color3.fromRGB(0, 255, 0)
+    elseif pct >= 0.4 then
+        return Color3.fromRGB(255, 165, 0)
+    else
+        return Color3.fromRGB(180, 0, 0)
+    end
+end
+
+-- Skeleton (garis antar joint sederhana)
+local SkeletonParts = {
+    {"Head","UpperTorso"}, {"UpperTorso","LowerTorso"},
+    {"UpperTorso","LeftUpperArm"}, {"LeftUpperArm","LeftLowerArm"}, {"LeftLowerArm","LeftHand"},
+    {"UpperTorso","RightUpperArm"}, {"RightUpperArm","RightLowerArm"}, {"RightLowerArm","RightHand"},
+    {"LowerTorso","LeftUpperLeg"}, {"LeftUpperLeg","LeftLowerLeg"}, {"LeftLowerLeg","LeftFoot"},
+    {"LowerTorso","RightUpperLeg"}, {"RightUpperLeg","RightLowerLeg"}, {"RightLowerLeg","RightFoot"}
+}
+
+local function UpdateESPForPlayer(plr)
+    local cache = ESPCache[plr]
+    local char = plr.Character
+    local hrp  = char and char:FindFirstChild("HumanoidRootPart")
+    local head = char and char:FindFirstChild("Head")
+    local hum  = char and char:FindFirstChildOfClass("Humanoid")
+
+    if not (char and hrp and head and hum and hum.Health > 0) then
+        if cache then
+            for _, obj in pairs(cache) do
+                if typeof(obj) == "table" then
+                    for _, d in pairs(obj) do if d and d.Visible ~= nil then d.Visible = false end end
+                elseif obj and obj.Visible ~= nil then
+                    obj.Visible = false
+                end
+            end
         end
         return
     end
 
-    for _, p in pairs(Players:GetPlayers()) do
-        if p ~= LocalPlayer and p.Character then
-            local char = p.Character
-            local hum = char:FindFirstChildOfClass("Humanoid")
-            local hrp = char:FindFirstChild("HumanoidRootPart") or char:FindFirstChild("Head")
-            local head = char:FindFirstChild("Head")
-            
-            local isTeam = (p.TeamColor == LocalPlayer.TeamColor)
-            local shouldRender = (isTeam and Config.ESPTeam) or (not isTeam and Config.ESPEnemy)
-
-            if hum and hum.Health > 0 and hrp and head and shouldRender then
-                if not Active_ESP[p] then
-                    local ed = {}
-                    -- Drawing Box / UI Tag
-                    local bgui = Instance.new("BillboardGui", ESP_Folder)
-                    bgui.Size = UDim2.new(0, 200, 0, 80)
-                    bgui.AlwaysOnTop = true
-                    bgui.ExtentsOffset = Vector3.new(0, 3.5, 0)
-                    
-                    local txt = Instance.new("TextLabel", bgui)
-                    txt.Size = UDim2.new(1, 0, 1, 0)
-                    txt.BackgroundTransparency = 1
-                    txt.Font = Enum.Font.Code
-                    txt.TextSize = 13
-                    txt.TextStrokeTransparency = 0
-                    txt.TextColor3 = Color3.fromRGB(255, 255, 255)
-                    txt.TextYAlignment = Enum.TextYAlignment.Top
-
-                    -- Profile Picture ImageLabel
-                    local img = Instance.new("ImageLabel", bgui)
-                    img.Size = UDim2.new(0, 32, 0, 32)
-                    img.Position = UDim2.new(0.5, -16, 0, -38)
-                    img.BackgroundTransparency = 1
-                    Instance.new("UICorner", img).CornerRadius = UDim.new(1, 0)
-
-                    ed.Gui = bgui
-                    ed.Text = txt
-                    ed.Image = img
-                    Active_ESP[p] = ed
+    -- Filter aktif
+    local isEnemy = IsPlayerEnemy(plr)
+    local isTeam  = IsPlayerTeam(plr)
+    local active  = (Config.ESPEnemy and isEnemy) or (Config.ESPTeam and isTeam)
+    if not active then
+        if cache then
+            for _, obj in pairs(cache) do
+                if typeof(obj) == "table" then
+                    for _, d in pairs(obj) do if d and d.Visible ~= nil then d.Visible = false end end
+                elseif obj and obj.Visible ~= nil then
+                    obj.Visible = false
                 end
+            end
+        end
+        return
+    end
 
-                local data = Active_ESP[p]
-                data.Gui.Enabled = true
-                
-                -- Dynamic Health Color Calculation
-                local hpPct = hum.Health / hum.MaxHealth
-                local hpColor = Color3.fromRGB(0, 255, 0)
-                if hpPct <= 0.7 and hpPct > 0.4 then hpColor = Color3.fromRGB(255, 165, 0)
-                elseif hpPct <= 0.4 then hpColor = Color3.fromRGB(139, 0, 0) end
+    -- Get viewport positions
+    local headPos, headVis = Camera:WorldToViewportPoint(head.Position + Vector3.new(0, 1.5, 0))
+    local rootPos, rootVis = Camera:WorldToViewportPoint(hrp.Position - Vector3.new(0, 3, 0))
+    local topPos, topVis   = Camera:WorldToViewportPoint((head.Position + Vector3.new(0, 3, 0)))
+    local botPos, botVis   = Camera:WorldToViewportPoint((hrp.Position - Vector3.new(0, 3.2, 0)))
 
-                -- Text Info Construction
-                local infoText = ""
-                if Config.ESPName then infoText = infoText .. p.Name .. "\n" end
-                if Config.ESPHealth then infoText = infoText .. "HP: " .. math.floor(hum.Health) .. "/" .. math.floor(hum.MaxHealth) .. "\n" end
-                if Config.ESPDistance and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-                    local dist = math.floor((LocalPlayer.Character.HumanoidRootPart.Position - hrp.Position).Magnitude)
-                    infoText = infoText .. "[" .. dist .. "m]"
+    -- Kalau offscreen, matikan
+    if not (headVis and rootVis) then
+        if cache then
+            for _, obj in pairs(cache) do
+                if typeof(obj) == "table" then
+                    for _, d in pairs(obj) do if d and d.Visible ~= nil then d.Visible = false end end
+                elseif obj and obj.Visible ~= nil then
+                    obj.Visible = false
                 end
-                data.Text.Text = infoText
-                data.Text.TextColor3 = Config.ESPColor
+            end
+        end
+        return
+    end
 
-                -- Profile Thumbnail Fetch
-                if Config.ESPPicture then
-                    pcall(function()
-                        local thumb = Players:GetUserThumbnailAsync(p.UserId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size48x48)
-                        data.Image.Image = thumb
-                        data.Image.Visible = true
-                    end)
+    -- Setup drawing kalau belum ada
+    if not cache then
+        cache = GetOrCreateDrawing()
+        ApplyDrawingDefaults(cache)
+        ESPCache[plr] = cache
+    end
+
+    -- Hitung box
+    local boxTop    = Vector2.new(topPos.X, topPos.Y)
+    local boxBottom = Vector2.new(botPos.X, botPos.Y)
+    local boxHeight = math.abs(boxBottom.Y - boxTop.Y)
+    local boxWidth  = boxHeight * 0.55
+    local boxX      = boxTop.X - boxWidth / 2
+    local boxY      = boxTop.Y
+    local boxPos    = Vector2.new(boxX, boxY)
+    local boxSize   = Vector2.new(boxWidth, boxHeight)
+
+    local color = Config.ESPColor
+
+    -- BOX
+    if Config.ESPBox then
+        cache.Box.Visible = true
+        cache.Box.Color   = color
+        cache.Box.Position = boxPos
+        cache.Box.Size     = boxSize
+        cache.Box.Thickness = 2
+    else
+        cache.Box.Visible = false
+    end
+
+    -- NAME (di atas box)
+    if Config.ESPName then
+        cache.Name.Visible = true
+        cache.Name.Color   = color
+        cache.Name.Text    = plr.Name
+        cache.Name.Position = Vector2.new(boxPos.X + boxWidth / 2, boxPos.Y - 18)
+    else
+        cache.Name.Visible = false
+    end
+
+    -- DISTANCE (di bawah box)
+    if Config.ESPDistance then
+        local myHrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+        local dist = myHrp and math.floor((myHrp.Position - hrp.Position).Magnitude) or 0
+        cache.Distance.Visible = true
+        cache.Distance.Color   = color
+        cache.Distance.Text    = dist .. "m"
+        cache.Distance.Position = Vector2.new(boxPos.X + boxWidth / 2, boxPos.Y + boxHeight + 2)
+    else
+        cache.Distance.Visible = false
+    end
+
+    -- LINE (dari kepala ke bawah layar, sesuai request "di kepala")
+    if Config.ESPLine then
+        cache.Line.Visible = true
+        cache.Line.Color   = color
+        cache.Line.From    = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y)
+        cache.Line.To      = Vector2.new(headPos.X, headPos.Y)
+    else
+        cache.Line.Visible = false
+    end
+
+    -- HEALTH BAR (kanan box)
+    if Config.ESPHealth then
+        local pct = hum.Health / hum.MaxHealth
+        local hbW = 4
+        local hbX = boxPos.X + boxWidth + 4
+        cache.HealthBg.Visible = true
+        cache.HealthBg.Color   = Color3.fromRGB(20, 20, 20)
+        cache.HealthBg.Position = Vector2.new(hbX, boxPos.Y)
+        cache.HealthBg.Size     = Vector2.new(hbW, boxHeight)
+
+        cache.HealthBar.Visible = true
+        cache.HealthBar.Color   = HealthColor(pct)
+        local fillH = boxHeight * pct
+        cache.HealthBar.Position = Vector2.new(hbX, boxPos.Y + (boxHeight - fillH))
+        cache.HealthBar.Size     = Vector2.new(hbW, fillH)
+    else
+        cache.HealthBg.Visible  = false
+        cache.HealthBar.Visible = false
+    end
+
+    -- SKELETON
+    if Config.ESPSkeleton then
+        if not cache.Skeleton then
+            cache.Skeleton = {}
+            for i = 1, #SkeletonParts do
+                cache.Skeleton[i] = Drawing.new("Line")
+                cache.Skeleton[i].Thickness = 1.5
+            end
+        end
+        for i, pair in ipairs(SkeletonParts) do
+            local a = char:FindFirstChild(pair[1])
+            local b = char:FindFirstChild(pair[2])
+            local ln = cache.Skeleton[i]
+            if a and b then
+                local pa, va = Camera:WorldToViewportPoint(a.Position)
+                local pb, vb = Camera:WorldToViewportPoint(b.Position)
+                if va and vb then
+                    ln.Visible = true
+                    ln.Color   = color
+                    ln.From    = Vector2.new(pa.X, pa.Y)
+                    ln.To      = Vector2.new(pb.X, pb.Y)
                 else
-                    data.Image.Visible = false
+                    ln.Visible = false
                 end
             else
-                if Active_ESP[p] and Active_ESP[p].Gui then Active_ESP[p].Gui.Enabled = false end
+                ln.Visible = false
             end
         end
-    end
-end)
-
--- ==========================================
--- 🎯 LOGIKA AIMBOT & TRIGGER
--- ==========================================
-RunService.RenderStepped:Connect(function()
-    if not Config.AimbotAktif then return end
-
-    local closestTarget = nil
-    local shortestDist = Config.AimbotMode == "FOV" and Config.FOVRadius or math.huge
-    local center = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
-
-    for _, p in pairs(Players:GetPlayers()) do
-        if p ~= LocalPlayer and p.Character then
-            local char = p.Character
-            local hum = char:FindFirstChildOfClass("Humanoid")
-            local part = char:FindFirstChild(Config.AimTargetMode) or char:FindFirstChild("HumanoidRootPart")
-            
-            local isTeam = (p.TeamColor == LocalPlayer.TeamColor)
-            if hum and hum.Health > 0 and part then
-                if not (Config.TeamCheck and isTeam) then
-                    local dist3D = (Camera.CFrame.Position - part.Position).Magnitude
-                    if dist3D <= Config.AimDistance then
-                        local pos, onScreen = Camera:WorldToViewportPoint(part.Position)
-                        if onScreen then
-                            local dist2D = (center - Vector2.new(pos.X, pos.Y)).Magnitude
-                            if dist2D < shortestDist then
-                                shortestDist = dist2D
-                                closestTarget = part
-                            end
-                        end
-                    end
-                end
-            end
-        end
+    elseif cache.Skeleton then
+        for _, ln in ipairs(cache.Skeleton) do ln.Visible = false end
     end
 
-    if closestTarget then
-        if Config.AimbotMode == "360°" or Config.AimbotMode == "FOV" then
-            Camera.CFrame = CFrame.lookAt(Camera.CFrame.Position, closestTarget.Position)
-        end
-    end
-end)
-
--- ==========================================
--- 🏃 LOGIKA PLAYER HACKS (SPEED, MULTI JUMP, FLY, GUN MODS)
--- ==========================================
-UserInputService.JumpRequest:Connect(function()
-    if Config.MultiJump and LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
-        LocalPlayer.Character.Humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
-    end
-end)
-
-RunService.Stepped:Connect(function()
-    if LocalPlayer.Character then
-        local hum = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
-        local hrp = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-        if hum and Config.SpeedAktif then
-            hum.WalkSpeed = Config.CustomSpeed
-        end
-        if hrp and Config.FlyAktif and UserInputService:IsKeyDown(Enum.KeyCode.Space) then
-            hrp.Velocity = Vector3.new(hrp.Velocity.X, 50, hrp.Velocity.Z)
-        end
-    end
-end)
-
--- Gun Mods (Unlimited Ammo & Rapid Fire)
-RunService.RenderStepped:Connect(function()
-    if (Config.UnlimitedAmmo or Config.RapidFire) and LocalPlayer.Character then
+    -- PICTURE (di atas kepala, bulat, ada spasi)
+    if Config.ESPPicture then
+        cache.Picture.Visible = true
+        local url = GetThumb(plr)
         pcall(function()
-            for _, tool in ipairs(LocalPlayer.Character:GetChildren()) do
-                if tool:IsA("Tool") then
-                    for _, obj in ipairs(tool:GetDescendants()) do
-                        if obj:IsA("IntValue") or obj:IsA("NumberValue") then
-                            local name = obj.Name:lower()
-                            if Config.UnlimitedAmmo and (name:find("ammo") or name:find("clip") or name:find("mag")) then
-                                obj.Value = 99999
-                            end
-                            if Config.RapidFire and (name:find("firerate") or name:find("rpm") or name:find("rate")) then
-                                obj.Value = Config.CustomFireRate
-                            end
-                        end
-                    end
-                end
+            if cache.Picture.Image ~= url then
+                cache.Picture.Image = url
             end
         end)
+        cache.Picture.Size     = Vector2.new(36, 36)
+        cache.Picture.Position = Vector2.new(headPos.X - 18, headPos.Y - 60)
+    else
+        cache.Picture.Visible = false
+    end
+end
+
+-- Bersihkan cache kalau player keluar
+Players.PlayerRemoving:Connect(function(plr)
+    local c = ESPCache[plr]
+    if c then
+        for _, obj in pairs(c) do
+            if typeof(obj) == "table" then
+                for _, d in pairs(obj) do pcall(function() d:Remove() end) end
+            elseif obj and obj.Remove then
+                pcall(function() obj:Remove() end)
+            end
+        end
+        ESPCache[plr] = nil
     end
 end)
 
-Rayfield = nil -- Clear reference
-print("🎯 Lite Hack ImGui Loaded Successfully!")
+-- Render loop ESP
+RunService.RenderStepped:Connect(function()
+    for _, plr in ipairs(Players:GetPlayers()) do
+        if plr ~= LocalPlayer then
+            pcall(UpdateESPForPlayer, plr)
+        end
+    end
+end)
+
+-- ============================================================
+-- AIMBOT SYSTEM
+-- ============================================================
+local LockedTarget = nil
+local FOVCircle, AimLine
+
+-- FOV circle & aim line drawings
+FOVCircle = Drawing.new("Circle")
+FOVCircle.Thickness = 1.5
+FOVCircle.NumSides  = 60
+FOVCircle.Filled    = false
+FOVCircle.Color     = Color3.fromRGB(255, 255, 255)
+FOVCircle.Transparency = 0.7
+FOVCircle.Visible   = false
+
+AimLine = Drawing.new("Line")
+AimLine.Thickness = 1.5
+AimLine.Color     = Color3.fromRGB(255, 100, 100)
+AimLine.Visible   = false
+
+local function GetClosestTarget()
+    local closest, shortestDist = nil, math.huge
+    local center = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
+    local myHrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+    if not myHrp then return nil end
+
+    for _, plr in ipairs(Players:GetPlayers()) do
+        if plr ~= LocalPlayer and plr.Character then
+            local okTeam = (not Config.TeamCheck) or IsPlayerEnemy(plr)
+            if okTeam then
+                local char = plr.Character
+                local hum = char:FindFirstChildOfClass("Humanoid")
+                local part = GetTargetPart(char)
+                if hum and hum.Health > 0 and part then
+                    local dist3D = (myHrp.Position - part.Position).Magnitude
+                    if dist3D <= Config.AimDistance then
+                        if IsVisible(part) then
+                            local pos, onScreen = Camera:WorldToViewportPoint(part.Position)
+                            if onScreen or Config.AimbotMode == "360" then
+                                local dist2D = (Vector2.new(pos.X, pos.Y) - center).Magnitude
+                                if Config.AimbotMode == "360" or dist2D <= Config.FOVSize then
+                                    if dist3D < shortestDist then
+                                        shortestDist = dist3D
+                                        closest = plr
+                                    end
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end
+    return closest
+end
+
+-- FOV & aim line rendering
+RunService.RenderStepped:Connect(function()
+    -- FOV circle
+    if Config.Aimbot and Config.ShowFOV then
+        FOVCircle.Visible  = true
+        FOVCircle.Position = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
+        FOVCircle.Radius   = Config.FOVSize
+    else
+        FOVCircle.Visible = false
+    end
+
+    -- Aim line
+    if Config.Aimbot and Config.AimLine and LockedTarget and LockedTarget.Character then
+        local part = GetTargetPart(LockedTarget.Character)
+        if part then
+            local pos, onScreen = Camera:WorldToViewportPoint(part.Position)
+            if onScreen then
+                AimLine.Visible = true
+                AimLine.From = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
+                AimLine.To   = Vector2.new(pos.X, pos.Y)
+            else
+                AimLine.Visible = false
+            end
+        else
+            AimLine.Visible = false
+        end
+    else
+        AimLine.Visible = false
+    end
+
+    -- Aimbot main logic
+    if Config.Aimbot then
+        local target = GetClosestTarget()
+        LockedTarget = target
+
+        if target and target.Character then
+            local part = GetTargetPart(target.Character)
+            if part and part.Parent then
+                if Config.TriggerMode == "Camera" then
+                    Camera.CFrame = CFrame.lookAt(Camera.CFrame.Position, part.Position)
+                else -- Fire (snap)
+                    Camera.CFrame = CFrame.lookAt(Camera.CFrame.Position, part.Position)
+                end
+            end
+        end
+    end
+end)
+
+-- Trigger mode "Fire" — klik untuk snap
+UserInputService.InputBegan:Connect(function(input, gpe)
+    if gpe then return end
+    if Config.Aimbot and Config.TriggerMode == "Fire" and LockedTarget and LockedTarget.Character then
+        if input.UserInputType == Enum.UserInputType.MouseButton2 then
+            local part = GetTargetPart(LockedTarget.Character)
+            if part then
+                Camera.CFrame = CFrame.lookAt(Camera.CFrame.Position, part.Position)
+            end
+        end
+    end
+end)
+
+-- ============================================================
+-- PLAYER HACKS
+-- ============================================================
+-- Base WalkSpeed = 16
+local MultiJumpCount = 0
+local FLY_BV
+
+RunService.Stepped:Connect(function()
+    local char = LocalPlayer.Character
+    if not char then return end
+    local hum = char:FindFirstChildOfClass("Humanoid")
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    if not hum or not hrp then return end
+
+    -- Speed
+    if Config.SpeedRun then
+        hum.WalkSpeed = 16 * (Config.SpeedPercent / 100)
+    else
+        -- biarkan default (jangan paksa)
+    end
+
+    -- Multi Jump
+    if Config.MultiJump then
+        hum.UseJumpPower = true
+        if hum:GetState() == Enum.HumanoidStateType.Freefall then
+            if UserInputService:IsKeyDown(Enum.KeyCode.Space) and MultiJumpCount < 3 then
+                hum:ChangeState(Enum.HumanoidStateType.Jumping)
+                MultiJumpCount = MultiJumpCount + 1
+            end
+        end
+    end
+    if hum:GetState() ~= Enum.HumanoidStateType.Freefall then
+        MultiJumpCount = 0
+    end
+
+    -- Fly Hack
+    if Config.FlyHack then
+        if not FLY_BV or FLY_BV.Parent ~= hrp then
+            if FLY_BV then FLY_BV:Destroy() end
+            FLY_BV = Instance.new("BodyVelocity")
+            FLY_BV.MaxForce = Vector3.new(1e5, 1e5, 1e5)
+            FLY_BV.Velocity = Vector3.zero
+            FLY_BV.Parent = hrp
+        end
+        if UserInputService:IsKeyDown(Enum.KeyCode.Space) then
+            FLY_BV.Velocity = Vector3.new(0, 50, 0)
+        else
+            FLY_BV.Velocity = Vector3.zero
+        end
+    else
+        if FLY_BV then FLY_BV:Destroy(); FLY_BV = nil end
+    end
+
+    -- No Gravity
+    if Config.NoGravity and hrp then
+        workspace.Gravity = 0
+    end
+end)
+
+-- Rapid Fire & Unlimited Ammo (loop scan tool)
+task.spawn(function()
+    while task.wait(0.2) do
+        if Config.RapidFire or Config.UnlimitedAmmo then
+            local char = LocalPlayer.Character
+            if char then
+                for _, tool in ipairs(char:GetChildren()) do
+                    if tool:IsA("Tool") then
+                        if Config.UnlimitedAmmo then
+                            for _, obj in ipairs(tool:GetDescendants()) do
+                                if obj:IsA("IntValue") or obj:IsA("NumberValue") then
+                                    local n = obj.Name:lower()
+                                    if n:find("ammo") or n:find("clip") or n:find("mag") then
+                                        obj.Value = 9999
+                                    end
+                                end
+                            end
+                        end
+                        if Config.RapidFire then
+                            for _, obj in ipairs(tool:GetDescendants()) do
+                                if obj:IsA("NumberValue") then
+                                    local n = obj.Name:lower()
+                                    if n:find("firerate") or n:find("cooldown") then
+                                        obj.Value = 0.01
+                                    end
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end
+end)
+
+-- ============================================================
+-- WORLD: TELEPORT LIST
+-- ============================================================
+local function TeleportTo(plr)
+    if not plr or not plr.Character then return end
+    local myHrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+    local targetHrp = plr.Character:FindFirstChild("HumanoidRootPart")
+    if myHrp and targetHrp then
+        myHrp.CFrame = targetHrp.CFrame + Vector3.new(0, 3, 0)
+    end
+end
+
+-- ============================================================
+-- THEME & FLOATING ICON (SKULL GLOW)
+-- ============================================================
+local FloatingGui = Instance.new("ScreenGui")
+FloatingGui.Name = "UltimateMods_Floating"
+FloatingGui.ResetOnSpawn = false
+FloatingGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+FloatingGui.Parent = CoreGui
+
+local SkullBtn = Instance.new("TextButton")
+SkullBtn.Size = UDim2.new(0, 56, 0, 56)
+SkullBtn.Position = UDim2.new(0, 20, 0.5, -28)
+SkullBtn.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
+SkullBtn.BackgroundTransparency = 0.15
+SkullBtn.Text = "💀"
+SkullBtn.TextSize = 30
+SkullBtn.Font = Enum.Font.GothamBlack
+SkullBtn.TextColor3 = Color3.fromRGB(255, 60, 60)
+SkullBtn.AutoButtonColor = false
+SkullBtn.Draggable = true
+SkullBtn.Parent = FloatingGui
+
+local SkullCorner = Instance.new("UICorner")
+SkullCorner.CornerRadius = UDim.new(0.5, 0)
+SkullCorner.Parent = SkullBtn
+
+local SkullStroke = Instance.new("UIStroke")
+SkullStroke.Thickness = 2
+SkullStroke.Color = Color3.fromRGB(255, 60, 60)
+SkullStroke.Transparency = 0.2
+SkullStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+SkullStroke.Parent = SkullBtn
+
+-- Glow effect
+local Glow = Instance.new("ImageLabel")
+Glow.Size = UDim2.new(1, 20, 1, 20)
+Glow.Position = UDim2.new(0, -10, 0, -10)
+Glow.BackgroundTransparency = 1
+Glow.Image = "rbxassetid://5028857084"
+Glow.ImageColor3 = Color3.fromRGB(255, 0, 0)
+Glow.ImageTransparency = 0.4
+Glow.ZIndex = 0
+Glow.Parent = SkullBtn
+
+-- Pulsing glow
+task.spawn(function()
+    while task.wait(0.05) do
+        local t = tick()
+        local a = 0.4 + math.sin(t * 3) * 0.3
+        Glow.ImageTransparency = a
+        SkullStroke.Transparency = 0.2 + math.sin(t * 3) * 0.3
+    end
+end)
+
+-- ============================================================
+-- IMGUI WINDOW SETUP
+-- ============================================================
+ImGui.Style:SetTheme(Config.Theme)   -- Dark / Light
+
+local Window = ImGui:CreateWindow({
+    Title = "💀 Ultimate Mods",
+    Size = UDim2.new(0, 520, 0, 340),  -- compact
+    Position = UDim2.new(0.5, -260, 0.5, -170),
+    Theme = Config.Theme,
+    ToggleKey = Enum.KeyCode.LeftControl,
+    FloatingIcon = SkullBtn
+})
+
+-- Sembunyikan/tampilkan window via skull
+local windowVisible = true
+SkullBtn.MouseButton1Click:Connect(function()
+    windowVisible = not windowVisible
+    if Window.SetVisible then
+        Window:SetVisible(windowVisible)
+    elseif Window.Toggle then
+        Window:Toggle()
+    end
+end)
+
+-- ============================================================
+-- TAB 1: VISUAL
+-- ============================================================
+local TabVisual = Window:AddTab("Visual")
+
+TabVisual:AddToggle("ESP Enemy", Config.ESPEnemy, function(v) Config.ESPEnemy = v end)
+TabVisual:AddToggle("ESP Team",  Config.ESPTeam,  function(v) Config.ESPTeam  = v end)
+
+-- Widget warna RGB
+local colorSet = {R = 255, G = 0, B = 0}
+TabVisual:AddColorPicker("Warna ESP (RGB)", Config.ESPColor, function(c)
+    Config.ESPColor = c
+end)
+
+TabVisual:AddCheckbox("Box",      Config.ESPBox,      function(v) Config.ESPBox      = v end)
+TabVisual:AddCheckbox("Name",     Config.ESPName,     function(v) Config.ESPName     = v end)
+TabVisual:AddCheckbox("Line",     Config.ESPLine,     function(v) Config.ESPLine     = v end)
+TabVisual:AddCheckbox("Health",   Config.ESPHealth,   function(v) Config.ESPHealth   = v end)
+TabVisual:AddCheckbox("Skeleton", Config.ESPSkeleton, function(v) Config.ESPSkeleton = v end)
+TabVisual:AddCheckbox("Distance", Config.ESPDistance, function(v) Config.ESPDistance = v end)
+TabVisual:AddCheckbox("Picture",  Config.ESPPicture,  function(v) Config.ESPPicture  = v end)
+
+-- ============================================================
+-- TAB 2: AIMBOT
+-- ============================================================
+local TabAimbot = Window:AddTab("Aimbot")
+
+TabAimbot:AddToggle("Aimbot",     Config.Aimbot,     function(v) Config.Aimbot     = v end)
+TabAimbot:AddToggle("Team Check", Config.TeamCheck,  function(v) Config.TeamCheck  = v end)
+TabAimbot:AddToggle("Wall Check", Config.WallCheck,  function(v) Config.WallCheck  = v end)
+
+TabAimbot:AddDropdown("Mode Aimbot", {"FOV", "360"}, Config.AimbotMode, function(v)
+    Config.AimbotMode = v
+end)
+TabAimbot:AddDropdown("Mode Trigger", {"Camera", "Fire(snap)"}, Config.TriggerMode, function(v)
+    Config.TriggerMode = v
+end)
+
+TabAimbot:AddToggle("Aim FOV (tampilkan lingkaran)", Config.ShowFOV, function(v) Config.ShowFOV = v end)
+TabAimbot:AddSlider("Size FOV", 10, 600, Config.FOVSize, function(v) Config.FOVSize = v end)
+TabAimbot:AddToggle("Aim Line",  Config.AimLine, function(v) Config.AimLine = v end)
+
+TabAimbot:AddDropdown("Aim Target", {"Head", "Neck", "Chest"}, Config.AimTarget, function(v)
+    Config.AimTarget = v
+end)
+
+TabAimbot:AddSlider("Aim Distance (m)", 50, 2000, Config.AimDistance, function(v)
+    Config.AimDistance = v
+end)
+
+-- ============================================================
+-- TAB 3: PLAYER
+-- ============================================================
+local TabPlayer = Window:AddTab("Player")
+
+TabPlayer:AddToggle("Speed Run", Config.SpeedRun, function(v) Config.SpeedRun = v end)
+TabPlayer:AddSlider("Speed (%)", 50, 500, Config.SpeedPercent, function(v)
+    Config.SpeedPercent = v
+end)
+
+TabPlayer:AddToggle("Multi Jump",     Config.MultiJump,     function(v) Config.MultiJump     = v end)
+TabPlayer:AddToggle("Fly Hack",       Config.FlyHack,       function(v) Config.FlyHack       = v end)
+TabPlayer:AddToggle("Rapid Fire",     Config.RapidFire,     function(v) Config.RapidFire     = v end)
+TabPlayer:AddToggle("Unlimited Ammo", Config.UnlimitedAmmo, function(v) Config.UnlimitedAmmo = v end)
+
+-- ============================================================
+-- TAB 4: WORLD
+-- ============================================================
+local TabWorld = Window:AddTab("World")
+
+TabWorld:AddDropdown("Clock Time", {"Morning", "Day", "Evening", "Night"}, Config.ClockTime, function(v)
+    Config.ClockTime = v
+    ApplyClockTime(v)
+end)
+
+TabWorld:AddToggle("No Gravity", Config.NoGravity, function(v)
+    Config.NoGravity = v
+    workspace.Gravity = v and 0 or 196.2
+end)
+
+-- List box teleport — pakai dropdown nama player
+local playerNames = {}
+local function RefreshPlayerList()
+    playerNames = {}
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p ~= LocalPlayer then
+            table.insert(playerNames, p.Name)
+        end
+    end
+end
+RefreshPlayerList()
+Players.PlayerAdded:Connect(RefreshPlayerList)
+Players.PlayerRemoving:Connect(RefreshPlayerList)
+
+local teleportSel = nil
+TabWorld:AddDropdown("Teleport To Player", playerNames, nil, function(v)
+    teleportSel = v
+end)
+TabWorld:AddButton("Teleport", function()
+    if teleportSel then
+        local plr = Players:FindFirstChild(teleportSel)
+        if plr then TeleportTo(plr) end
+    end
+end)
+
+-- ============================================================
+-- TAB 5: CONFIG
+-- ============================================================
+local TabConfig = Window:AddTab("Config")
+
+TabConfig:AddDropdown("Theme", {"Dark", "Light"}, Config.Theme, function(v)
+    Config.Theme = v
+    ImGui.Style:SetTheme(v)
+end)
+
+local ConfigFile = "UltimateMods_Config.json"
+
+TabConfig:AddButton("💾 Save Config", function()
+    local data = HttpService:JSONEncode(Config)
+    if writefile then
+        pcall(function() writefile(ConfigFile, data) end)
+        ImGui:Notify("Config", "Berhasil disimpan ke " .. ConfigFile)
+    else
+        ImGui:Notify("Config", "Executor tidak support writefile")
+    end
+end)
+
+TabConfig:AddButton("📂 Load Config", function()
+    if isfile and isfile(ConfigFile) then
+        local ok, content = pcall(readfile, ConfigFile)
+        if ok and content then
+            local decoded = HttpService:JSONDecode(content)
+            for k, v in pairs(decoded) do
+                Config[k] = v
+            end
+            -- Re-apply world
+            ApplyClockTime(Config.ClockTime)
+            workspace.Gravity = Config.NoGravity and 0 or 196.2
+            ImGui.Style:SetTheme(Config.Theme)
+            ImGui:Notify("Config", "Config dimuat!")
+        end
+    else
+        ImGui:Notify("Config", "File config tidak ditemukan")
+    end
+end)
+
+-- ============================================================
+-- CLEANUP
+-- ============================================================
+LocalPlayer.CharacterAdded:Connect(function()
+    if FLY_BV then FLY_BV:Destroy(); FLY_BV = nil end
+    MultiJumpCount = 0
+end)
+
+-- ============================================================
+-- NOTIFIKASI START
+-- ============================================================
+pcall(function()
+    ImGui:Notify("💀 Ultimate Mods", "Script loaded successfully!")
+end)
+
+print("[Ultimate Mods] Loaded.")
