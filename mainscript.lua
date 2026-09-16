@@ -82,7 +82,6 @@ _G.LiteHackCfg = {
     ESPDistance = true,
     ESPPicture = false,
     ESPColor = Color3.fromRGB(255, 60, 60),
-    SilentAim = false,
     Aimbot = false,
     AimTeamCheck = true,
     AimWallCheck = true,
@@ -150,7 +149,7 @@ end
 local FONT_BOLD = Enum.Font.GothamBold
 
 -- ==========================================
--- SMOOTH TELEPORT (helper global)
+-- SMOOTH TELEPORT (v2 - lebih smooth & lambat)
 -- ==========================================
 _G.__SmoothTeleport = function(targetPos, duration)
     local char = LocalPlayer.Character
@@ -158,17 +157,32 @@ _G.__SmoothTeleport = function(targetPos, duration)
     local hrp = char:FindFirstChild("HumanoidRootPart")
     if not hrp then return end
 
+    duration = duration or 1.5  -- default lebih lambat
     local startPos = hrp.Position
     local startTime = tick()
-    duration = duration or 0.6
-
     local conn
-    conn = RunService.Heartbeat:Connect(function()
-        if not hrp or not hrp.Parent then conn:Disconnect() return end
-        local t = math.min((tick() - startTime) / duration, 1)
-        local newPos = startPos:Lerp(targetPos, t)
-        hrp.CFrame = CFrame.new(newPos, newPos + hrp.CFrame.LookVector)
-        if t >= 1 then conn:Disconnect() end
+
+    -- Easing: smoothstep biar masuk & keluar halus
+    local function smoothstep(t)
+        return t * t * (3 - 2 * t)
+    end
+
+    conn = RunService.RenderStepped:Connect(function()
+        if not hrp or not hrp.Parent then
+            if conn then conn:Disconnect() end
+            return
+        end
+        local elapsed = tick() - startTime
+        local t = math.clamp(elapsed / duration, 0, 1)
+        local eased = smoothstep(t)
+        local newPos = startPos:Lerp(targetPos, eased)
+
+        -- Update CFrame (jaga rotasi lama)
+        hrp.CFrame = CFrame.new(newPos, newPos + hrp.CFrame.LookVector * 0.001 + hrp.CFrame.UpVector * 0.001)
+
+        if t >= 1 then
+            if conn then conn:Disconnect() end
+        end
     end)
 end
 
@@ -191,7 +205,7 @@ if hookmetamethod and checkcaller then
 end
 
 -- ==========================================
--- FLOATING ICON (SKULL GLOWUP)
+-- FLOATING ICON
 -- ==========================================
 local FloatingGui = make("ScreenGui", {
     Name = "LiteHack_FloatingIcon",
@@ -397,9 +411,6 @@ local function Section(page, text)
     return f
 end
 
--- Toggle dgn referensi biar bisa di-set dari script lain
-local ToggleRefs = {}
-
 local function Toggle(page, text, default, callback)
     local row = make("Frame", {
         Size = UDim2.new(1, 0, 0, 30),
@@ -446,12 +457,10 @@ local function Toggle(page, text, default, callback)
     end
 
     btn.MouseButton1Click:Connect(function() update(not state, true) end)
-    local ref = {
+    return {
         Set = function(_, v) update(v, true) end,
         Get = function() return state end
     }
-    ToggleRefs[text] = ref
-    return ref
 end
 
 local function Slider(page, text, min, max, default, suffix, callback)
@@ -755,27 +764,10 @@ Toggle(VisualTab, "Distance", Cfg.ESPDistance, function(v) Cfg.ESPDistance = v e
 Toggle(VisualTab, "Picture", Cfg.ESPPicture, function(v) Cfg.ESPPicture = v end)
 
 -- ==========================================
--- TAB AIMBOT (SILENT AIM DI PALING ATAS)
+-- TAB AIMBOT (tanpa Silent Aim)
 -- ==========================================
-Section(AimbotTab, "Silent Aim")
-Toggle(AimbotTab, "Silent Aim", Cfg.SilentAim, function(v)
-    Cfg.SilentAim = v
-    if v and Cfg.Aimbot then
-        -- Matikan aimbot biasa otomatis
-        Cfg.Aimbot = false
-        if ToggleRefs["Aimbot"] then ToggleRefs["Aimbot"]:Set(false) end
-    end
-end)
-
 Section(AimbotTab, "Aimbot Settings")
-Toggle(AimbotTab, "Aimbot", Cfg.Aimbot, function(v)
-    Cfg.Aimbot = v
-    if v and Cfg.SilentAim then
-        -- Matikan silent aim otomatis
-        Cfg.SilentAim = false
-        if ToggleRefs["Silent Aim"] then ToggleRefs["Silent Aim"]:Set(false) end
-    end
-end)
+Toggle(AimbotTab, "Aimbot", Cfg.Aimbot, function(v) Cfg.Aimbot = v end)
 Toggle(AimbotTab, "Team Check", Cfg.AimTeamCheck, function(v) Cfg.AimTeamCheck = v end)
 Toggle(AimbotTab, "Wall Check", Cfg.AimWallCheck, function(v) Cfg.AimWallCheck = v end)
 ComboBox(AimbotTab, "Mode Aimbot", {"FOV", "360°"}, Cfg.AimMode, function(v) Cfg.AimMode = v end)
@@ -804,11 +796,18 @@ Toggle(PlayerTab, "Speed Run", Cfg.SpeedRun, function(v)
     end
 end)
 Slider(PlayerTab, "Speed %", 100, 500, Cfg.SpeedRunValue, "%", function(v) Cfg.SpeedRunValue = v end)
-Toggle(PlayerTab, "Multi Jump", Cfg.MultiJump, function(v) Cfg.MultiJump = v end)
+
+Toggle(PlayerTab, "Multi Jump", Cfg.MultiJump, function(v)
+    Cfg.MultiJump = v
+end)
+
 Toggle(PlayerTab, "Fly Hack (tahan Jump)", Cfg.FlyHack, function(v)
     Cfg.FlyHack = v
     if not v then
+        -- Reset fly saat di-off
         if _G.__FlyBV then pcall(function() _G.__FlyBV:Destroy() end); _G.__FlyBV = nil end
+        if _G.__FlyGyro then pcall(function() _G.__FlyGyro:Destroy() end); _G.__FlyGyro = nil end
+        if _G.__FlyConn then pcall(function() _G.__FlyConn:Disconnect() end); _G.__FlyConn = nil end
     end
 end)
 
@@ -873,7 +872,8 @@ end, function(name)
     local target = Players:FindFirstChild(name)
     if target and target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
         if _G.__SmoothTeleport then
-            _G.__SmoothTeleport(target.Character.HumanoidRootPart.Position, 0.6)
+            -- Durasi 1.5 detik biar lebih smooth & lambat
+            _G.__SmoothTeleport(target.Character.HumanoidRootPart.Position, 1.5)
         end
     end
 end)
@@ -952,7 +952,9 @@ local FOVGui = make("ScreenGui", {Name = "LiteHack_FOV", ResetOnSpawn = false, I
 local FOVCircle = make("Frame", {
     Size = UDim2.new(0, 300, 0, 300),
     Position = UDim2.new(0.5, -150, 0.5, -150),
-    BackgroundTransparency = 1, Visible = false, Parent = FOVGui
+    BackgroundTransparency = 1,
+    Visible = false,
+    Parent = FOVGui
 })
 corner(FOVCircle, 9999)
 stroke(FOVCircle, Color3.fromRGB(255, 80, 80), 2, 0.3)
@@ -964,7 +966,8 @@ local AimLineGui = make("Frame", {
     BorderSizePixel = 0,
     AnchorPoint = Vector2.new(0.5, 0),
     Position = UDim2.new(0.5, 0, 0.5, 0),
-    Visible = false, Parent = FOVGui
+    Visible = false,
+    Parent = FOVGui
 })
 
 -- ==========================================
@@ -1276,7 +1279,7 @@ RunService.RenderStepped:Connect(function()
 end)
 
 -- ==========================================
--- TARGETING HELPERS (dipakai Aimbot & Silent Aim)
+-- TARGETING HELPERS
 -- ==========================================
 local LockedTarget = nil
 
@@ -1338,10 +1341,10 @@ local function pickTarget()
 end
 
 -- ==========================================
--- AIMBOT RENDER (Camera mode)
+-- AIMBOT RENDER
 -- ==========================================
 RunService.RenderStepped:Connect(function()
-    if (Cfg.Aimbot or Cfg.SilentAim) and Cfg.AimFOV then
+    if Cfg.Aimbot and Cfg.AimFOV then
         FOVCircle.Visible = true
         FOVCircle.Size = UDim2.new(0, Cfg.AimFOVSize * 2, 0, Cfg.AimFOVSize * 2)
         FOVCircle.Position = UDim2.new(0.5, -Cfg.AimFOVSize, 0.5, -Cfg.AimFOVSize)
@@ -1350,10 +1353,8 @@ RunService.RenderStepped:Connect(function()
     end
 
     if not Cfg.Aimbot then
-        if not Cfg.SilentAim then
-            LockedTarget = nil
-            AimLineGui.Visible = false
-        end
+        LockedTarget = nil
+        AimLineGui.Visible = false
         return
     end
 
@@ -1403,68 +1404,9 @@ RunService.RenderStepped:Connect(function()
 end)
 
 -- ==========================================
--- SILENT AIM (hook Mouse.Hit / Mouse.Target)
--- ==========================================
--- Target yang akan dipakai silent aim saat mouse "ditanya" posisinya
-local SilentTargetPart = nil
-local SilentTargetModel = nil
-
--- Update target setiap frame (pakai setting aimbot)
-RunService.RenderStepped:Connect(function()
-    if not Cfg.SilentAim then
-        SilentTargetPart = nil
-        SilentTargetModel = nil
-        return
-    end
-
-    local myRoot = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-    if not myRoot then return end
-
-    local picked = pickTarget()
-    SilentTargetModel = picked
-    if picked then
-        SilentTargetPart = getAimPart(picked)
-    else
-        SilentTargetPart = nil
-    end
-
-    -- Garis aim kalau AimLine aktif (mengikuti setting aimbot)
-    if SilentTargetPart and Cfg.AimLine then
-        local screenCenter = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
-        local screenPos = Camera:WorldToViewportPoint(SilentTargetPart.Position)
-        AimLineGui.Visible = true
-        AimLineGui.Position = UDim2.new(0, screenCenter.X, 0, screenCenter.Y)
-        local diff = Vector2.new(screenPos.X - screenCenter.X, screenPos.Y - screenCenter.Y)
-        AimLineGui.Size = UDim2.new(0, 2, 0, diff.Magnitude)
-        AimLineGui.Rotation = math.deg(math.atan2(diff.Y, diff.X)) - 90
-    else
-        AimLineGui.Visible = false
-    end
-end)
-
--- Hook __index utk balikin posisi musuh saat script lain minta Mouse.Hit/Target
-if hookmetamethod and checkcaller then
-    pcall(function()
-        local oldIndex
-        oldIndex = hookmetamethod(game, "__index", function(self, key)
-            -- Khusus Silent Aim: balikin Mouse.Hit / Mouse.Target ke target
-            if Cfg.SilentAim and SilentTargetPart and not checkcaller()
-               and typeof(self) == "Instance"
-               and (self:IsA("Mouse") or self == LocalPlayer:GetMouse()) then
-                if key == "Hit" then
-                    return SilentTargetPart.CFrame
-                elseif key == "Target" then
-                    return SilentTargetPart
-                end
-            end
-            return oldIndex(self, key)
-        end)
-    end)
-end
-
--- ==========================================
 -- PLAYER HACKS
 -- ==========================================
+-- Speed Run (pakai fake WalkSpeed hook dari Bubble 1)
 RunService.Stepped:Connect(function()
     local char = LocalPlayer.Character
     if not char then return end
@@ -1475,34 +1417,206 @@ RunService.Stepped:Connect(function()
     end
 end)
 
-UserInputService.JumpRequest:Connect(function()
-    if Cfg.MultiJump and LocalPlayer.Character then
-        local hum = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
-        if hum then hum:ChangeState(Enum.HumanoidStateType.Jumping) end
+-- ==========================================
+-- MULTI JUMP (FIX - pakai StateChanged, bukan JumpRequest)
+-- ==========================================
+local jumpCount = 0
+local lastJumpTime = 0
+local MAX_JUMPS = 999  -- praktis unlimited
+
+-- Reset counter tiap kali mendarat
+LocalPlayer.CharacterAdded:Connect(function(char)
+    jumpCount = 0
+    local hum = char:WaitForChild("Humanoid", 10)
+    if hum then
+        hum.StateChanged:Connect(function(old, new)
+            if new == Enum.HumanoidStateType.Landed then
+                jumpCount = 0
+            end
+        end)
     end
 end)
 
+if LocalPlayer.Character then
+    local hum = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+    if hum then
+        hum.StateChanged:Connect(function(old, new)
+            if new == Enum.HumanoidStateType.Landed then
+                jumpCount = 0
+            end
+        end)
+    end
+end
+
+-- Pakai UserInputService buat deteksi tombol jump mobile & PC
+UserInputService.InputBegan:Connect(function(input, gp)
+    if gp then return end
+    if not Cfg.MultiJump then return end
+
+    local isJumpInput = false
+    if input.KeyCode == Enum.KeyCode.Space then isJumpInput = true end
+    if input.KeyCode == Enum.KeyCode.ButtonA then isJumpInput = true end
+    if input.UserInputType == Enum.UserInputType.Touch then
+        -- Cek apakah touch di area tombol jump Roblox
+        local screenSize = Camera.ViewportSize
+        if input.Position.Y > screenSize.Y * 0.6 and input.Position.X > screenSize.X * 0.6 then
+            isJumpInput = true
+        end
+    end
+
+    if not isJumpInput then return end
+
+    local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+    if not hum then return end
+
+    -- Kalau lagi di udara, paksa lompat lagi
+    if hum.FloorMaterial == Enum.Material.Air then
+        hum:ChangeState(Enum.HumanoidStateType.Jumping)
+    end
+end)
+
+-- Pakai juga JumpRequest buat cover kalau ada yang kelewat
+UserInputService.JumpRequest:Connect(function()
+    if not Cfg.MultiJump then return end
+    local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+    if not hum then return end
+    task.wait(0.1)
+    if hum.FloorMaterial == Enum.Material.Air then
+        hum:ChangeState(Enum.HumanoidStateType.Jumping)
+    end
+end)
+
+-- ==========================================
+-- FLY HACK (FIX - pakai BodyVelocity + BodyGyro + continuous update)
+-- ==========================================
+local flyActive = false
+local flyBV, flyGyro, flyConn
+
+local function stopFly()
+    flyActive = false
+    if flyBV then pcall(function() flyBV:Destroy() end); flyBV = nil end
+    if flyGyro then pcall(function() flyGyro:Destroy() end); flyGyro = nil end
+    if flyConn then pcall(function() flyConn:Disconnect() end); flyConn = nil end
+    _G.__FlyBV = nil
+    _G.__FlyGyro = nil
+    _G.__FlyConn = nil
+
+    -- Reset humanoid state
+    local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+    if hum then
+        hum.PlatformStand = false
+        hum:ChangeState(Enum.HumanoidStateType.GettingUp)
+    end
+end
+
+local function startFly()
+    local char = LocalPlayer.Character
+    if not char then return end
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    local hum = char:FindFirstChildOfClass("Humanoid")
+    if not hrp or not hum then return end
+
+    flyActive = true
+
+    -- BodyVelocity untuk gerakan vertikal & horizontal
+    flyBV = Instance.new("BodyVelocity")
+    flyBV.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
+    flyBV.Velocity = Vector3.new(0, 0, 0)
+    flyBV.P = 1250
+    flyBV.Parent = hrp
+    _G.__FlyBV = flyBV
+
+    -- BodyGyro biar karakter nggak muter sendiri
+    flyGyro = Instance.new("BodyGyro")
+    flyGyro.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
+    flyGyro.P = 3000
+    flyGyro.D = 500
+    flyGyro.CFrame = hrp.CFrame
+    flyGyro.Parent = hrp
+    _G.__FlyGyro = flyGyro
+
+    hum.PlatformStand = true
+
+    -- Loop update velocity tiap frame
+    flyConn = RunService.RenderStepped:Connect(function()
+        if not flyActive or not flyBV or not flyBV.Parent then
+            if flyConn then flyConn:Disconnect(); flyConn = nil end
+            return
+        end
+
+        local currentHrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+        if not currentHrp then
+            stopFly()
+            return
+        end
+
+        local moveDir = Vector3.new(0, 0, 0)
+        local speed = 60
+
+        -- Vertikal: Space (naik) / LeftShift (turun)
+        if UserInputService:IsKeyDown(Enum.KeyCode.Space) then
+            moveDir = moveDir + Vector3.new(0, 1, 0)
+        end
+        if UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) or UserInputService:IsKeyDown(Enum.KeyCode.RightShift) then
+            moveDir = moveDir - Vector3.new(0, 1, 0)
+        end
+
+        -- Horizontal: WASD
+        local camCF = Camera.CFrame
+        local forward = camCF.LookVector
+        local right = camCF.RightVector
+        local moveVec = Vector3.new(0, 0, 0)
+
+        if UserInputService:IsKeyDown(Enum.KeyCode.W) then moveVec = moveVec + forward end
+        if UserInputService:IsKeyDown(Enum.KeyCode.S) then moveVec = moveVec - forward end
+        if UserInputService:IsKeyDown(Enum.KeyCode.A) then moveVec = moveVec - right end
+        if UserInputService:IsKeyDown(Enum.KeyCode.D) then moveVec = moveVec + right end
+
+        -- Mobile: pakai Humanoid.MoveDirection (dari joystick)
+        if moveVec.Magnitude < 0.1 and hum.MoveDirection.Magnitude > 0.1 then
+            moveVec = hum.MoveDirection
+        end
+
+        if moveVec.Magnitude > 0.1 then
+            moveDir = moveDir + moveVec.Unit
+        end
+
+        flyBV.Velocity = moveDir.Unit * speed
+        if moveDir.Magnitude < 0.1 then
+            flyBV.Velocity = Vector3.new(0, 0, 0)
+        end
+
+        flyGyro.CFrame = CFrame.new(currentHrp.Position, currentHrp.Position + camCF.LookVector)
+    end)
+    _G.__FlyConn = flyConn
+end
+
+-- Loop Fly: kalau toggle ON & tombol jump ditekan → fly, lepas → berhenti
 RunService.RenderStepped:Connect(function()
     if not LocalPlayer.Character then
-        if _G.__FlyBV then pcall(function() _G.__FlyBV:Destroy() end); _G.__FlyBV = nil end
+        if flyActive then stopFly() end
         return
     end
-    local root = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-    if not root then return end
-    if Cfg.FlyHack and UserInputService:IsKeyDown(Enum.KeyCode.Space) then
-        if not _G.__FlyBV or _G.__FlyBV.Parent ~= root then
-            if _G.__FlyBV then _G.__FlyBV:Destroy() end
-            _G.__FlyBV = Instance.new("BodyVelocity", root)
-            _G.__FlyBV.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
-            _G.__FlyBV.Velocity = Vector3.new(0, 50, 0)
-        else
-            _G.__FlyBV.Velocity = Vector3.new(0, 50, 0)
-        end
-    else
-        if _G.__FlyBV then _G.__FlyBV:Destroy(); _G.__FlyBV = nil end
+
+    if not Cfg.FlyHack then
+        if flyActive then stopFly() end
+        return
+    end
+
+    -- Cek tombol jump ditekan (Space / mobile touch / gamepad)
+    local jumpPressed = UserInputService:IsKeyDown(Enum.KeyCode.Space)
+                         or UserInputService:IsKeyDown(Enum.KeyCode.ButtonA)
+
+    if jumpPressed and not flyActive then
+        startFly()
+    elseif not jumpPressed and flyActive then
+        stopFly()
     end
 end)
 
+-- ==========================================
+-- WALL HACK (NOCLIP)
+-- ==========================================
 RunService.Stepped:Connect(function()
     if Cfg.WallHack and LocalPlayer.Character then
         for _, part in ipairs(LocalPlayer.Character:GetDescendants()) do
@@ -1782,4 +1896,4 @@ task.spawn(function()
     end
 end)
 
-print("[LiteHack] UI Loaded (FIXED v7). + Silent Aim.")
+print("[LiteHack] UI Loaded (v8). Silent Aim removed. Multi Jump + Fly + Smooth Teleport fixed.")
