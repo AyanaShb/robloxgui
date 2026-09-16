@@ -94,6 +94,7 @@ _G.LiteHackCfg = {
     AimTarget = "Head",
     AimDistance = 500,
     AimSmoothness = 100,
+    AutoFire = false,
     SpeedRun = false,
     SpeedRunValue = 50,
     MultiJump = false,
@@ -103,7 +104,6 @@ _G.LiteHackCfg = {
     WallHack = false,
     ClockTime = "Default",
     LowGravity = false,
-    LowGravityValue = 60,
     Theme = "Dark",
 }
 
@@ -788,6 +788,7 @@ Toggle(VisualTab, "Picture", Cfg.ESPPicture, function(v) Cfg.ESPPicture = v end)
 -- ==========================================
 Section(AimbotTab, "Aimbot Settings")
 Toggle(AimbotTab, "Aimbot", Cfg.Aimbot, function(v) Cfg.Aimbot = v end)
+Toggle(AimbotTab, "Auto Fire", Cfg.AutoFire, function(v) Cfg.AutoFire = v end)
 Toggle(AimbotTab, "Team Check", Cfg.AimTeamCheck, function(v) Cfg.AimTeamCheck = v end)
 Toggle(AimbotTab, "Wall Check", Cfg.AimWallCheck, function(v) Cfg.AimWallCheck = v end)
 ComboBox(AimbotTab, "Mode Aimbot", {"FOV", "360°"}, Cfg.AimMode, function(v) Cfg.AimMode = v end)
@@ -817,7 +818,7 @@ Toggle(PlayerTab, "Speed Run", Cfg.SpeedRun, function(v)
 end)
 Slider(PlayerTab, "Speed %", 100, 500, Cfg.SpeedRunValue, "%", function(v) Cfg.SpeedRunValue = v end)
 
-Toggle(PlayerTab, "Multi Jump", Cfg.MultiJump, function(v) Cfg.MultiJump = v end)
+Toggle(PlayerTab, "Multi Jump (Tap = naik)", Cfg.MultiJump, function(v) Cfg.MultiJump = v end)
 
 Section(PlayerTab, "Combat")
 Toggle(PlayerTab, "Rapid Fire", Cfg.RapidFire, function(v)
@@ -866,8 +867,10 @@ ComboBox(WorldTab, "Clock Time", {"Default", "Pagi", "Siang", "Sore", "Malam"}, 
 end)
 
 -- ==========================================
--- LOW GRAVITY (efek mengambang + turun pelan)
+-- LOW GRAVITY (fixed value = 2, tanpa slider)
 -- ==========================================
+local LOW_GRAVITY_VALUE = 2  -- gravitasi efektif jadi 2 (hampir mengambang)
+
 local function applyLowGravity(char)
     if not char then return end
     local hum = char:FindFirstChildOfClass("Humanoid")
@@ -881,18 +884,22 @@ local function applyLowGravity(char)
         }
     end
 
-    local pct = Cfg.LowGravityValue / 100
     local gravity = workspace.Gravity
+    -- BodyForce mengangkat karakter supaya gravitasi efektif ~ LOW_GRAVITY_VALUE
+    -- Force = mass * (gravity - target) → naik
+    local lift = gravity - LOW_GRAVITY_VALUE
+    if lift < 0 then lift = 0 end
 
     if _G.__LG_Force then pcall(function() _G.__LG_Force:Destroy() end) end
     local bf = Instance.new("BodyForce")
-    bf.Force = Vector3.new(0, hrp:GetMass() * gravity * pct, 0)
+    bf.Force = Vector3.new(0, hrp:GetMass() * lift, 0)
     bf.Parent = hrp
     _G.__LG_Force = bf
 
     hum.HipHeight = _G.__LG_Original.HipHeight + 2
     hum.UseJumpPower = true
-    hum.JumpPower = _G.__LG_Original.JumpPower * (1 + pct * 0.5)
+    -- JumpPower disesuaikan biar lonjakan tetap wajar di gravitasi rendah
+    hum.JumpPower = math.clamp(_G.__LG_Original.JumpPower * 0.6, 20, 80)
 end
 
 local function removeLowGravity()
@@ -916,12 +923,6 @@ Toggle(WorldTab, "Low Gravity", Cfg.LowGravity, function(v)
         removeLowGravity()
     end
 end)
-Slider(WorldTab, "Low Gravity %", 10, 90, Cfg.LowGravityValue, "%", function(v)
-    Cfg.LowGravityValue = v
-    if Cfg.LowGravity then
-        applyLowGravity(LocalPlayer.Character)
-    end
-end)
 
 RunService.Heartbeat:Connect(function()
     if not Cfg.LowGravity then return end
@@ -934,9 +935,10 @@ RunService.Heartbeat:Connect(function()
         applyLowGravity(char)
     end
 
+    -- Drag vertikal biar jatuh pelan (efek mengambang)
     local vel = hrp.AssemblyLinearVelocity
-    local maxFallSpeed = 15
-    local maxRiseSpeed = 20
+    local maxFallSpeed = 12
+    local maxRiseSpeed = 18
 
     if vel.Y < -maxFallSpeed then
         hrp.AssemblyLinearVelocity = Vector3.new(vel.X, -maxFallSpeed, vel.Z)
@@ -1427,7 +1429,7 @@ RunService.RenderStepped:Connect(function()
             d.Box.Visible = Cfg.ESPBox
             for _, c in ipairs(d.Corners) do c.BackgroundColor3 = color end
 
-            -- Distance (bawah box)
+            -- Distance
             d.Dist.Position = UDim2.new(0, topLeft.X, 0, topLeft.Y + height + 4)
             d.Dist.Size = UDim2.new(0, 200, 0, 14)
             d.Dist.AnchorPoint = Vector2.new(0.5, 0)
@@ -1435,7 +1437,7 @@ RunService.RenderStepped:Connect(function()
             d.Dist.Text = meters .. " m"
             d.Dist.Visible = Cfg.ESPDistance
 
-            -- Name (di atas box)
+            -- Name
             d.Name.Position = UDim2.new(0, topLeft.X, 0, topLeft.Y - 26)
             d.Name.Size = UDim2.new(0, 220, 0, 16)
             d.Name.AnchorPoint = Vector2.new(0.5, 0)
@@ -1443,7 +1445,7 @@ RunService.RenderStepped:Connect(function()
             d.Name.TextColor3 = color
             d.Name.Visible = Cfg.ESPName
 
-            -- Weapon (di atas name)
+            -- Weapon
             local weaponName = ""
             local tool = model:FindFirstChildOfClass("Tool")
             if tool then weaponName = tool.Name end
@@ -1454,8 +1456,8 @@ RunService.RenderStepped:Connect(function()
             d.Weapon.TextColor3 = Color3.fromRGB(255, 220, 100)
             d.Weapon.Visible = Cfg.ESPWeapon and weaponName ~= ""
 
-            -- Picture (paling atas, ZIndex 5)
-            local picTopY = topLeft.Y - 108
+            -- Picture: turun jadi -93 (15px lebih dekat dari sebelumnya -108)
+            local picTopY = topLeft.Y - 93
             local picCenterY = picTopY + 21
             local picBottomY = picTopY + 42
 
@@ -1477,16 +1479,12 @@ RunService.RenderStepped:Connect(function()
                 d.Pic.Visible = false
             end
 
-            -- ==========================================
-            -- LINE: mentok ke CENTER picture
-            -- ZIndex 4 (lebih rendah dari picture ZIndex 5 & img 6)
-            -- jadi garis "menyatu" dengan border picture, bukan nutupin
-            -- ==========================================
+            -- Line: mentok ke center picture, ZIndex di belakang picture
             if Cfg.ESPLine then
                 local screenTop = Vector2.new(Camera.ViewportSize.X / 2, 0)
                 local targetPt = Vector2.new(topLeft.X, picCenterY)
                 d.Line.Visible = true
-                d.Line.ZIndex = 4   -- di belakang picture
+                d.Line.ZIndex = 4
                 local diff = targetPt - screenTop
                 local dist2 = diff.Magnitude
                 local ang = math.atan2(diff.Y, diff.X)
@@ -1548,9 +1546,11 @@ RunService.RenderStepped:Connect(function()
 end)
 
 -- ==========================================
--- AIMBOT
+-- AIMBOT + AUTO FIRE
 -- ==========================================
 local LockedTarget = nil
+local lastFireTime = 0
+local FIRE_COOLDOWN = 0.05  -- 50ms antar tembakan
 
 local function isVisible(part)
     if not part then return false end
@@ -1609,6 +1609,47 @@ local function pickTarget()
     return best
 end
 
+-- Helper: cek apakah crosshair (tengah layar) sedang tepat mengenai musuh
+local function isCrosshairOnTarget()
+    local screenCenter = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
+    -- Raycast dari kamera ke tengah layar
+    local ray = Camera:ViewportPointToRay(screenCenter.X, screenCenter.Y)
+    local params = RaycastParams.new()
+    params.FilterDescendantsInstances = {LocalPlayer.Character}
+    params.FilterType = Enum.RaycastFilterType.Exclude
+    local result = workspace:Raycast(ray.Origin, ray.Direction * 5000, params)
+    if not result then return nil end
+    local hit = result.Instance
+    -- Cek apakah hit adalah bagian dari karakter player
+    local hitModel = hit:FindFirstAncestorOfClass("Model")
+    if not hitModel then return nil end
+    local plr = Players:GetPlayerFromCharacter(hitModel)
+    if not plr then return nil end
+    if plr == LocalPlayer then return nil end
+    -- Cek team check
+    if Cfg.AimTeamCheck and isTeam(hitModel) then return nil end
+    -- Cek wall check (yang di-hit harus musuh langsung, bukan tembok)
+    if not hit:IsDescendantOf(hitModel) then return nil end
+    return hitModel
+end
+
+-- Helper: cari Tool yang sedang di-equip
+local function getEquippedTool()
+    local char = LocalPlayer.Character
+    if not char then return nil end
+    return char:FindFirstChildOfClass("Tool")
+end
+
+-- Helper: tembak pakai Tool:Activate()
+local function fireTool()
+    local tool = getEquippedTool()
+    if not tool then return false end
+    pcall(function()
+        tool:Activate()
+    end)
+    return true
+end
+
 RunService.RenderStepped:Connect(function()
     if Cfg.Aimbot and Cfg.AimFOV then
         FOVCircle.Visible = true
@@ -1618,6 +1659,23 @@ RunService.RenderStepped:Connect(function()
         FOVCircle.Visible = false
     end
 
+    -- ==========================================
+    -- AUTO FIRE (jalan meskipun Aimbot off)
+    -- ==========================================
+    if Cfg.AutoFire then
+        local now = tick()
+        if (now - lastFireTime) > FIRE_COOLDOWN then
+            local target = isCrosshairOnTarget()
+            if target then
+                fireTool()
+                lastFireTime = now
+            end
+        end
+    end
+
+    -- ==========================================
+    -- AIMBOT
+    -- ==========================================
     if not Cfg.Aimbot then
         LockedTarget = nil
         AimLineGui.Visible = false
@@ -1683,32 +1741,52 @@ RunService.Stepped:Connect(function()
 end)
 
 -- ==========================================
--- MULTI JUMP (cooldown + cap velocity)
+-- MULTI JUMP (tap = naik, bukan auto-lompat)
 -- ==========================================
-local lastJumpTime = 0
-local JUMP_COOLDOWN = 0.25
-local MAX_UP_VELOCITY = 50
+-- Logika: setiap kali user tap tombol jump, kita tambah velocity vertikal.
+-- Jadi lompatan makin tinggi tiap tap. Nggak auto-lompat saat di udara.
 
-RunService.Heartbeat:Connect(function()
+local jumpTapBoost = 12  -- tambahan velocity per tap (makin tinggi tap, makin naik)
+local lastTapTime = 0
+local TAP_COOLDOWN = 0.08  -- hindari spam dalam 1 frame
+
+-- Deteksi tap tombol jump lewat InputBegan
+UserInputService.InputBegan:Connect(function(input, gp)
+    if gp then return end
     if not Cfg.MultiJump then return end
+
     local char = LocalPlayer.Character
     if not char then return end
     local hum = char:FindFirstChildOfClass("Humanoid")
     local hrp = char:FindFirstChild("HumanoidRootPart")
     if not hum or not hrp then return end
 
-    local state = hum:GetState()
-    local now = tick()
-
-    local vel = hrp.AssemblyLinearVelocity
-    if vel.Y > MAX_UP_VELOCITY then
-        hrp.AssemblyLinearVelocity = Vector3.new(vel.X, MAX_UP_VELOCITY, vel.Z)
+    -- Filter input: harus tombol jump
+    local isJump = false
+    if input.KeyCode == Enum.KeyCode.Space then isJump = true end
+    if input.KeyCode == Enum.KeyCode.ButtonA then isJump = true end
+    if input.UserInputType == Enum.UserInputType.Touch then
+        -- Android: cek apakah touch di area kanan bawah (area tombol jump)
+        local vs = Camera.ViewportSize
+        if input.Position.X > vs.X * 0.6 and input.Position.Y > vs.Y * 0.5 then
+            isJump = true
+        end
     end
 
-    if state == Enum.HumanoidStateType.Freefall and (now - lastJumpTime) > JUMP_COOLDOWN then
-        if vel.Y < 10 then
-            hum:ChangeState(Enum.HumanoidStateType.Jumping)
-            lastJumpTime = now
+    if not isJump then return end
+
+    local now = tick()
+    if (now - lastTapTime) < TAP_COOLDOWN then return end
+    lastTapTime = now
+
+    -- Kalau di tanah, biarkan Roblox handle lompatan normal.
+    -- Kalau di udara, tambah velocity vertikal biar makin tinggi.
+    if hum.FloorMaterial == Enum.Material.Air then
+        local vel = hrp.AssemblyLinearVelocity
+        hrp.AssemblyLinearVelocity = Vector3.new(vel.X, vel.Y + jumpTapBoost, vel.Z)
+        -- Batasi biar nggak meledak
+        if hrp.AssemblyLinearVelocity.Y > 100 then
+            hrp.AssemblyLinearVelocity = Vector3.new(vel.X, 100, vel.Z)
         end
     end
 end)
@@ -1995,4 +2073,4 @@ task.spawn(function()
     end
 end)
 
-print("[LiteHack] UI Loaded (v11). ESP Line mentok ke center picture, ZIndex di belakang.")
+print("[LiteHack] UI Loaded (v12). Low Gravity fixed. Multi Jump tap. Auto Fire added. ESP Picture 15px closer.")
