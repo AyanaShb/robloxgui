@@ -81,6 +81,7 @@ _G.LiteHackCfg = {
     ESPSkeleton = false,
     ESPDistance = true,
     ESPPicture = false,
+    ESPWeapon = true,
     ESPColor = Color3.fromRGB(255, 60, 60),
     Aimbot = false,
     AimTeamCheck = true,
@@ -102,7 +103,8 @@ _G.LiteHackCfg = {
     NoRecoil = false,
     WallHack = false,
     ClockTime = "Default",
-    NoGravity = false,
+    LowGravity = false,
+    LowGravityValue = 50,
     Theme = "Dark",
 }
 
@@ -149,7 +151,7 @@ end
 local FONT_BOLD = Enum.Font.GothamBold
 
 -- ==========================================
--- SMOOTH TELEPORT (v2 - lebih smooth & lambat)
+-- SMOOTH TELEPORT
 -- ==========================================
 _G.__SmoothTeleport = function(targetPos, duration)
     local char = LocalPlayer.Character
@@ -157,12 +159,11 @@ _G.__SmoothTeleport = function(targetPos, duration)
     local hrp = char:FindFirstChild("HumanoidRootPart")
     if not hrp then return end
 
-    duration = duration or 1.5  -- default lebih lambat
+    duration = duration or 1.5
     local startPos = hrp.Position
     local startTime = tick()
     local conn
 
-    -- Easing: smoothstep biar masuk & keluar halus
     local function smoothstep(t)
         return t * t * (3 - 2 * t)
     end
@@ -176,10 +177,7 @@ _G.__SmoothTeleport = function(targetPos, duration)
         local t = math.clamp(elapsed / duration, 0, 1)
         local eased = smoothstep(t)
         local newPos = startPos:Lerp(targetPos, eased)
-
-        -- Update CFrame (jaga rotasi lama)
         hrp.CFrame = CFrame.new(newPos, newPos + hrp.CFrame.LookVector * 0.001 + hrp.CFrame.UpVector * 0.001)
-
         if t >= 1 then
             if conn then conn:Disconnect() end
         end
@@ -187,7 +185,7 @@ _G.__SmoothTeleport = function(targetPos, duration)
 end
 
 -- ==========================================
--- FAKE WALKSPEED (hook __index)
+-- FAKE WALKSPEED
 -- ==========================================
 if hookmetamethod and checkcaller then
     pcall(function()
@@ -733,6 +731,29 @@ local function Button(page, text, callback)
     return btn
 end
 
+-- TextBox widget (baru)
+local function TextBox(page, placeholder, callback)
+    local tb = make("TextBox", {
+        Size = UDim2.new(1, 0, 0, 30),
+        BackgroundColor3 = Color3.fromRGB(30, 30, 40),
+        Text = "",
+        PlaceholderText = placeholder or "Ketik...",
+        PlaceholderColor3 = Color3.fromRGB(150, 150, 160),
+        TextColor3 = Color3.fromRGB(230, 230, 240),
+        TextSize = 12,
+        Font = FONT_BOLD,
+        TextXAlignment = Enum.TextXAlignment.Left,
+        ClearTextOnFocus = false,
+        Parent = page
+    })
+    corner(tb, 8)
+    padding(tb, 10)
+    tb.FocusLost:Connect(function()
+        if callback then callback(tb.Text) end
+    end)
+    return tb
+end
+
 -- ==========================================
 -- CREATE TABS
 -- ==========================================
@@ -757,6 +778,7 @@ Toggle(VisualTab, "ESP Team", Cfg.ESPTeam, function(v) Cfg.ESPTeam = v end)
 Section(VisualTab, "ESP Elements")
 Toggle(VisualTab, "Box", Cfg.ESPBox, function(v) Cfg.ESPBox = v end)
 Toggle(VisualTab, "Name", Cfg.ESPName, function(v) Cfg.ESPName = v end)
+Toggle(VisualTab, "Weapon", Cfg.ESPWeapon, function(v) Cfg.ESPWeapon = v end)
 Toggle(VisualTab, "Line", Cfg.ESPLine, function(v) Cfg.ESPLine = v end)
 Toggle(VisualTab, "Health", Cfg.ESPHealth, function(v) Cfg.ESPHealth = v end)
 Toggle(VisualTab, "Skeleton", Cfg.ESPSkeleton, function(v) Cfg.ESPSkeleton = v end)
@@ -764,7 +786,7 @@ Toggle(VisualTab, "Distance", Cfg.ESPDistance, function(v) Cfg.ESPDistance = v e
 Toggle(VisualTab, "Picture", Cfg.ESPPicture, function(v) Cfg.ESPPicture = v end)
 
 -- ==========================================
--- TAB AIMBOT (tanpa Silent Aim)
+-- TAB AIMBOT
 -- ==========================================
 Section(AimbotTab, "Aimbot Settings")
 Toggle(AimbotTab, "Aimbot", Cfg.Aimbot, function(v) Cfg.Aimbot = v end)
@@ -797,17 +819,18 @@ Toggle(PlayerTab, "Speed Run", Cfg.SpeedRun, function(v)
 end)
 Slider(PlayerTab, "Speed %", 100, 500, Cfg.SpeedRunValue, "%", function(v) Cfg.SpeedRunValue = v end)
 
-Toggle(PlayerTab, "Multi Jump", Cfg.MultiJump, function(v)
-    Cfg.MultiJump = v
-end)
+Toggle(PlayerTab, "Multi Jump", Cfg.MultiJump, function(v) Cfg.MultiJump = v end)
 
-Toggle(PlayerTab, "Fly Hack (tahan Jump)", Cfg.FlyHack, function(v)
+Toggle(PlayerTab, "Fly Hack", Cfg.FlyHack, function(v)
     Cfg.FlyHack = v
     if not v then
-        -- Reset fly saat di-off
         if _G.__FlyBV then pcall(function() _G.__FlyBV:Destroy() end); _G.__FlyBV = nil end
         if _G.__FlyGyro then pcall(function() _G.__FlyGyro:Destroy() end); _G.__FlyGyro = nil end
         if _G.__FlyConn then pcall(function() _G.__FlyConn:Disconnect() end); _G.__FlyConn = nil end
+        local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+        if hum then
+            hum.PlatformStand = false
+        end
     end
 end)
 
@@ -857,9 +880,49 @@ ComboBox(WorldTab, "Clock Time", {"Default", "Pagi", "Siang", "Sore", "Malam"}, 
     end
 end)
 
-Toggle(WorldTab, "No Gravity", Cfg.NoGravity, function(v)
-    Cfg.NoGravity = v
-    workspace.Gravity = v and 0 or 196.2
+-- Low Gravity (per-character, lebih aman dari No Gravity global)
+Toggle(WorldTab, "Low Gravity", Cfg.LowGravity, function(v)
+    Cfg.LowGravity = v
+    local char = LocalPlayer.Character
+    if not char then return end
+    local hum = char:FindFirstChildOfClass("Humanoid")
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    if not hum or not hrp then return end
+
+    if v then
+        -- Simpan nilai asli
+        _G.__OriginalJumpPower = hum.JumpPower
+        _G.__OriginalHipHeight = hum.HipHeight
+        -- Naikin jump & hip height biar kelihatan ringan
+        hum.UseJumpPower = true
+        hum.JumpPower = 40 * (1 + (Cfg.LowGravityValue / 100))
+        hum.HipHeight = hum.HipHeight + 1
+
+        -- BodyForce kecil di HRP biar "ringan"
+        if _G.__LowGravForce then pcall(function() _G.__LowGravForce:Destroy() end) end
+        local bf = Instance.new("BodyForce")
+        bf.Force = Vector3.new(0, hrp:GetMass() * workspace.Gravity * (Cfg.LowGravityValue / 100), 0)
+        bf.Parent = hrp
+        _G.__LowGravForce = bf
+    else
+        -- Restore
+        if _G.__OriginalJumpPower then hum.JumpPower = _G.__OriginalJumpPower end
+        if _G.__OriginalHipHeight then hum.HipHeight = _G.__OriginalHipHeight end
+        if _G.__LowGravForce then pcall(function() _G.__LowGravForce:Destroy() end); _G.__LowGravForce = nil end
+    end
+end)
+Slider(WorldTab, "Low Gravity %", 10, 90, Cfg.LowGravityValue, "%", function(v)
+    Cfg.LowGravityValue = v
+    -- Update langsung kalau lagi ON
+    if Cfg.LowGravity then
+        local char = LocalPlayer.Character
+        if char then
+            local hrp = char:FindFirstChild("HumanoidRootPart")
+            if hrp and _G.__LowGravForce then
+                _G.__LowGravForce.Force = Vector3.new(0, hrp:GetMass() * workspace.Gravity * (v / 100), 0)
+            end
+        end
+    end
 end)
 
 ListBox(WorldTab, "Teleport ke Pemain", function()
@@ -872,9 +935,168 @@ end, function(name)
     local target = Players:FindFirstChild(name)
     if target and target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
         if _G.__SmoothTeleport then
-            -- Durasi 1.5 detik biar lebih smooth & lambat
             _G.__SmoothTeleport(target.Character.HumanoidRootPart.Position, 1.5)
         end
+    end
+end)
+
+-- ==========================================
+-- SAVE LOCATION SYSTEM
+-- ==========================================
+Section(WorldTab, "Saved Locations")
+
+local LocationsFile = "LiteHack_Locations.json"
+local SavedLocations = {}
+
+local function loadLocations()
+    SavedLocations = {}
+    if isfile and isfile(LocationsFile) then
+        local ok, data = pcall(function()
+            return HttpService:JSONDecode(readfile(LocationsFile))
+        end)
+        if ok and type(data) == "table" then
+            SavedLocations = data
+        end
+    end
+end
+
+local function saveLocations()
+    if writefile then
+        pcall(function()
+            writefile(LocationsFile, HttpService:JSONEncode(SavedLocations))
+        end)
+    end
+end
+
+loadLocations()
+
+local locNameBox = TextBox(WorldTab, "Nama lokasi...", function(text)
+    -- callback on focus lost (dipanggil setiap kali selesai ketik)
+end)
+
+Button(WorldTab, "💾 SAVE LOKASI SEKARANG", function()
+    local char = LocalPlayer.Character
+    local hrp = char and char:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
+    local name = locNameBox.Text
+    if not name or name == "" then
+        name = "Lokasi_" .. os.date("%H%M%S")
+    end
+    table.insert(SavedLocations, {
+        name = name,
+        x = math.floor(hrp.Position.X),
+        y = math.floor(hrp.Position.Y),
+        z = math.floor(hrp.Position.Z),
+        game = game.PlaceId,
+        time = os.time()
+    })
+    saveLocations()
+    locNameBox.Text = ""
+    -- Refresh listbox (listbox auto-refresh tiap 2 detik)
+end)
+
+-- ListBox untuk lokasi tersimpan + tombol TP/DEL
+local locRow = make("Frame", {
+    Size = UDim2.new(1, 0, 0, 160),
+    BackgroundColor3 = Color3.fromRGB(30, 30, 40),
+    BorderSizePixel = 0,
+    Parent = WorldTab
+})
+corner(locRow, 8)
+make("TextLabel", {
+    Size = UDim2.new(1, -20, 0, 20),
+    Position = UDim2.new(0, 10, 0, 4),
+    BackgroundTransparency = 1,
+    Text = "📍 Lokasi Tersimpan",
+    TextColor3 = Color3.fromRGB(230, 230, 240),
+    TextSize = 12,
+    Font = FONT_BOLD,
+    TextXAlignment = Enum.TextXAlignment.Left,
+    Parent = locRow
+})
+local locScroll = make("ScrollingFrame", {
+    Size = UDim2.new(1, -20, 0, 128),
+    Position = UDim2.new(0, 10, 0, 26),
+    BackgroundColor3 = Color3.fromRGB(20, 20, 28),
+    BorderSizePixel = 0,
+    ScrollBarThickness = 3,
+    CanvasSize = UDim2.new(0, 0, 0, 0),
+    AutomaticCanvasSize = Enum.AutomaticSize.Y,
+    Parent = locRow
+})
+corner(locScroll, 6)
+make("UIListLayout", {Padding = UDim.new(0, 2), Parent = locScroll})
+padding(locScroll, 4)
+
+local function refreshLocList()
+    for _, c in ipairs(locScroll:GetChildren()) do
+        if c:IsA("Frame") then c:Destroy() end
+    end
+    for i, loc in ipairs(SavedLocations) do
+        local row = make("Frame", {
+            Size = UDim2.new(1, -8, 0, 26),
+            BackgroundColor3 = Color3.fromRGB(35, 35, 45),
+            BorderSizePixel = 0,
+            Parent = locScroll
+        })
+        corner(row, 4)
+
+        make("TextLabel", {
+            Size = UDim2.new(1, -140, 1, 0),
+            Position = UDim2.new(0, 6, 0, 0),
+            BackgroundTransparency = 1,
+            Text = loc.name .. " [" .. loc.x .. ", " .. loc.y .. ", " .. loc.z .. "]",
+            TextColor3 = Color3.fromRGB(220, 220, 230),
+            TextSize = 10,
+            Font = FONT_BOLD,
+            TextXAlignment = Enum.TextXAlignment.Left,
+            Parent = row
+        })
+
+        local tpBtn = make("TextButton", {
+            Size = UDim2.new(0, 60, 0, 22),
+            Position = UDim2.new(1, -126, 0.5, -11),
+            BackgroundColor3 = Color3.fromRGB(255, 60, 60),
+            Text = "TP",
+            TextColor3 = Color3.fromRGB(255, 255, 255),
+            TextSize = 11,
+            Font = FONT_BOLD,
+            AutoButtonColor = false,
+            Parent = row
+        })
+        corner(tpBtn, 4)
+        tpBtn.MouseButton1Click:Connect(function()
+            if _G.__SmoothTeleport then
+                _G.__SmoothTeleport(Vector3.new(loc.x, loc.y, loc.z), 1.5)
+            end
+        end)
+
+        local delBtn = make("TextButton", {
+            Size = UDim2.new(0, 60, 0, 22),
+            Position = UDim2.new(1, -64, 0.5, -11),
+            BackgroundColor3 = Color3.fromRGB(160, 0, 0),
+            Text = "DEL",
+            TextColor3 = Color3.fromRGB(255, 255, 255),
+            TextSize = 11,
+            Font = FONT_BOLD,
+            AutoButtonColor = false,
+            Parent = row
+        })
+        corner(delBtn, 4)
+        delBtn.MouseButton1Click:Connect(function()
+            table.remove(SavedLocations, i)
+            saveLocations()
+            refreshLocList()
+        end)
+    end
+    locScroll.CanvasSize = UDim2.new(0, 0, 0, #SavedLocations * 28 + 10)
+end
+
+refreshLocList()
+task.spawn(function()
+    while locRow.Parent do
+        task.wait(1)
+        pcall(refreshLocList)
     end
 end)
 
@@ -1010,6 +1232,12 @@ local function createESP(model)
         ZIndex = 10, Parent = ESPGui
     })
 
+    local weapon = make("TextLabel", {
+        BackgroundTransparency = 1, TextSize = 12, Font = Enum.Font.GothamBold,
+        TextColor3 = Color3.fromRGB(255, 220, 100), TextStrokeTransparency = 0.4, Visible = false,
+        ZIndex = 10, Parent = ESPGui
+    })
+
     local dist = make("TextLabel", {
         BackgroundTransparency = 1, TextSize = 12, Font = Enum.Font.GothamBold,
         TextColor3 = Color3.fromRGB(220,220,220), TextStrokeTransparency = 0.5, Visible = false,
@@ -1060,7 +1288,7 @@ local function createESP(model)
 
     return {
         Box = box, Corners = {c1,c2,c3,c4,c5,c6,c7,c8},
-        Name = name, Dist = dist, Pic = pic, Img = img,
+        Name = name, Weapon = weapon, Dist = dist, Pic = pic, Img = img,
         HealthBar = healthBar, HealthFill = healthFill,
         Skeleton = skeletonParts, Line = line
     }
@@ -1157,7 +1385,8 @@ RunService.RenderStepped:Connect(function()
         if not showESP then
             if ESPData[model] then
                 local d = ESPData[model]
-                d.Box.Visible = false; d.Name.Visible = false; d.Dist.Visible = false
+                d.Box.Visible = false; d.Name.Visible = false; d.Weapon.Visible = false
+                d.Dist.Visible = false
                 d.Pic.Visible = false; d.HealthBar.Visible = false; d.Line.Visible = false
                 for _, s in ipairs(d.Skeleton) do s.Visible = false end
             end
@@ -1182,13 +1411,31 @@ RunService.RenderStepped:Connect(function()
             d.Box.Visible = Cfg.ESPBox
             for _, c in ipairs(d.Corners) do c.BackgroundColor3 = color end
 
+            -- Picture (posisi hipotetis)
+            local picTopY = topLeft.Y - 78  -- bagian atas picture
+            local picCenterY = topLeft.Y - 78 + 21  -- center picture (42/2)
+            local picBottomY = topLeft.Y - 78 + 42  -- bawah picture
+
+            -- Weapon (di ATAS ESP Name)
+            local weaponName = ""
+            local tool = model:FindFirstChildOfClass("Tool")
+            if tool then weaponName = tool.Name end
+            d.Weapon.Position = UDim2.new(0, topLeft.X, 0, topLeft.Y - 42)
+            d.Weapon.Size = UDim2.new(0, 220, 0, 14)
+            d.Weapon.AnchorPoint = Vector2.new(0.5, 0)
+            d.Weapon.Text = weaponName
+            d.Weapon.TextColor3 = Color3.fromRGB(255, 220, 100)
+            d.Weapon.Visible = Cfg.ESPWeapon and weaponName ~= ""
+
+            -- Name (di bawah weapon)
             d.Name.Position = UDim2.new(0, topLeft.X, 0, topLeft.Y - 26)
-            d.Name.Size = UDim2.new(0, 200, 0, 16)
+            d.Name.Size = UDim2.new(0, 220, 0, 16)
             d.Name.AnchorPoint = Vector2.new(0.5, 0)
             d.Name.Text = model.Name
             d.Name.TextColor3 = color
             d.Name.Visible = Cfg.ESPName
 
+            -- Distance (bawah box)
             d.Dist.Position = UDim2.new(0, topLeft.X, 0, topLeft.Y + height + 4)
             d.Dist.Size = UDim2.new(0, 200, 0, 14)
             d.Dist.AnchorPoint = Vector2.new(0.5, 0)
@@ -1196,6 +1443,7 @@ RunService.RenderStepped:Connect(function()
             d.Dist.Text = meters .. " m"
             d.Dist.Visible = Cfg.ESPDistance
 
+            -- Health
             local hp = math.clamp(hum.Health / hum.MaxHealth, 0, 1)
             d.HealthBar.Visible = Cfg.ESPHealth
             d.HealthBar.Position = UDim2.new(0, topLeft.X + (width/2) + 4, 0, topLeft.Y - 8)
@@ -1207,10 +1455,11 @@ RunService.RenderStepped:Connect(function()
             d.HealthFill.BackgroundColor3 = hcol
             d.HealthFill.Size = UDim2.new(1, 0, hp, 0)
 
+            -- Picture
             if Cfg.ESPPicture then
                 d.Pic.Visible = true
                 d.Pic.Size = UDim2.new(0, 42, 0, 42)
-                d.Pic.Position = UDim2.new(0, topLeft.X - 21, 0, topLeft.Y - 78)
+                d.Pic.Position = UDim2.new(0, topLeft.X - 21, 0, picTopY)
                 d.Img.Visible = true
                 local plr = Players:GetPlayerFromCharacter(model)
                 if plr then
@@ -1225,10 +1474,10 @@ RunService.RenderStepped:Connect(function()
                 d.Pic.Visible = false
             end
 
+            -- Line: mentok ke CENTER picture (walau picture off)
             if Cfg.ESPLine then
                 local screenTop = Vector2.new(Camera.ViewportSize.X / 2, 0)
-                local anchorY = Cfg.ESPPicture and (topLeft.Y - 36) or topLeft.Y
-                local targetPt = Vector2.new(topLeft.X, anchorY)
+                local targetPt = Vector2.new(topLeft.X, picCenterY)
                 d.Line.Visible = true
                 d.Line.ZIndex = 4
                 local diff = targetPt - screenTop
@@ -1242,6 +1491,7 @@ RunService.RenderStepped:Connect(function()
                 d.Line.Visible = false
             end
 
+            -- Skeleton
             if Cfg.ESPSkeleton then
                 local parts = {}
                 local bones = {}
@@ -1279,7 +1529,7 @@ RunService.RenderStepped:Connect(function()
 end)
 
 -- ==========================================
--- TARGETING HELPERS
+-- AIMBOT
 -- ==========================================
 local LockedTarget = nil
 
@@ -1340,9 +1590,6 @@ local function pickTarget()
     return best
 end
 
--- ==========================================
--- AIMBOT RENDER
--- ==========================================
 RunService.RenderStepped:Connect(function()
     if Cfg.Aimbot and Cfg.AimFOV then
         FOVCircle.Visible = true
@@ -1404,9 +1651,8 @@ RunService.RenderStepped:Connect(function()
 end)
 
 -- ==========================================
--- PLAYER HACKS
+-- SPEED RUN
 -- ==========================================
--- Speed Run (pakai fake WalkSpeed hook dari Bubble 1)
 RunService.Stepped:Connect(function()
     local char = LocalPlayer.Character
     if not char then return end
@@ -1418,76 +1664,26 @@ RunService.Stepped:Connect(function()
 end)
 
 -- ==========================================
--- MULTI JUMP (FIX - pakai StateChanged, bukan JumpRequest)
+-- MULTI JUMP (FIX - auto-lompat saat di udara)
 -- ==========================================
-local jumpCount = 0
-local lastJumpTime = 0
-local MAX_JUMPS = 999  -- praktis unlimited
-
--- Reset counter tiap kali mendarat
-LocalPlayer.CharacterAdded:Connect(function(char)
-    jumpCount = 0
-    local hum = char:WaitForChild("Humanoid", 10)
-    if hum then
-        hum.StateChanged:Connect(function(old, new)
-            if new == Enum.HumanoidStateType.Landed then
-                jumpCount = 0
-            end
-        end)
-    end
-end)
-
-if LocalPlayer.Character then
-    local hum = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
-    if hum then
-        hum.StateChanged:Connect(function(old, new)
-            if new == Enum.HumanoidStateType.Landed then
-                jumpCount = 0
-            end
-        end)
-    end
-end
-
--- Pakai UserInputService buat deteksi tombol jump mobile & PC
-UserInputService.InputBegan:Connect(function(input, gp)
-    if gp then return end
+-- Begitu karakter lepas dari tanah, langsung paksa jumping lagi
+-- selama toggle ON. Nggak butuh tombol apa-apa.
+RunService.Heartbeat:Connect(function()
     if not Cfg.MultiJump then return end
-
-    local isJumpInput = false
-    if input.KeyCode == Enum.KeyCode.Space then isJumpInput = true end
-    if input.KeyCode == Enum.KeyCode.ButtonA then isJumpInput = true end
-    if input.UserInputType == Enum.UserInputType.Touch then
-        -- Cek apakah touch di area tombol jump Roblox
-        local screenSize = Camera.ViewportSize
-        if input.Position.Y > screenSize.Y * 0.6 and input.Position.X > screenSize.X * 0.6 then
-            isJumpInput = true
-        end
-    end
-
-    if not isJumpInput then return end
-
-    local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+    local char = LocalPlayer.Character
+    if not char then return end
+    local hum = char:FindFirstChildOfClass("Humanoid")
     if not hum then return end
 
-    -- Kalau lagi di udara, paksa lompat lagi
-    if hum.FloorMaterial == Enum.Material.Air then
-        hum:ChangeState(Enum.HumanoidStateType.Jumping)
-    end
-end)
-
--- Pakai juga JumpRequest buat cover kalau ada yang kelewat
-UserInputService.JumpRequest:Connect(function()
-    if not Cfg.MultiJump then return end
-    local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
-    if not hum then return end
-    task.wait(0.1)
-    if hum.FloorMaterial == Enum.Material.Air then
+    local state = hum:GetState()
+    -- Kalau di udara (FreeFalling / Jumping), paksa naik lagi
+    if state == Enum.HumanoidStateType.Freefall then
         hum:ChangeState(Enum.HumanoidStateType.Jumping)
     end
 end)
 
 -- ==========================================
--- FLY HACK (FIX - pakai BodyVelocity + BodyGyro + continuous update)
+-- FLY HACK (FIX - auto-start, pakai camera + joystick)
 -- ==========================================
 local flyActive = false
 local flyBV, flyGyro, flyConn
@@ -1501,11 +1697,12 @@ local function stopFly()
     _G.__FlyGyro = nil
     _G.__FlyConn = nil
 
-    -- Reset humanoid state
-    local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
-    if hum then
-        hum.PlatformStand = false
-        hum:ChangeState(Enum.HumanoidStateType.GettingUp)
+    local char = LocalPlayer.Character
+    if char then
+        local hum = char:FindFirstChildOfClass("Humanoid")
+        if hum then
+            hum.PlatformStand = false
+        end
     end
 end
 
@@ -1518,7 +1715,6 @@ local function startFly()
 
     flyActive = true
 
-    -- BodyVelocity untuk gerakan vertikal & horizontal
     flyBV = Instance.new("BodyVelocity")
     flyBV.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
     flyBV.Velocity = Vector3.new(0, 0, 0)
@@ -1526,7 +1722,6 @@ local function startFly()
     flyBV.Parent = hrp
     _G.__FlyBV = flyBV
 
-    -- BodyGyro biar karakter nggak muter sendiri
     flyGyro = Instance.new("BodyGyro")
     flyGyro.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
     flyGyro.P = 3000
@@ -1537,79 +1732,71 @@ local function startFly()
 
     hum.PlatformStand = true
 
-    -- Loop update velocity tiap frame
     flyConn = RunService.RenderStepped:Connect(function()
         if not flyActive or not flyBV or not flyBV.Parent then
             if flyConn then flyConn:Disconnect(); flyConn = nil end
             return
         end
 
-        local currentHrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-        if not currentHrp then
+        local curChar = LocalPlayer.Character
+        local curHrp = curChar and curChar:FindFirstChild("HumanoidRootPart")
+        local curHum = curChar and curChar:FindFirstChildOfClass("Humanoid")
+        if not curHrp or not curHum then
             stopFly()
             return
         end
 
-        local moveDir = Vector3.new(0, 0, 0)
         local speed = 60
-
-        -- Vertikal: Space (naik) / LeftShift (turun)
-        if UserInputService:IsKeyDown(Enum.KeyCode.Space) then
-            moveDir = moveDir + Vector3.new(0, 1, 0)
-        end
-        if UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) or UserInputService:IsKeyDown(Enum.KeyCode.RightShift) then
-            moveDir = moveDir - Vector3.new(0, 1, 0)
-        end
-
-        -- Horizontal: WASD
+        local moveDir = Vector3.new(0, 0, 0)
         local camCF = Camera.CFrame
-        local forward = camCF.LookVector
-        local right = camCF.RightVector
-        local moveVec = Vector3.new(0, 0, 0)
 
-        if UserInputService:IsKeyDown(Enum.KeyCode.W) then moveVec = moveVec + forward end
-        if UserInputService:IsKeyDown(Enum.KeyCode.S) then moveVec = moveVec - forward end
-        if UserInputService:IsKeyDown(Enum.KeyCode.A) then moveVec = moveVec - right end
-        if UserInputService:IsKeyDown(Enum.KeyCode.D) then moveVec = moveVec + right end
-
-        -- Mobile: pakai Humanoid.MoveDirection (dari joystick)
-        if moveVec.Magnitude < 0.1 and hum.MoveDirection.Magnitude > 0.1 then
-            moveVec = hum.MoveDirection
+        -- Ambil input dari joystick (MoveDirection)
+        local md = curHum.MoveDirection
+        if md.Magnitude > 0.1 then
+            -- Konversi relative ke kamera
+            local camFlat = CFrame.new(camCF.Position, camCF.Position + Vector3.new(camCF.LookVector.X, 0, camCF.LookVector.Z))
+            local forward = camFlat.LookVector
+            local right = camFlat.RightVector
+            -- md.X = horizontal, md.Z = forward/backward
+            moveDir = (forward * -md.Z + right * md.X)
+            if moveDir.Magnitude > 0.1 then
+                moveDir = moveDir.Unit * speed
+            end
         end
 
-        if moveVec.Magnitude > 0.1 then
-            moveDir = moveDir + moveVec.Unit
-        end
+        -- Naik/turun pakai tombol di layar (deteksi via tombol custom game)
+        -- Fallback: pakai gerakan kamera (lihat ke atas = naik, ke bawah = turun)
+        local vertical = 0
+        local lookY = camCF.LookVector.Y
+        -- Naik kalau lihat ke atas > threshold, turun kalau lihat ke bawah
+        -- (bisa di-override pakai tombol tertentu nanti)
 
-        flyBV.Velocity = moveDir.Unit * speed
-        if moveDir.Magnitude < 0.1 then
+        -- Optional: pakai Space buat naik (kalau keyboard tersedia)
+        if UserInputService:IsKeyDown(Enum.KeyCode.Space) then vertical = 1 end
+        if UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) then vertical = -1 end
+
+        local finalVel = moveDir + Vector3.new(0, vertical * speed, 0)
+        if finalVel.Magnitude < 0.1 then
             flyBV.Velocity = Vector3.new(0, 0, 0)
+        else
+            flyBV.Velocity = finalVel
         end
 
-        flyGyro.CFrame = CFrame.new(currentHrp.Position, currentHrp.Position + camCF.LookVector)
+        -- Gyro biar karakter ngadep ke arah kamera
+        flyGyro.CFrame = CFrame.new(curHrp.Position, curHrp.Position + camCF.LookVector)
     end)
     _G.__FlyConn = flyConn
 end
 
--- Loop Fly: kalau toggle ON & tombol jump ditekan → fly, lepas → berhenti
-RunService.RenderStepped:Connect(function()
+-- Auto-start saat toggle ON
+RunService.Heartbeat:Connect(function()
     if not LocalPlayer.Character then
         if flyActive then stopFly() end
         return
     end
-
-    if not Cfg.FlyHack then
-        if flyActive then stopFly() end
-        return
-    end
-
-    -- Cek tombol jump ditekan (Space / mobile touch / gamepad)
-    local jumpPressed = UserInputService:IsKeyDown(Enum.KeyCode.Space)
-                         or UserInputService:IsKeyDown(Enum.KeyCode.ButtonA)
-
-    if jumpPressed and not flyActive then
+    if Cfg.FlyHack and not flyActive then
         startFly()
-    elseif not jumpPressed and flyActive then
+    elseif not Cfg.FlyHack and flyActive then
         stopFly()
     end
 end)
@@ -1896,4 +2083,4 @@ task.spawn(function()
     end
 end)
 
-print("[LiteHack] UI Loaded (v8). Silent Aim removed. Multi Jump + Fly + Smooth Teleport fixed.")
+print("[LiteHack] UI Loaded (v9). + Weapon ESP + Save Location + Fixed Multi Jump/Fly/Line.")
