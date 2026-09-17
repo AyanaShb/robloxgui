@@ -96,6 +96,7 @@ _G.LiteHackCfg = {
     AimDistance = 500,
     AimSmoothness = 100,
     AutoFire = false,
+    AutoMacro = false,
     ShowCrosshair = false,
     SpeedRun = false,
     SpeedRunValue = 50,
@@ -105,6 +106,7 @@ _G.LiteHackCfg = {
     WallHack = false,
     ClockTime = "Default",
     LowGravity = false,
+    AntiSmoke = false,
     Theme = "Dark",
 }
 
@@ -151,17 +153,14 @@ end
 local FONT_BOLD = Enum.Font.GothamBold
 
 -- ==========================================
--- SMOOTH TELEPORT (BodyVelocity - anti-detect)
+-- SMOOTH TELEPORT (BodyVelocity)
 -- ==========================================
--- Logika: gerakkan karakter pakai BodyVelocity yang di-update tiap frame,
--- jadi server lihat "gerak cepat" bukan "loncat CFrame".
 _G.__SmoothTeleport = function(targetPos, duration)
     local char = LocalPlayer.Character
     if not char then return end
     local hrp = char:FindFirstChild("HumanoidRootPart")
     if not hrp then return end
 
-    -- Batalkan teleport sebelumnya kalau masih jalan
     if _G.__ActiveTeleportBV then
         pcall(function() _G.__ActiveTeleportBV:Destroy() end)
         _G.__ActiveTeleportBV = nil
@@ -171,7 +170,6 @@ _G.__SmoothTeleport = function(targetPos, duration)
         _G.__ActiveTeleportConn = nil
     end
 
-    local startPos = hrp.Position
     local startTime = tick()
     local conn
     local bv = Instance.new("BodyVelocity")
@@ -193,24 +191,19 @@ _G.__SmoothTeleport = function(targetPos, duration)
         local dist = diff.Magnitude
         local elapsed = tick() - startTime
 
-        -- Sampai tujuan atau timeout
         if dist < 5 or elapsed > duration then
             if bv then pcall(function() bv:Destroy() end) end
             if conn then conn:Disconnect() end
             _G.__ActiveTeleportBV = nil
             _G.__ActiveTeleportConn = nil
 
-            -- Fallback: kalau masih jauh, teleport CFrame pelan-pelan
             if dist > 5 and elapsed > duration then
-                -- Teleport step kecil biar nggak loncat jauh
                 local stepTarget = currentPos + diff.Unit * math.min(dist, 30)
                 hrp.CFrame = CFrame.new(stepTarget, stepTarget + hrp.CFrame.LookVector * 0.001 + hrp.CFrame.UpVector * 0.001)
             end
             return
         end
 
-        -- Kecepatan disesuaikan: 60-180 studs/detik
-        -- Makin jauh, makin cepat, tapi ada limit
         local speed = math.clamp(dist * 3, 60, 180)
         bv.Velocity = diff.Unit * speed
     end)
@@ -826,6 +819,7 @@ Toggle(VisualTab, "Bomb ESP (PlantedC4)", Cfg.ESPBomb, function(v) Cfg.ESPBomb =
 Section(AimbotTab, "Aimbot Settings")
 Toggle(AimbotTab, "Aimbot", Cfg.Aimbot, function(v) Cfg.Aimbot = v end)
 Toggle(AimbotTab, "Auto Fire", Cfg.AutoFire, function(v) Cfg.AutoFire = v end)
+Toggle(AimbotTab, "Auto Macro (SG ↔ Knife)", Cfg.AutoMacro, function(v) Cfg.AutoMacro = v end)
 Toggle(AimbotTab, "Show Crosshair", Cfg.ShowCrosshair, function(v) Cfg.ShowCrosshair = v end)
 Toggle(AimbotTab, "Team Check", Cfg.AimTeamCheck, function(v) Cfg.AimTeamCheck = v end)
 Toggle(AimbotTab, "Wall Check", Cfg.AimWallCheck, function(v) Cfg.AimWallCheck = v end)
@@ -903,7 +897,50 @@ ComboBox(WorldTab, "Clock Time", {"Default", "Pagi", "Siang", "Sore", "Malam"}, 
 end)
 
 -- ==========================================
--- LOW GRAVITY
+-- ANTI SMOKE (Transparency only)
+-- ==========================================
+RunService.Heartbeat:Connect(function()
+    if not Cfg.AntiSmoke then return end
+
+    -- Target 1: Server_ACS_SmokeFX (efek visual asap)
+    local fx = workspace:FindFirstChild("Server_ACS_SmokeFX")
+    if fx then
+        if fx:IsA("BasePart") and fx.Transparency < 1 then
+            fx.Transparency = 1
+        end
+        for _, desc in ipairs(fx:GetDescendants()) do
+            if desc:IsA("BasePart") then
+                desc.Transparency = 1
+            elseif desc:IsA("ParticleEmitter") then
+                desc.Transparency = NumberSequence.new(1)
+            elseif desc:IsA("Smoke") then
+                desc.Transparency = 1
+            elseif desc:IsA("Fire") then
+                desc.Transparency = 1
+            end
+        end
+    end
+
+    -- Target 2: Smoke_Projectile (kalau mau projectile-nya juga hilang)
+    local proj = workspace:FindFirstChild("Smoke_Projectile")
+    if proj then
+        if proj:IsA("BasePart") and proj.Transparency < 1 then
+            proj.Transparency = 1
+        end
+        for _, desc in ipairs(proj:GetDescendants()) do
+            if desc:IsA("BasePart") then
+                desc.Transparency = 1
+            elseif desc:IsA("ParticleEmitter") then
+                desc.Transparency = NumberSequence.new(1)
+            end
+        end
+    end
+end)
+
+Toggle(WorldTab, "Anti Smoke", Cfg.AntiSmoke, function(v) Cfg.AntiSmoke = v end)
+
+-- ==========================================
+-- LOW GRAVITY (JumpPower 70)
 -- ==========================================
 local LOW_GRAVITY_VALUE = 2
 
@@ -933,7 +970,7 @@ local function applyLowGravity(char)
 
     hum.HipHeight = _G.__LG_Original.HipHeight + 2
     hum.UseJumpPower = true
-    hum.JumpPower = 50
+    hum.JumpPower = 70
 end
 
 local function removeLowGravity()
@@ -1215,7 +1252,7 @@ CloseBtn.MouseButton1Click:Connect(function() MainFrame.Visible = false end)
 IconBtn.MouseButton1Click:Connect(function() MainFrame.Visible = not MainFrame.Visible end)
 
 -- ==========================================
--- FOV CIRCLE + AIM LINE + CROSSHAIR (SMALL & RAPAT)
+-- FOV CIRCLE + AIM LINE + CROSSHAIR
 -- ==========================================
 local FOVGui = make("ScreenGui", {Name = "LiteHack_FOV", ResetOnSpawn = false, IgnoreGuiInset = true, Parent = getGuiParent()})
 local FOVCircle = make("Frame", {
@@ -1239,7 +1276,6 @@ local AimLineGui = make("Frame", {
     Parent = FOVGui
 })
 
--- CROSSHAIR SMALL & RAPAT
 local CrosshairDot = make("Frame", {
     Size = UDim2.new(0, 3, 0, 3),
     Position = UDim2.new(0.5, -1.5, 0.5, -1.5),
@@ -1273,20 +1309,15 @@ RunService.RenderStepped:Connect(function()
         CrosshairDot.Visible = true
         CrosshairDot.Position = UDim2.new(0, cx - 1.5, 0, cy - 1.5)
 
-        -- 4 garis kecil: panjang 5px, jarak 4px dari center
-        -- Atas
         CrosshairLines[1].Size = UDim2.new(0, 1, 0, 5)
         CrosshairLines[1].Position = UDim2.new(0, cx - 0.5, 0, cy - 9)
         CrosshairLines[1].Visible = true
-        -- Bawah
         CrosshairLines[2].Size = UDim2.new(0, 1, 0, 5)
         CrosshairLines[2].Position = UDim2.new(0, cx - 0.5, 0, cy + 4)
         CrosshairLines[2].Visible = true
-        -- Kiri
         CrosshairLines[3].Size = UDim2.new(0, 5, 0, 1)
         CrosshairLines[3].Position = UDim2.new(0, cx - 9, 0, cy - 0.5)
         CrosshairLines[3].Visible = true
-        -- Kanan
         CrosshairLines[4].Size = UDim2.new(0, 5, 0, 1)
         CrosshairLines[4].Position = UDim2.new(0, cx + 4, 0, cy - 0.5)
         CrosshairLines[4].Visible = true
@@ -1686,13 +1717,11 @@ RunService.RenderStepped:Connect(function()
         return
     end
 
-    -- Ambil posisi bom
     local bombPos
     local ok, pivot = pcall(function() return c4:GetPivot().Position end)
     if ok and pivot then
         bombPos = pivot
     else
-        -- Fallback: cari BasePart pertama di dalamnya
         for _, child in ipairs(c4:GetDescendants()) do
             if child:IsA("BasePart") then
                 bombPos = child.Position
@@ -1708,7 +1737,6 @@ RunService.RenderStepped:Connect(function()
         return
     end
 
-    -- Project ke layar
     local screenPos, onScreen = Camera:WorldToViewportPoint(bombPos)
     if not onScreen then
         BombBox.Visible = false
@@ -1717,7 +1745,6 @@ RunService.RenderStepped:Connect(function()
         return
     end
 
-    -- Hitung ukuran kotak berdasarkan jarak (makin dekat, makin besar)
     local myChar = LocalPlayer.Character
     local myRoot = myChar and myChar:FindFirstChild("HumanoidRootPart")
     local meters = 0
@@ -1744,14 +1771,21 @@ RunService.RenderStepped:Connect(function()
 end)
 
 -- ==========================================
--- AIMBOT + AUTO FIRE
+-- AIMBOT + AUTO FIRE + AUTO MACRO QUICK CHANGE
 -- ==========================================
 local LockedTarget = nil
-local lastFireTime = 0
-local FIRE_INTERVAL = 0.08
 local fireHoldActive = false
 local lastFireToggle = 0
 local FIRE_TOGGLE_DURATION = 0.05
+
+-- Auto Macro Quick Change variables
+local macroRunning = false
+local lastMacroTime = 0
+local MACRO_COOLDOWN = 0.3  -- cooldown antar macro (jangan spam)
+
+-- Nama tool yang kita tau dari scan
+local SG_NAME = "870MCS"      -- Shotgun
+local KNIFE_NAME = "M-7"      -- Knife/Pisau
 
 local function isVisible(part)
     if not part then return false end
@@ -1845,6 +1879,20 @@ local function getEquippedTool()
     return char:FindFirstChildOfClass("Tool")
 end
 
+local function getToolByName(name)
+    local char = LocalPlayer.Character
+    local bp = LocalPlayer:FindFirstChild("Backpack")
+    if char then
+        local t = char:FindFirstChild(name)
+        if t and t:IsA("Tool") then return t end
+    end
+    if bp then
+        local t = bp:FindFirstChild(name)
+        if t and t:IsA("Tool") then return t end
+    end
+    return nil
+end
+
 local function holdFireToggle()
     local tool = getEquippedTool()
     if not tool then return end
@@ -1860,6 +1908,54 @@ local function holdFireToggle()
     end)
     fireHoldActive = not fireHoldActive
 end
+
+-- Auto Macro Quick Change: SG → Knife → SG
+local function runQuickChangeMacro()
+    if macroRunning then return end
+    local now = tick()
+    if (now - lastMacroTime) < MACRO_COOLDOWN then return end
+    lastMacroTime = now
+    macroRunning = true
+
+    task.spawn(function()
+        local char = LocalPlayer.Character
+        if not char then macroRunning = false return end
+        local hum = char:FindFirstChildOfClass("Humanoid")
+        if not hum then macroRunning = false return end
+
+        local sg = getToolByName(SG_NAME)
+        local knife = getToolByName(KNIFE_NAME)
+
+        if sg and knife then
+            -- 1. Equip knife
+            pcall(function() hum:EquipTool(knife) end)
+            task.wait(0.10)
+            -- 2. Equip SG lagi
+            pcall(function() hum:EquipTool(sg) end)
+            task.wait(0.20)
+        end
+
+        macroRunning = false
+    end)
+end
+
+-- Hook Tool.Activated tiap frame (deteksi kapan kamu nembak SG)
+RunService.Heartbeat:Connect(function()
+    if not Cfg.AutoMacro then return end
+    local tool = getEquippedTool()
+    if not tool then return end
+    if tool.Name ~= SG_NAME then return end
+
+    -- Kalau tool udah ada hook, skip
+    if tool:GetAttribute("__MacroHooked") then return end
+    tool:SetAttribute("__MacroHooked", true)
+
+    tool.Activated:Connect(function()
+        if Cfg.AutoMacro then
+            runQuickChangeMacro()
+        end
+    end)
+end)
 
 RunService.RenderStepped:Connect(function()
     if Cfg.Aimbot and Cfg.AimFOV then
@@ -2235,4 +2331,4 @@ task.spawn(function()
     end
 end)
 
-print("[LiteHack] UI Loaded (v15). Multi Jump removed. Small crosshair. BodyVelocity teleport. Bomb ESP added.")
+print("[LiteHack] UI Loaded (v17). AntiSmoke + AutoMacro QuickChange (870MCS ↔ M-7).")
