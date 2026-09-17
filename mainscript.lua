@@ -933,7 +933,7 @@ local function applyLowGravity(char)
 
     hum.HipHeight = _G.__LG_Original.HipHeight + 2
     hum.UseJumpPower = true
-    hum.JumpPower = 100
+    hum.JumpPower = 50
 end
 
 local function removeLowGravity()
