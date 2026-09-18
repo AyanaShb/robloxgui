@@ -72,8 +72,10 @@ end
 -- CONFIG GLOBAL
 -- ==========================================
 _G.LiteHackCfg = {
+    -- ESP
     ESPEnemy = false,
     ESPTeam = false,
+    ESPAll = false,
     ESPBox = true,
     ESPName = true,
     ESPLine = false,
@@ -83,30 +85,39 @@ _G.LiteHackCfg = {
     ESPPicture = false,
     ESPWeapon = true,
     ESPBomb = false,
+    ESPChams = false,
     ESPColor = Color3.fromRGB(255, 60, 60),
+    -- Aimbot
     Aimbot = false,
     AimTeamCheck = true,
     AimWallCheck = true,
     AimMode = "FOV",
     AimTrigger = "Fire (Snap)",
     AimFOV = true,
-    AimFOVSize = 80,
+    AimFOVSize = 40,
     AimLine = true,
     AimTarget = "Chest",
     AimDistance = 500,
     AimSmoothness = 30,
     AutoFire = false,
     ShowCrosshair = false,
+    -- Player
     SpeedRun = false,
     SpeedRunValue = 50,
     RapidFire = false,
     UnlimitedAmmo = false,
     NoRecoil = false,
     WallHack = false,
+    -- World
     ClockTime = "Default",
     LowGravity = false,
     AntiSmoke = false,
     AntiGM = false,
+    -- Chat
+    SpamChat = false,
+    SpamChatText = "ahh ahhh ahhh ahhh",
+    SpamChatInterval = 1.2,
+    -- UI
     Theme = "Dark",
 }
 
@@ -367,6 +378,14 @@ local Tabs = {}
 local TabButtons = {}
 local ActiveTab = nil
 
+-- UI reference untuk LOAD CONFIG
+local UIReferences = {
+    Toggles = {},   -- [key] = toggle object
+    Sliders = {},   -- [key] = slider object
+    Combos = {},    -- [key] = combo object
+    TextBoxes = {}  -- [key] = textbox object
+}
+
 local function CreateTab(name, icon)
     local btn = make("TextButton", {
         Size = UDim2.new(0, 100, 0, 28),
@@ -435,7 +454,7 @@ local function Section(page, text)
     return f
 end
 
-local function Toggle(page, text, default, callback)
+local function Toggle(page, text, default, callback, cfgKey)
     local row = make("Frame", {
         Size = UDim2.new(1, 0, 0, 30),
         BackgroundColor3 = Color3.fromRGB(30, 30, 40),
@@ -481,13 +500,16 @@ local function Toggle(page, text, default, callback)
     end
 
     btn.MouseButton1Click:Connect(function() update(not state, true) end)
-    return {
+    local obj = {
         Set = function(_, v) update(v, true) end,
-        Get = function() return state end
+        Get = function() return state end,
+        SetSilent = function(_, v) update(v, false) end
     }
+    if cfgKey then UIReferences.Toggles[cfgKey] = obj end
+    return obj
 end
 
-local function Slider(page, text, min, max, default, suffix, callback)
+local function Slider(page, text, min, max, default, suffix, callback, cfgKey)
     local row = make("Frame", {
         Size = UDim2.new(1, 0, 0, 44),
         BackgroundColor3 = Color3.fromRGB(30, 30, 40),
@@ -566,13 +588,16 @@ local function Slider(page, text, min, max, default, suffix, callback)
         end
     end)
 
-    return {
+    local obj = {
         Set = function(_, v) setValue(v, true) end,
-        Get = function() return value end
+        Get = function() return value end,
+        SetSilent = function(_, v) setValue(v, false) end
     }
+    if cfgKey then UIReferences.Sliders[cfgKey] = obj end
+    return obj
 end
 
-local function ComboBox(page, text, options, default, callback)
+local function ComboBox(page, text, options, default, callback, cfgKey)
     local row = make("Frame", {
         Size = UDim2.new(1, 0, 0, 30),
         BackgroundColor3 = Color3.fromRGB(30, 30, 40),
@@ -673,10 +698,13 @@ local function ComboBox(page, text, options, default, callback)
         if open then closeList() else openList() end
     end)
 
-    return {
+    local obj = {
         Set = function(_, v) value = v; btn.Text = v .. "  ▼"; if callback then callback(v) end end,
-        Get = function() return value end
+        Get = function() return value end,
+        SetSilent = function(_, v) value = v; btn.Text = v .. "  ▼" end
     }
+    if cfgKey then UIReferences.Combos[cfgKey] = obj end
+    return obj
 end
 
 local function ListBox(page, text, getItems, callback)
@@ -741,7 +769,6 @@ local function ListBox(page, text, getItems, callback)
     end)
 end
 
--- BUTTON DENGAN ANIMASI (hover, press, release, touch)
 local function Button(page, text, callback)
     local btn = make("TextButton", {
         Size = UDim2.new(1, 0, 0, 30),
@@ -789,7 +816,6 @@ local function Button(page, text, callback)
     return btn
 end
 
--- TOAST NOTIFIKASI
 local function Toast(text, duration)
     duration = duration or 3
     local toastGui = make("ScreenGui", {
@@ -839,7 +865,7 @@ local function Toast(text, duration)
     end)
 end
 
-local function TextBox(page, placeholder, callback)
+local function TextBox(page, placeholder, callback, cfgKey)
     local tb = make("TextBox", {
         Size = UDim2.new(1, 0, 0, 30),
         BackgroundColor3 = Color3.fromRGB(30, 30, 40),
@@ -858,7 +884,12 @@ local function TextBox(page, placeholder, callback)
     tb.FocusLost:Connect(function()
         if callback then callback(tb.Text) end
     end)
-    return tb
+    local obj = {
+        Set = function(_, v) tb.Text = v end,
+        Get = function() return tb.Text end
+    }
+    if cfgKey then UIReferences.TextBoxes[cfgKey] = obj end
+    return tb, obj
 end
 
 -- ==========================================
@@ -878,40 +909,71 @@ ActiveTab = "Visual"
 -- ==========================================
 -- TAB VISUAL
 -- ==========================================
-Section(VisualTab, "ESP Filter")
-Toggle(VisualTab, "ESP Enemy", Cfg.ESPEnemy, function(v) Cfg.ESPEnemy = v end)
-Toggle(VisualTab, "ESP Team", Cfg.ESPTeam, function(v) Cfg.ESPTeam = v end)
+Section(VisualTab, "ESP Filter (exclusive)")
+
+local ESPEnemyToggle, ESPTeamToggle, ESPAllToggle
+
+ESPEnemyToggle = Toggle(VisualTab, "ESP Enemy", Cfg.ESPEnemy, function(v)
+    Cfg.ESPEnemy = v
+    if v then
+        Cfg.ESPTeam = false
+        Cfg.ESPAll = false
+        if ESPTeamToggle then ESPTeamToggle:SetSilent(false) end
+        if ESPAllToggle then ESPAllToggle:SetSilent(false) end
+    end
+end, "ESPEnemy")
+
+ESPTeamToggle = Toggle(VisualTab, "ESP Team", Cfg.ESPTeam, function(v)
+    Cfg.ESPTeam = v
+    if v then
+        Cfg.ESPEnemy = false
+        Cfg.ESPAll = false
+        if ESPEnemyToggle then ESPEnemyToggle:SetSilent(false) end
+        if ESPAllToggle then ESPAllToggle:SetSilent(false) end
+    end
+end, "ESPTeam")
+
+ESPAllToggle = Toggle(VisualTab, "ESP All Player (incl. NPC)", Cfg.ESPAll, function(v)
+    Cfg.ESPAll = v
+    if v then
+        Cfg.ESPEnemy = false
+        Cfg.ESPTeam = false
+        if ESPEnemyToggle then ESPEnemyToggle:SetSilent(false) end
+        if ESPTeamToggle then ESPTeamToggle:SetSilent(false) end
+    end
+end, "ESPAll")
 
 Section(VisualTab, "ESP Elements")
-Toggle(VisualTab, "Box", Cfg.ESPBox, function(v) Cfg.ESPBox = v end)
-Toggle(VisualTab, "Name", Cfg.ESPName, function(v) Cfg.ESPName = v end)
-Toggle(VisualTab, "Weapon", Cfg.ESPWeapon, function(v) Cfg.ESPWeapon = v end)
-Toggle(VisualTab, "Line", Cfg.ESPLine, function(v) Cfg.ESPLine = v end)
-Toggle(VisualTab, "Health", Cfg.ESPHealth, function(v) Cfg.ESPHealth = v end)
-Toggle(VisualTab, "Skeleton", Cfg.ESPSkeleton, function(v) Cfg.ESPSkeleton = v end)
-Toggle(VisualTab, "Distance", Cfg.ESPDistance, function(v) Cfg.ESPDistance = v end)
-Toggle(VisualTab, "Picture", Cfg.ESPPicture, function(v) Cfg.ESPPicture = v end)
+Toggle(VisualTab, "Box", Cfg.ESPBox, function(v) Cfg.ESPBox = v end, "ESPBox")
+Toggle(VisualTab, "Name", Cfg.ESPName, function(v) Cfg.ESPName = v end, "ESPName")
+Toggle(VisualTab, "Weapon", Cfg.ESPWeapon, function(v) Cfg.ESPWeapon = v end, "ESPWeapon")
+Toggle(VisualTab, "Line", Cfg.ESPLine, function(v) Cfg.ESPLine = v end, "ESPLine")
+Toggle(VisualTab, "Health", Cfg.ESPHealth, function(v) Cfg.ESPHealth = v end, "ESPHealth")
+Toggle(VisualTab, "Skeleton", Cfg.ESPSkeleton, function(v) Cfg.ESPSkeleton = v end, "ESPSkeleton")
+Toggle(VisualTab, "Distance", Cfg.ESPDistance, function(v) Cfg.ESPDistance = v end, "ESPDistance")
+Toggle(VisualTab, "Picture", Cfg.ESPPicture, function(v) Cfg.ESPPicture = v end, "ESPPicture")
+Toggle(VisualTab, "Chams (Tembus Dinding)", Cfg.ESPChams, function(v) Cfg.ESPChams = v end, "ESPChams")
 
 Section(VisualTab, "Bomb ESP")
-Toggle(VisualTab, "Bomb ESP (PlantedC4)", Cfg.ESPBomb, function(v) Cfg.ESPBomb = v end)
+Toggle(VisualTab, "Bomb ESP (PlantedC4)", Cfg.ESPBomb, function(v) Cfg.ESPBomb = v end, "ESPBomb")
 
 -- ==========================================
 -- TAB AIMBOT
 -- ==========================================
 Section(AimbotTab, "Aimbot Settings")
-Toggle(AimbotTab, "Aimbot", Cfg.Aimbot, function(v) Cfg.Aimbot = v end)
-Toggle(AimbotTab, "Auto Fire", Cfg.AutoFire, function(v) Cfg.AutoFire = v end)
-Toggle(AimbotTab, "Show Crosshair", Cfg.ShowCrosshair, function(v) Cfg.ShowCrosshair = v end)
-Toggle(AimbotTab, "Team Check", Cfg.AimTeamCheck, function(v) Cfg.AimTeamCheck = v end)
-Toggle(AimbotTab, "Wall Check", Cfg.AimWallCheck, function(v) Cfg.AimWallCheck = v end)
-ComboBox(AimbotTab, "Mode Aimbot", {"FOV", "360°"}, Cfg.AimMode, function(v) Cfg.AimMode = v end)
-ComboBox(AimbotTab, "Mode Trigger", {"Camera", "Fire (Snap)"}, Cfg.AimTrigger, function(v) Cfg.AimTrigger = v end)
-Toggle(AimbotTab, "Aim FOV", Cfg.AimFOV, function(v) Cfg.AimFOV = v end)
-Slider(AimbotTab, "Size FOV", 20, 600, Cfg.AimFOVSize, "px", function(v) Cfg.AimFOVSize = v end)
-Toggle(AimbotTab, "Aim Line", Cfg.AimLine, function(v) Cfg.AimLine = v end)
-ComboBox(AimbotTab, "Aim Target", {"Head", "Neck", "Chest"}, Cfg.AimTarget, function(v) Cfg.AimTarget = v end)
-Slider(AimbotTab, "Aim Distance", 50, 2000, Cfg.AimDistance, "m", function(v) Cfg.AimDistance = v end)
-Slider(AimbotTab, "Aim Smoothness", 1, 100, Cfg.AimSmoothness, "%", function(v) Cfg.AimSmoothness = v end)
+Toggle(AimbotTab, "Aimbot", Cfg.Aimbot, function(v) Cfg.Aimbot = v end, "Aimbot")
+Toggle(AimbotTab, "Auto Fire", Cfg.AutoFire, function(v) Cfg.AutoFire = v end, "AutoFire")
+Toggle(AimbotTab, "Show Crosshair", Cfg.ShowCrosshair, function(v) Cfg.ShowCrosshair = v end, "ShowCrosshair")
+Toggle(AimbotTab, "Team Check", Cfg.AimTeamCheck, function(v) Cfg.AimTeamCheck = v end, "AimTeamCheck")
+Toggle(AimbotTab, "Wall Check", Cfg.AimWallCheck, function(v) Cfg.AimWallCheck = v end, "AimWallCheck")
+ComboBox(AimbotTab, "Mode Aimbot", {"FOV", "360°"}, Cfg.AimMode, function(v) Cfg.AimMode = v end, "AimMode")
+ComboBox(AimbotTab, "Mode Trigger", {"Camera", "Fire (Snap)"}, Cfg.AimTrigger, function(v) Cfg.AimTrigger = v end, "AimTrigger")
+Toggle(AimbotTab, "Aim FOV", Cfg.AimFOV, function(v) Cfg.AimFOV = v end, "AimFOV")
+Slider(AimbotTab, "Size FOV", 20, 600, Cfg.AimFOVSize, "px", function(v) Cfg.AimFOVSize = v end, "AimFOVSize")
+Toggle(AimbotTab, "Aim Line", Cfg.AimLine, function(v) Cfg.AimLine = v end, "AimLine")
+ComboBox(AimbotTab, "Aim Target", {"Head", "Neck", "Chest"}, Cfg.AimTarget, function(v) Cfg.AimTarget = v end, "AimTarget")
+Slider(AimbotTab, "Aim Distance", 50, 2000, Cfg.AimDistance, "m", function(v) Cfg.AimDistance = v end, "AimDistance")
+Slider(AimbotTab, "Aim Smoothness", 1, 100, Cfg.AimSmoothness, "%", function(v) Cfg.AimSmoothness = v end, "AimSmoothness")
 -- ==========================================
 -- FORWARD DECLARE
 -- ==========================================
@@ -928,22 +990,22 @@ Toggle(PlayerTab, "Speed Run", Cfg.SpeedRun, function(v)
         local h = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
         if h then h.WalkSpeed = 16 end
     end
-end)
-Slider(PlayerTab, "Speed %", 100, 500, Cfg.SpeedRunValue, "%", function(v) Cfg.SpeedRunValue = v end)
+end, "SpeedRun")
+Slider(PlayerTab, "Speed %", 100, 500, Cfg.SpeedRunValue, "%", function(v) Cfg.SpeedRunValue = v end, "SpeedRunValue")
 
 Section(PlayerTab, "Combat")
 Toggle(PlayerTab, "Rapid Fire", Cfg.RapidFire, function(v)
     Cfg.RapidFire = v
     if not v and not Cfg.UnlimitedAmmo and restoreAll then pcall(restoreAll) end
-end)
+end, "RapidFire")
 Toggle(PlayerTab, "Unlimited Ammo", Cfg.UnlimitedAmmo, function(v)
     Cfg.UnlimitedAmmo = v
     if not v and not Cfg.RapidFire and restoreAll then pcall(restoreAll) end
-end)
+end, "UnlimitedAmmo")
 Toggle(PlayerTab, "No Recoil", Cfg.NoRecoil, function(v)
     Cfg.NoRecoil = v
     if not v and restoreRecoil then pcall(restoreRecoil) end
-end)
+end, "NoRecoil")
 Toggle(PlayerTab, "Wall Hack (Noclip)", Cfg.WallHack, function(v)
     Cfg.WallHack = v
     if not v and LocalPlayer.Character then
@@ -955,7 +1017,7 @@ Toggle(PlayerTab, "Wall Hack (Noclip)", Cfg.WallHack, function(v)
         local root = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
         if root then root.CanCollide = true end
     end
-end)
+end, "WallHack")
 
 -- ==========================================
 -- TAB WORLD
@@ -975,7 +1037,81 @@ ComboBox(WorldTab, "Clock Time", {"Default", "Pagi", "Siang", "Sore", "Malam"}, 
     else
         Lighting.ClockTime = 14; Lighting.Brightness = 2; Lighting.OutdoorAmbient = Color3.fromRGB(70, 70, 70)
     end
-end)
+end, "ClockTime")
+
+-- ==========================================
+-- SPAM CHAT
+-- ==========================================
+local chatSpamActive = false
+local chatSpamThread = nil
+
+local function sendChatMessage(msg)
+    -- Cara 1: Chat lama (SayMessageRequest)
+    local ReplicatedStorage = game:GetService("ReplicatedStorage")
+    local chatEvents = ReplicatedStorage:FindFirstChild("DefaultChatSystemChatEvents")
+    if chatEvents then
+        local sayRemote = chatEvents:FindFirstChild("SayMessageRequest")
+        if sayRemote then
+            pcall(function()
+                sayRemote:FireServer(msg, "All")
+            end)
+            return true
+        end
+    end
+
+    -- Cara 2: TextChatService (baru)
+    local TextChatService = game:GetService("TextChatService")
+    if TextChatService.ChatVersion == Enum.ChatVersion.TextChatService then
+        local ok = pcall(function()
+            local channels = TextChatService:FindFirstChild("TextChannels")
+            if channels then
+                local general = channels:FindFirstChild("RBXGeneral")
+                if general then
+                    general:SendAsync(msg)
+                    return true
+                end
+            end
+        end)
+        if ok then return true end
+    end
+
+    return false
+end
+
+local function startChatSpam()
+    if chatSpamThread then return end
+    chatSpamActive = true
+    chatSpamThread = task.spawn(function()
+        while chatSpamActive do
+            local text = Cfg.SpamChatText
+            local interval = Cfg.SpamChatInterval
+            if text and text ~= "" then
+                pcall(function() sendChatMessage(text) end)
+            end
+            task.wait(interval)
+        end
+        chatSpamThread = nil
+    end)
+end
+
+local function stopChatSpam()
+    chatSpamActive = false
+    chatSpamThread = nil
+end
+
+Section(WorldTab, "Chat Spam")
+Toggle(WorldTab, "Spam Chat (1.2 detik)", Cfg.SpamChat, function(v)
+    Cfg.SpamChat = v
+    if v then
+        startChatSpam()
+    else
+        stopChatSpam()
+    end
+end, "SpamChat")
+
+TextBox(WorldTab, "Teks spam...", function(text)
+    Cfg.SpamChatText = text
+end, "SpamChatText")
 
 -- ==========================================
 -- ANTI GM
@@ -1067,10 +1203,8 @@ end)
 Section(WorldTab, "Anti GM")
 Toggle(WorldTab, "Anti GM (Peringatan Moderator)", Cfg.AntiGM, function(v)
     Cfg.AntiGM = v
-    if not v then
-        detectedGMs = {}
-    end
-end)
+    if not v then detectedGMs = {} end
+end, "AntiGM")
 
 -- ==========================================
 -- ANTI SMOKE
@@ -1099,10 +1233,10 @@ RunService.Heartbeat:Connect(function()
     end
 end)
 
-Toggle(WorldTab, "Anti Smoke", Cfg.AntiSmoke, function(v) Cfg.AntiSmoke = v end)
+Toggle(WorldTab, "Anti Smoke", Cfg.AntiSmoke, function(v) Cfg.AntiSmoke = v end, "AntiSmoke")
 
 -- ==========================================
--- LOW GRAVITY (JumpPower 70)
+-- LOW GRAVITY
 -- ==========================================
 local LOW_GRAVITY_VALUE = 2
 
@@ -1152,7 +1286,7 @@ end
 Toggle(WorldTab, "Low Gravity", Cfg.LowGravity, function(v)
     Cfg.LowGravity = v
     if v then applyLowGravity(LocalPlayer.Character) else removeLowGravity() end
-end)
+end, "LowGravity")
 
 RunService.Heartbeat:Connect(function()
     if not Cfg.LowGravity then return end
@@ -1350,9 +1484,61 @@ ComboBox(ConfigTab, "Theme", {"Dark", "Light"}, Cfg.Theme, function(v)
         TabScroll.BackgroundColor3 = Color3.fromRGB(24, 24, 32)
         Title.TextColor3 = Color3.fromRGB(255, 70, 70)
     end
-end)
+end, "Theme")
 
 Section(ConfigTab, "Save / Load")
+
+local function applyConfigToUI()
+    -- Toggle
+    for key, ref in pairs(UIReferences.Toggles) do
+        if Cfg[key] ~= nil then
+            ref:SetSilent(Cfg[key])
+        end
+    end
+    -- Slider
+    for key, ref in pairs(UIReferences.Sliders) do
+        if Cfg[key] ~= nil then
+            ref:SetSilent(Cfg[key])
+        end
+    end
+    -- Combo
+    for key, ref in pairs(UIReferences.Combos) do
+        if Cfg[key] ~= nil then
+            ref:SetSilent(Cfg[key])
+        end
+    end
+    -- TextBox
+    for key, ref in pairs(UIReferences.TextBoxes) do
+        if Cfg[key] ~= nil then
+            ref:Set(Cfg[key])
+        end
+    end
+end
+
+local function applyConfigToRuntime()
+    -- Terapkan efek runtime untuk fitur yang ON saat load
+    -- Speed Run
+    if Cfg.SpeedRun and LocalPlayer.Character then
+        local h = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+        if h then h.WalkSpeed = 16 * (Cfg.SpeedRunValue / 100) end
+    end
+    -- Low Gravity
+    if Cfg.LowGravity then
+        applyLowGravity(LocalPlayer.Character)
+    else
+        removeLowGravity()
+    end
+    -- Anti Smoke: otomatis dari Heartbeat loop
+    -- Spam Chat
+    if Cfg.SpamChat then
+        startChatSpam()
+    else
+        stopChatSpam()
+    end
+    -- Wall Hack: otomatis dari Stepped loop
+    -- Rapid Fire / Unlimited / No Recoil: otomatis dari RenderStepped loop
+end
+
 Button(ConfigTab, "💾 SAVE CONFIG", function()
     local ok, err = pcall(function()
         local data = HttpService:JSONEncode(Cfg)
@@ -1376,6 +1562,9 @@ Button(ConfigTab, "📂 LOAD CONFIG", function()
             for k, v in pairs(data) do
                 if Cfg[k] ~= nil then Cfg[k] = v end
             end
+            -- Update UI + runtime
+            applyConfigToUI()
+            applyConfigToRuntime()
         else
             error("Belum ada file config")
         end
@@ -1482,6 +1671,9 @@ end)
 local ESPGui = make("ScreenGui", {Name = "AMN_Hack_ESP", ResetOnSpawn = false, IgnoreGuiInset = true, Parent = getGuiParent()})
 local ESPData = {}
 
+-- TextService untuk auto-size name box
+local TextService = game:GetService("TextService")
+
 local function isEnemy(model)
     local plr = Players:GetPlayerFromCharacter(model)
     if not plr then return true end
@@ -1494,6 +1686,11 @@ local function isTeam(model)
     if not plr then return false end
     if plr.Team and LocalPlayer.Team and plr.Team == LocalPlayer.Team then return true end
     return false
+end
+
+local function isPlayerOrNPC(model)
+    local plr = Players:GetPlayerFromCharacter(model)
+    return plr ~= nil
 end
 
 local function createESP(model)
@@ -1583,12 +1780,25 @@ local function createESP(model)
         Visible = false, ZIndex = 4, Parent = ESPGui
     })
 
+    -- Chams
+    local chams = make("Highlight", {
+        FillColor = Color3.fromRGB(255, 0, 0),
+        OutlineColor = Color3.fromRGB(255, 0, 0),
+        FillTransparency = 0.5,
+        OutlineTransparency = 0,
+        DepthMode = Enum.HighlightDepthMode.AlwaysOnTop,
+        Adornee = model,
+        Parent = ESPGui,
+        Enabled = false
+    })
+
     return {
         Box = box, Corners = {c1,c2,c3,c4,c5,c6,c7,c8},
         NameBox = nameBox, NameCorners = {nc1,nc2,nc3,nc4,nc5,nc6,nc7,nc8},
         Name = name, Weapon = weapon, Dist = dist, Pic = pic, Img = img,
         HealthBar = healthBar, HealthFill = healthFill,
-        Skeleton = skeletonParts, Line = line
+        Skeleton = skeletonParts, Line = line,
+        Chams = chams
     }
 end
 
@@ -1601,11 +1811,13 @@ local function destroyESP(data)
     end
 end
 
+-- ValidEntities cache
 local ValidEntities = {}
 task.spawn(function()
     while task.wait(0.15) do
         local list = {}
         local aliveModels = {}
+        -- Pemain
         for _, p in ipairs(Players:GetPlayers()) do
             if p ~= LocalPlayer and p.Character and p.Character.Parent then
                 local hum = p.Character:FindFirstChildOfClass("Humanoid")
@@ -1615,6 +1827,20 @@ task.spawn(function()
                 end
             end
         end
+        -- NPC/Bot (kalau ESP All ON)
+        if Cfg.ESPAll then
+            for _, obj in ipairs(workspace:GetChildren()) do
+                if obj:IsA("Model") and not Players:GetPlayerFromCharacter(obj) then
+                    local hum = obj:FindFirstChildOfClass("Humanoid")
+                    local hrp = obj:FindFirstChild("HumanoidRootPart")
+                    if hum and hrp and hum.Health > 0 then
+                        table.insert(list, obj)
+                        aliveModels[obj] = true
+                    end
+                end
+            end
+        end
+
         ValidEntities = list
         for model, data in pairs(ESPData) do
             if not aliveModels[model] or not model.Parent then
@@ -1689,7 +1915,16 @@ RunService.RenderStepped:Connect(function()
 
         local isE = isEnemy(model)
         local isT = isTeam(model)
-        local showESP = (isE and Cfg.ESPEnemy) or (isT and Cfg.ESPTeam)
+        local isPlayer = isPlayerOrNPC(model)
+
+        -- Tentukan tampil atau nggak
+        local showESP = false
+        if Cfg.ESPEnemy and isE then showESP = true end
+        if Cfg.ESPTeam and isT then showESP = true end
+        if Cfg.ESPAll and not isPlayer then showESP = true end
+        -- Kalau ESP All ON, tampilkan semua (player + npc)
+        if Cfg.ESPAll then showESP = true end
+
         if not showESP then
             if ESPData[model] then
                 local d = ESPData[model]
@@ -1697,6 +1932,7 @@ RunService.RenderStepped:Connect(function()
                 d.Weapon.Visible = false; d.Dist.Visible = false
                 d.Pic.Visible = false; d.HealthBar.Visible = false; d.Line.Visible = false
                 for _, s in ipairs(d.Skeleton) do s.Visible = false end
+                if d.Chams then d.Chams.Enabled = false end
             end
             continue
         end
@@ -1715,6 +1951,11 @@ RunService.RenderStepped:Connect(function()
         local d = ESPData[model] or createESP(model)
         ESPData[model] = d
         local color = Cfg.ESPColor
+
+        -- Chams
+        if d.Chams then
+            d.Chams.Enabled = Cfg.ESPChams
+        end
 
         local topLeft = pos2d(head)
         local isR15 = model:FindFirstChild("UpperTorso") ~= nil
@@ -1737,9 +1978,11 @@ RunService.RenderStepped:Connect(function()
             d.Dist.Text = meters .. " m"
             d.Dist.Visible = Cfg.ESPDistance
 
+            -- AUTO-SIZE NAME BOX
             local nameText = model.Name
-            local nameBoxW = 140
-            local nameBoxH = 18
+            local textSize = TextService:GetTextSize(nameText, 12, Enum.Font.GothamBold, Vector2.new(500, 100))
+            local nameBoxW = textSize.X + 12  -- padding 6px kiri kanan
+            local nameBoxH = textSize.Y + 4   -- padding 2px atas bawah
             local nameX = topLeft.X - nameBoxW/2
             local nameY = topLeft.Y - 8 - nameBoxH - 4
 
@@ -1786,9 +2029,10 @@ RunService.RenderStepped:Connect(function()
                 d.Pic.Visible = false
             end
 
+            -- LINE FIX: mentok ke center picture (picCenterY)
             if Cfg.ESPLine then
                 local screenTop = Vector2.new(Camera.ViewportSize.X / 2, 0)
-                local targetPt = Vector2.new(topLeft.X, topLeft.Y - 90)
+                local targetPt = Vector2.new(topLeft.X, picCenterY)
                 d.Line.Visible = true
                 d.Line.ZIndex = 4
                 local diff = targetPt - screenTop
@@ -2445,4 +2689,4 @@ task.spawn(function()
     end
 end)
 
-print("[AMN HACK] Loaded v19. Tombol animasi + Toast notifikasi + SAVE/LOAD feedback.")
+print("[AMN HACK] v20 Loaded. SpamChat + Chams + ESP All + AutoSize Name + Load Fix + FOV 40.")
