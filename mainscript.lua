@@ -1033,7 +1033,7 @@ ComboBox(WorldTab, "Clock Time", {"Default", "Pagi", "Siang", "Sore", "Malam"}, 
 end, "ClockTime")
 
 -- ==========================================
--- SPAM CHAT
+-- SPAM CHAT (RANDOM 1.5 - 2 DETIK)
 -- ==========================================
 local chatSpamActive = false
 local chatSpamThread = nil
@@ -1073,10 +1073,11 @@ local function startChatSpam()
     chatSpamThread = task.spawn(function()
         while chatSpamActive do
             local text = Cfg.SpamChatText
-            local interval = Cfg.SpamChatInterval
             if text and text ~= "" then
                 pcall(function() sendChatMessage(text) end)
             end
+            -- Random 1.5 - 2.0 detik
+            local interval = 1.5 + math.random() * 0.5
             task.wait(interval)
         end
         chatSpamThread = nil
@@ -1089,7 +1090,7 @@ local function stopChatSpam()
 end
 
 Section(WorldTab, "Chat Spam")
-Toggle(WorldTab, "Spam Chat (1.2 detik)", Cfg.SpamChat, function(v)
+Toggle(WorldTab, "Spam Chat (Random 1.5-2s)", Cfg.SpamChat, function(v)
     Cfg.SpamChat = v
     if v then startChatSpam() else stopChatSpam() end
 end, "SpamChat")
@@ -1655,7 +1656,6 @@ local function createESP(model)
         ZIndex = 3, Parent = ESPGui, Name = "Box"
     })
 
-    -- Corner putus-putus (ukuran diupdate tiap frame di render loop)
     local corners = {}
     for i = 1, 8 do
         table.insert(corners, make("Frame", {
@@ -1909,13 +1909,17 @@ RunService.RenderStepped:Connect(function()
             d.Chams.Enabled = Cfg.ESPChams
         end
 
-        local topLeft = pos2d(head)
+        local headPos = pos2d(head)
+        local rootPos = pos2d(root)
+        local topLeft = headPos
+        -- ANCHOR X dari ROOT (stabil) — anti-goyang
+        local anchorX = rootPos and rootPos.X or (headPos and headPos.X) or 0
+
         local isR15 = model:FindFirstChild("UpperTorso") ~= nil
         local footName = isR15 and "LeftFoot" or "Left Leg"
         local foot = model:FindFirstChild(footName)
         local footPos = pos2d(foot)
         if not footPos then
-            local rootPos = pos2d(root)
             if rootPos then
                 footPos = Vector2.new(rootPos.X, rootPos.Y + 30)
             end
@@ -1923,118 +1927,62 @@ RunService.RenderStepped:Connect(function()
 
         if topLeft and footPos then
             local height = (footPos.Y - topLeft.Y) + 16
-            height = math.max(height, 20)  -- clamp minimal 20px
+            height = math.max(height, 20)
             local width = height * 0.55
 
-            d.Box.Position = UDim2.new(0, topLeft.X - width/2, 0, topLeft.Y - 8)
+            -- BOX pakai anchorX dari root
+            local boxCenterX = anchorX  -- pakai root X yang stabil
+            d.Box.Position = UDim2.new(0, boxCenterX - width/2, 0, topLeft.Y - 8)
             d.Box.Size = UDim2.new(0, width, 0, height)
             d.Box.Visible = Cfg.ESPBox
 
-            -- DYNAMIC CORNER: 25% dari ukuran box, clamp 5-15px
+            -- DYNAMIC CORNER
             local thick = 2
             local cornerLenH = math.clamp(width * 0.25, 5, 15)
             local cornerLenV = math.clamp(height * 0.15, 5, 15)
             local cs = d.Corners
+            cs[1].Size = UDim2.new(0, cornerLenH, 0, thick); cs[1].Position = UDim2.new(0, 0, 0, 0); cs[1].AnchorPoint = Vector2.new(0, 0); cs[1].BackgroundColor3 = color
+            cs[2].Size = UDim2.new(0, thick, 0, cornerLenV); cs[2].Position = UDim2.new(0, 0, 0, 0); cs[2].AnchorPoint = Vector2.new(0, 0); cs[2].BackgroundColor3 = color
+            cs[3].Size = UDim2.new(0, cornerLenH, 0, thick); cs[3].Position = UDim2.new(1, 0, 0, 0); cs[3].AnchorPoint = Vector2.new(1, 0); cs[3].BackgroundColor3 = color
+            cs[4].Size = UDim2.new(0, thick, 0, cornerLenV); cs[4].Position = UDim2.new(1, 0, 0, 0); cs[4].AnchorPoint = Vector2.new(1, 0); cs[4].BackgroundColor3 = color
+            cs[5].Size = UDim2.new(0, cornerLenH, 0, thick); cs[5].Position = UDim2.new(0, 0, 1, 0); cs[5].AnchorPoint = Vector2.new(0, 1); cs[5].BackgroundColor3 = color
+            cs[6].Size = UDim2.new(0, thick, 0, cornerLenV); cs[6].Position = UDim2.new(0, 0, 1, 0); cs[6].AnchorPoint = Vector2.new(0, 1); cs[6].BackgroundColor3 = color
+            cs[7].Size = UDim2.new(0, cornerLenH, 0, thick); cs[7].Position = UDim2.new(1, 0, 1, 0); cs[7].AnchorPoint = Vector2.new(1, 1); cs[7].BackgroundColor3 = color
+            cs[8].Size = UDim2.new(0, thick, 0, cornerLenV); cs[8].Position = UDim2.new(1, 0, 1, 0); cs[8].AnchorPoint = Vector2.new(1, 1); cs[8].BackgroundColor3 = color
 
-            -- 1: kiri atas horizontal
-            cs[1].Size = UDim2.new(0, cornerLenH, 0, thick)
-            cs[1].Position = UDim2.new(0, 0, 0, 0)
-            cs[1].AnchorPoint = Vector2.new(0, 0)
-            cs[1].BackgroundColor3 = color
-            -- 2: kiri atas vertical
-            cs[2].Size = UDim2.new(0, thick, 0, cornerLenV)
-            cs[2].Position = UDim2.new(0, 0, 0, 0)
-            cs[2].AnchorPoint = Vector2.new(0, 0)
-            cs[2].BackgroundColor3 = color
-            -- 3: kanan atas horizontal
-            cs[3].Size = UDim2.new(0, cornerLenH, 0, thick)
-            cs[3].Position = UDim2.new(1, 0, 0, 0)
-            cs[3].AnchorPoint = Vector2.new(1, 0)
-            cs[3].BackgroundColor3 = color
-            -- 4: kanan atas vertical
-            cs[4].Size = UDim2.new(0, thick, 0, cornerLenV)
-            cs[4].Position = UDim2.new(1, 0, 0, 0)
-            cs[4].AnchorPoint = Vector2.new(1, 0)
-            cs[4].BackgroundColor3 = color
-            -- 5: kiri bawah horizontal
-            cs[5].Size = UDim2.new(0, cornerLenH, 0, thick)
-            cs[5].Position = UDim2.new(0, 0, 1, 0)
-            cs[5].AnchorPoint = Vector2.new(0, 1)
-            cs[5].BackgroundColor3 = color
-            -- 6: kiri bawah vertical
-            cs[6].Size = UDim2.new(0, thick, 0, cornerLenV)
-            cs[6].Position = UDim2.new(0, 0, 1, 0)
-            cs[6].AnchorPoint = Vector2.new(0, 1)
-            cs[6].BackgroundColor3 = color
-            -- 7: kanan bawah horizontal
-            cs[7].Size = UDim2.new(0, cornerLenH, 0, thick)
-            cs[7].Position = UDim2.new(1, 0, 1, 0)
-            cs[7].AnchorPoint = Vector2.new(1, 1)
-            cs[7].BackgroundColor3 = color
-            -- 8: kanan bawah vertical
-            cs[8].Size = UDim2.new(0, thick, 0, cornerLenV)
-            cs[8].Position = UDim2.new(1, 0, 1, 0)
-            cs[8].AnchorPoint = Vector2.new(1, 1)
-            cs[8].BackgroundColor3 = color
-
-            -- Distance (bawah box)
-            d.Dist.Position = UDim2.new(0, topLeft.X, 0, topLeft.Y + height + 4)
+            -- Distance (bawah box, pakai anchorX)
+            d.Dist.Position = UDim2.new(0, boxCenterX, 0, topLeft.Y + height + 4)
             d.Dist.Size = UDim2.new(0, 200, 0, 14)
             d.Dist.AnchorPoint = Vector2.new(0.5, 0)
             local meters = myPos and math.floor((myPos - root.Position).Magnitude) or 0
             d.Dist.Text = meters .. " m"
             d.Dist.Visible = Cfg.ESPDistance
 
-            -- AUTO-SIZE NAME BOX
+            -- AUTO-SIZE NAME BOX (pakai anchorX)
             local nameText = model.Name
             local textSize = TextService:GetTextSize(nameText, 12, Enum.Font.GothamBold, Vector2.new(500, 100))
             local nameBoxW = textSize.X + 12
             local nameBoxH = textSize.Y + 4
-            local nameX = topLeft.X - nameBoxW/2
+            local nameX = boxCenterX - nameBoxW/2
             local nameY = topLeft.Y - 8 - nameBoxH - 4
 
             d.NameBox.Position = UDim2.new(0, nameX, 0, nameY)
             d.NameBox.Size = UDim2.new(0, nameBoxW, 0, nameBoxH)
             d.NameBox.Visible = Cfg.ESPName
 
-            -- Name box corner putus-putus
             local ncLenH = math.clamp(nameBoxW * 0.20, 4, 10)
             local ncLenV = math.clamp(nameBoxH * 0.30, 4, 10)
             local ncs = d.NameCorners
-            ncs[1].Size = UDim2.new(0, ncLenH, 0, thick)
-            ncs[1].Position = UDim2.new(0, 0, 0, 0)
-            ncs[1].AnchorPoint = Vector2.new(0, 0)
-            ncs[1].BackgroundColor3 = color
-            ncs[2].Size = UDim2.new(0, thick, 0, ncLenV)
-            ncs[2].Position = UDim2.new(0, 0, 0, 0)
-            ncs[2].AnchorPoint = Vector2.new(0, 0)
-            ncs[2].BackgroundColor3 = color
-            ncs[3].Size = UDim2.new(0, ncLenH, 0, thick)
-            ncs[3].Position = UDim2.new(1, 0, 0, 0)
-            ncs[3].AnchorPoint = Vector2.new(1, 0)
-            ncs[3].BackgroundColor3 = color
-            ncs[4].Size = UDim2.new(0, thick, 0, ncLenV)
-            ncs[4].Position = UDim2.new(1, 0, 0, 0)
-            ncs[4].AnchorPoint = Vector2.new(1, 0)
-            ncs[4].BackgroundColor3 = color
-            ncs[5].Size = UDim2.new(0, ncLenH, 0, thick)
-            ncs[5].Position = UDim2.new(0, 0, 1, 0)
-            ncs[5].AnchorPoint = Vector2.new(0, 1)
-            ncs[5].BackgroundColor3 = color
-            ncs[6].Size = UDim2.new(0, thick, 0, ncLenV)
-            ncs[6].Position = UDim2.new(0, 0, 1, 0)
-            ncs[6].AnchorPoint = Vector2.new(0, 1)
-            ncs[6].BackgroundColor3 = color
-            ncs[7].Size = UDim2.new(0, ncLenH, 0, thick)
-            ncs[7].Position = UDim2.new(1, 0, 1, 0)
-            ncs[7].AnchorPoint = Vector2.new(1, 1)
-            ncs[7].BackgroundColor3 = color
-            ncs[8].Size = UDim2.new(0, thick, 0, ncLenV)
-            ncs[8].Position = UDim2.new(1, 0, 1, 0)
-            ncs[8].AnchorPoint = Vector2.new(1, 1)
-            ncs[8].BackgroundColor3 = color
+            ncs[1].Size = UDim2.new(0, ncLenH, 0, thick); ncs[1].Position = UDim2.new(0, 0, 0, 0); ncs[1].AnchorPoint = Vector2.new(0, 0); ncs[1].BackgroundColor3 = color
+            ncs[2].Size = UDim2.new(0, thick, 0, ncLenV); ncs[2].Position = UDim2.new(0, 0, 0, 0); ncs[2].AnchorPoint = Vector2.new(0, 0); ncs[2].BackgroundColor3 = color
+            ncs[3].Size = UDim2.new(0, ncLenH, 0, thick); ncs[3].Position = UDim2.new(1, 0, 0, 0); ncs[3].AnchorPoint = Vector2.new(1, 0); ncs[3].BackgroundColor3 = color
+            ncs[4].Size = UDim2.new(0, thick, 0, ncLenV); ncs[4].Position = UDim2.new(1, 0, 0, 0); ncs[4].AnchorPoint = Vector2.new(1, 0); ncs[4].BackgroundColor3 = color
+            ncs[5].Size = UDim2.new(0, ncLenH, 0, thick); ncs[5].Position = UDim2.new(0, 0, 1, 0); ncs[5].AnchorPoint = Vector2.new(0, 1); ncs[5].BackgroundColor3 = color
+            ncs[6].Size = UDim2.new(0, thick, 0, ncLenV); ncs[6].Position = UDim2.new(0, 0, 1, 0); ncs[6].AnchorPoint = Vector2.new(0, 1); ncs[6].BackgroundColor3 = color
+            ncs[7].Size = UDim2.new(0, ncLenH, 0, thick); ncs[7].Position = UDim2.new(1, 0, 1, 0); ncs[7].AnchorPoint = Vector2.new(1, 1); ncs[7].BackgroundColor3 = color
+            ncs[8].Size = UDim2.new(0, thick, 0, ncLenV); ncs[8].Position = UDim2.new(1, 0, 1, 0); ncs[8].AnchorPoint = Vector2.new(1, 1); ncs[8].BackgroundColor3 = color
 
-            d.Name.Position = UDim2.new(0, topLeft.X, 0, nameY)
+            d.Name.Position = UDim2.new(0, boxCenterX, 0, nameY)
             d.Name.Size = UDim2.new(0, nameBoxW, 0, nameBoxH)
             d.Name.AnchorPoint = Vector2.new(0.5, 0)
             d.Name.Text = nameText
@@ -2044,7 +1992,7 @@ RunService.RenderStepped:Connect(function()
             local weaponName = ""
             local tool = model:FindFirstChildOfClass("Tool")
             if tool then weaponName = tool.Name end
-            d.Weapon.Position = UDim2.new(0, topLeft.X, 0, nameY - 18)
+            d.Weapon.Position = UDim2.new(0, boxCenterX, 0, nameY - 18)
             d.Weapon.Size = UDim2.new(0, 220, 0, 14)
             d.Weapon.AnchorPoint = Vector2.new(0.5, 0)
             d.Weapon.Text = weaponName
@@ -2057,7 +2005,7 @@ RunService.RenderStepped:Connect(function()
             if Cfg.ESPPicture then
                 d.Pic.Visible = true
                 d.Pic.Size = UDim2.new(0, 42, 0, 42)
-                d.Pic.Position = UDim2.new(0, topLeft.X - 21, 0, picTopY)
+                d.Pic.Position = UDim2.new(0, boxCenterX - 21, 0, picTopY)
                 d.Img.Visible = true
                 local plr = Players:GetPlayerFromCharacter(model)
                 if plr then
@@ -2072,14 +2020,10 @@ RunService.RenderStepped:Connect(function()
                 d.Pic.Visible = false
             end
 
-            -- ==========================================
-            -- LINE: mentok ke BORDER ATAS picture
-            -- Pakai AnchorPoint (0.5, 0.5) + titik tengah
-            -- ==========================================
+            -- LINE: mentok border atas picture (PAKAI anchorX)
             if Cfg.ESPLine then
                 local startPt = Vector2.new(Camera.ViewportSize.X / 2, 0)
-                local endPt = Vector2.new(topLeft.X, picTopY)
-                -- Clamp target Y minimal 0 biar nggak keluar layar
+                local endPt = Vector2.new(boxCenterX, picTopY)
                 if endPt.Y < 0 then endPt = Vector2.new(endPt.X, 0) end
 
                 local midPt = (startPt + endPt) / 2
@@ -2096,15 +2040,21 @@ RunService.RenderStepped:Connect(function()
                 d.Line.Visible = false
             end
 
-            -- HEALTH: clamp X biar nggak ketinggalan di map mini
+            -- ==========================================
+            -- HEALTH FIX: pakai anchorX dari ROOT (STABIL)
+            -- ==========================================
             local hp = math.clamp(hum.Health / hum.MaxHealth, 0, 1)
             d.HealthBar.Visible = Cfg.ESPHealth
-            local hpBarX = topLeft.X + (width/2) + 4
+
+            -- Pakai boxCenterX (dari root) + width/2 (rumus sama dengan box)
+            local hpBarX = boxCenterX + (width/2) + 4
             local vs = Camera.ViewportSize
             hpBarX = math.clamp(hpBarX, 0, vs.X - 10)
             local hpBarY = math.max(topLeft.Y - 8, 0)
+
             d.HealthBar.Position = UDim2.new(0, hpBarX, 0, hpBarY)
             d.HealthBar.Size = UDim2.new(0, 6, 0, height)
+
             local hcol
             if hp > 0.7 then hcol = Color3.fromRGB(0, 220, 60)
             elseif hp > 0.4 then hcol = Color3.fromRGB(255, 150, 0)
@@ -2744,4 +2694,4 @@ task.spawn(function()
     end
 end)
 
-print("[AMN HACK] v21 Loaded. ESP Line fix (PASTI nyentuh border atas picture) + Corner dynamic + Health clamp.")
+print("[AMN HACK] v22 Loaded. ESP Health pakai anchorX dari root (anti-goyang) + Spam Chat random 1.5-2s.")
