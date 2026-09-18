@@ -88,15 +88,14 @@ _G.LiteHackCfg = {
     AimTeamCheck = true,
     AimWallCheck = true,
     AimMode = "FOV",
-    AimTrigger = "Camera",
+    AimTrigger = "Fire (Snap)",
     AimFOV = true,
-    AimFOVSize = 150,
+    AimFOVSize = 80,
     AimLine = true,
-    AimTarget = "Head",
+    AimTarget = "Chest",
     AimDistance = 500,
-    AimSmoothness = 100,
+    AimSmoothness = 30,
     AutoFire = false,
-    AutoMacro = false,
     ShowCrosshair = false,
     SpeedRun = false,
     SpeedRunValue = 50,
@@ -107,6 +106,7 @@ _G.LiteHackCfg = {
     ClockTime = "Default",
     LowGravity = false,
     AntiSmoke = false,
+    AntiGM = false,
     Theme = "Dark",
 }
 
@@ -232,7 +232,7 @@ end
 -- FLOATING ICON
 -- ==========================================
 local FloatingGui = make("ScreenGui", {
-    Name = "LiteHack_FloatingIcon",
+    Name = "AMN_Hack_FloatingIcon",
     ResetOnSpawn = false,
     IgnoreGuiInset = true,
     ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
@@ -280,7 +280,7 @@ end)
 -- MAIN WINDOW
 -- ==========================================
 local WinGui = make("ScreenGui", {
-    Name = "LiteHack_MainUI",
+    Name = "AMN_Hack_MainUI",
     ResetOnSpawn = false,
     IgnoreGuiInset = true,
     ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
@@ -310,7 +310,7 @@ local TopBar = make("Frame", {
 local Title = make("TextLabel", {
     Size = UDim2.new(1, -80, 1, 0),
     BackgroundTransparency = 1,
-    Text = "☠  LITE HACK  ☠",
+    Text = "☠  AMN HACK  ☠",
     TextColor3 = Color3.fromRGB(255, 70, 70),
     TextSize = 16,
     Font = Enum.Font.GothamBlack,
@@ -741,6 +741,7 @@ local function ListBox(page, text, getItems, callback)
     end)
 end
 
+-- BUTTON DENGAN ANIMASI (hover, press, release, touch)
 local function Button(page, text, callback)
     local btn = make("TextButton", {
         Size = UDim2.new(1, 0, 0, 30),
@@ -753,8 +754,89 @@ local function Button(page, text, callback)
         Parent = page
     })
     corner(btn, 8)
-    btn.MouseButton1Click:Connect(function() if callback then pcall(callback) end end)
+
+    local baseColor = Color3.fromRGB(255, 60, 60)
+    local hoverColor = Color3.fromRGB(255, 90, 90)
+    local pressColor = Color3.fromRGB(200, 40, 40)
+    local baseSize = UDim2.new(1, 0, 0, 30)
+    local pressSize = UDim2.new(1, -6, 0, 28)
+
+    btn.MouseEnter:Connect(function()
+        TweenService:Create(btn, TweenInfo.new(0.15), {BackgroundColor3 = hoverColor}):Play()
+    end)
+    btn.MouseLeave:Connect(function()
+        TweenService:Create(btn, TweenInfo.new(0.15), {BackgroundColor3 = baseColor}):Play()
+    end)
+    btn.MouseButton1Down:Connect(function()
+        TweenService:Create(btn, TweenInfo.new(0.08), {BackgroundColor3 = pressColor, Size = pressSize}):Play()
+    end)
+    btn.MouseButton1Up:Connect(function()
+        TweenService:Create(btn, TweenInfo.new(0.1), {BackgroundColor3 = baseColor, Size = baseSize}):Play()
+    end)
+    btn.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.Touch then
+            TweenService:Create(btn, TweenInfo.new(0.08), {BackgroundColor3 = pressColor, Size = pressSize}):Play()
+        end
+    end)
+    btn.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.Touch then
+            TweenService:Create(btn, TweenInfo.new(0.1), {BackgroundColor3 = baseColor, Size = baseSize}):Play()
+        end
+    end)
+    btn.MouseButton1Click:Connect(function()
+        if callback then pcall(callback) end
+    end)
     return btn
+end
+
+-- TOAST NOTIFIKASI
+local function Toast(text, duration)
+    duration = duration or 3
+    local toastGui = make("ScreenGui", {
+        Name = "AMN_Toast",
+        ResetOnSpawn = false,
+        IgnoreGuiInset = true,
+        ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
+        Parent = getGuiParent()
+    })
+    local frame = make("Frame", {
+        Size = UDim2.new(0, 260, 0, 50),
+        Position = UDim2.new(0.5, -130, 0, -60),
+        BackgroundColor3 = Color3.fromRGB(30, 30, 40),
+        BorderSizePixel = 0,
+        ZIndex = 5000,
+        Parent = toastGui
+    })
+    corner(frame, 10)
+    stroke(frame, Color3.fromRGB(255, 60, 60), 2, 0.2)
+    local lbl = make("TextLabel", {
+        Size = UDim2.new(1, -20, 1, 0),
+        Position = UDim2.new(0, 10, 0, 0),
+        BackgroundTransparency = 1,
+        Text = text,
+        TextColor3 = Color3.fromRGB(255, 255, 255),
+        TextSize = 13,
+        Font = FONT_BOLD,
+        TextWrapped = true,
+        TextXAlignment = Enum.TextXAlignment.Center,
+        ZIndex = 5001,
+        Parent = frame
+    })
+
+    frame.Position = UDim2.new(0.5, -130, 0, -60)
+    TweenService:Create(frame, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+        Position = UDim2.new(0.5, -130, 0, 20)
+    }):Play()
+
+    task.delay(duration, function()
+        TweenService:Create(frame, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+            Position = UDim2.new(0.5, -130, 0, -60),
+            BackgroundTransparency = 1
+        }):Play()
+        TweenService:Create(lbl, TweenInfo.new(0.3), {TextTransparency = 1}):Play()
+        task.wait(0.35)
+        if toastGui then toastGui:Destroy() end
+    end)
 end
 
 local function TextBox(page, placeholder, callback)
@@ -819,7 +901,6 @@ Toggle(VisualTab, "Bomb ESP (PlantedC4)", Cfg.ESPBomb, function(v) Cfg.ESPBomb =
 Section(AimbotTab, "Aimbot Settings")
 Toggle(AimbotTab, "Aimbot", Cfg.Aimbot, function(v) Cfg.Aimbot = v end)
 Toggle(AimbotTab, "Auto Fire", Cfg.AutoFire, function(v) Cfg.AutoFire = v end)
-Toggle(AimbotTab, "Auto Macro (SG ↔ Knife)", Cfg.AutoMacro, function(v) Cfg.AutoMacro = v end)
 Toggle(AimbotTab, "Show Crosshair", Cfg.ShowCrosshair, function(v) Cfg.ShowCrosshair = v end)
 Toggle(AimbotTab, "Team Check", Cfg.AimTeamCheck, function(v) Cfg.AimTeamCheck = v end)
 Toggle(AimbotTab, "Wall Check", Cfg.AimWallCheck, function(v) Cfg.AimWallCheck = v end)
@@ -897,42 +978,123 @@ ComboBox(WorldTab, "Clock Time", {"Default", "Pagi", "Siang", "Sore", "Malam"}, 
 end)
 
 -- ==========================================
--- ANTI SMOKE (Transparency only)
+-- ANTI GM
+-- ==========================================
+local function isGM(player)
+    if player == LocalPlayer then return false end
+    local nameRaw = string.upper(player.Name .. " " .. player.DisplayName)
+    if string.find(nameRaw, "%[GM%]") or string.find(nameRaw, "%[MOD%]") or
+       string.find(nameRaw, "GAME MASTER") or string.find(nameRaw, "MODERATOR") or
+       string.find(nameRaw, "DEWAKASAPUTRA") or string.find(nameRaw, "DEWA PROJECT") or
+       string.find(nameRaw, "%[ADMIN%]") or string.find(nameRaw, "ADMINISTRATOR") then
+        return true
+    end
+    local ls = player:FindFirstChild("leaderstats")
+    if ls then
+        for _, stat in pairs(ls:GetChildren()) do
+            local v = string.upper(tostring(stat.Value))
+            if v == "GM" or v == "MOD" or v == "ADMIN" or v == "GAME MASTER" or v == "MODERATOR" then
+                return true
+            end
+        end
+    end
+    return false
+end
+
+local detectedGMs = {}
+
+local function showGMWarning(player)
+    local pg = getGuiParent()
+    local popup = make("ScreenGui", {
+        Name = "AMN_GM_Popup_" .. player.UserId,
+        ResetOnSpawn = false,
+        IgnoreGuiInset = true,
+        Parent = pg
+    })
+    local box = make("Frame", {
+        Size = UDim2.new(0, 300, 0, 80),
+        Position = UDim2.new(0.5, -150, 0.3, 0),
+        BackgroundColor3 = Color3.fromRGB(120, 20, 20),
+        BorderSizePixel = 0,
+        ZIndex = 2000,
+        Parent = popup
+    })
+    corner(box, 10)
+    stroke(box, Color3.fromRGB(255, 60, 60), 2, 0)
+
+    make("TextLabel", {
+        Size = UDim2.new(1, -20, 1, -20),
+        Position = UDim2.new(0, 10, 0, 10),
+        BackgroundTransparency = 1,
+        Text = "⚠️ GM TERDETEKSI!\n" .. player.Name .. " ada di server ini!",
+        TextColor3 = Color3.fromRGB(255, 255, 255),
+        TextSize = 14,
+        Font = Enum.Font.GothamBold,
+        TextWrapped = true,
+        ZIndex = 2001,
+        Parent = box
+    })
+
+    task.delay(8, function()
+        if popup then popup:Destroy() end
+    end)
+end
+
+local function checkGM(player)
+    if not Cfg.AntiGM then return end
+    if detectedGMs[player.UserId] then return end
+    if isGM(player) then
+        detectedGMs[player.UserId] = true
+        showGMWarning(player)
+    end
+end
+
+Players.PlayerAdded:Connect(function(p)
+    task.wait(1)
+    checkGM(p)
+end)
+
+task.spawn(function()
+    while task.wait(3) do
+        if Cfg.AntiGM then
+            for _, p in ipairs(Players:GetPlayers()) do
+                checkGM(p)
+            end
+        end
+    end
+end)
+
+Section(WorldTab, "Anti GM")
+Toggle(WorldTab, "Anti GM (Peringatan Moderator)", Cfg.AntiGM, function(v)
+    Cfg.AntiGM = v
+    if not v then
+        detectedGMs = {}
+    end
+end)
+
+-- ==========================================
+-- ANTI SMOKE
 -- ==========================================
 RunService.Heartbeat:Connect(function()
     if not Cfg.AntiSmoke then return end
 
-    -- Target 1: Server_ACS_SmokeFX (efek visual asap)
     local fx = workspace:FindFirstChild("Server_ACS_SmokeFX")
     if fx then
-        if fx:IsA("BasePart") and fx.Transparency < 1 then
-            fx.Transparency = 1
-        end
+        if fx:IsA("BasePart") and fx.Transparency < 1 then fx.Transparency = 1 end
         for _, desc in ipairs(fx:GetDescendants()) do
-            if desc:IsA("BasePart") then
-                desc.Transparency = 1
-            elseif desc:IsA("ParticleEmitter") then
-                desc.Transparency = NumberSequence.new(1)
-            elseif desc:IsA("Smoke") then
-                desc.Transparency = 1
-            elseif desc:IsA("Fire") then
-                desc.Transparency = 1
-            end
+            if desc:IsA("BasePart") then desc.Transparency = 1
+            elseif desc:IsA("ParticleEmitter") then desc.Transparency = NumberSequence.new(1)
+            elseif desc:IsA("Smoke") then desc.Transparency = 1
+            elseif desc:IsA("Fire") then desc.Transparency = 1 end
         end
     end
 
-    -- Target 2: Smoke_Projectile (kalau mau projectile-nya juga hilang)
     local proj = workspace:FindFirstChild("Smoke_Projectile")
     if proj then
-        if proj:IsA("BasePart") and proj.Transparency < 1 then
-            proj.Transparency = 1
-        end
+        if proj:IsA("BasePart") and proj.Transparency < 1 then proj.Transparency = 1 end
         for _, desc in ipairs(proj:GetDescendants()) do
-            if desc:IsA("BasePart") then
-                desc.Transparency = 1
-            elseif desc:IsA("ParticleEmitter") then
-                desc.Transparency = NumberSequence.new(1)
-            end
+            if desc:IsA("BasePart") then desc.Transparency = 1
+            elseif desc:IsA("ParticleEmitter") then desc.Transparency = NumberSequence.new(1) end
         end
     end
 end)
@@ -989,11 +1151,7 @@ end
 
 Toggle(WorldTab, "Low Gravity", Cfg.LowGravity, function(v)
     Cfg.LowGravity = v
-    if v then
-        applyLowGravity(LocalPlayer.Character)
-    else
-        removeLowGravity()
-    end
+    if v then applyLowGravity(LocalPlayer.Character) else removeLowGravity() end
 end)
 
 RunService.Heartbeat:Connect(function()
@@ -1003,9 +1161,7 @@ RunService.Heartbeat:Connect(function()
     local hum = char and char:FindFirstChildOfClass("Humanoid")
     if not hrp or not hum then return end
 
-    if _G.__LG_Force and _G.__LG_Force.Parent ~= hrp then
-        applyLowGravity(char)
-    end
+    if _G.__LG_Force and _G.__LG_Force.Parent ~= hrp then applyLowGravity(char) end
 
     local vel = hrp.AssemblyLinearVelocity
     if vel.Y < -15 then
@@ -1029,30 +1185,24 @@ end, function(name)
 end)
 
 -- ==========================================
--- SAVE LOCATION SYSTEM
+-- SAVE LOCATION
 -- ==========================================
 Section(WorldTab, "Saved Locations")
 
-local LocationsFile = "LiteHack_Locations.json"
+local LocationsFile = "AMN_Locations.json"
 local SavedLocations = {}
 
 local function loadLocations()
     SavedLocations = {}
     if isfile and isfile(LocationsFile) then
-        local ok, data = pcall(function()
-            return HttpService:JSONDecode(readfile(LocationsFile))
-        end)
-        if ok and type(data) == "table" then
-            SavedLocations = data
-        end
+        local ok, data = pcall(function() return HttpService:JSONDecode(readfile(LocationsFile)) end)
+        if ok and type(data) == "table" then SavedLocations = data end
     end
 end
 
 local function saveLocations()
     if writefile then
-        pcall(function()
-            writefile(LocationsFile, HttpService:JSONEncode(SavedLocations))
-        end)
+        pcall(function() writefile(LocationsFile, HttpService:JSONEncode(SavedLocations)) end)
     end
 end
 
@@ -1065,9 +1215,7 @@ Button(WorldTab, "💾 SAVE LOKASI SEKARANG", function()
     local hrp = char and char:FindFirstChild("HumanoidRootPart")
     if not hrp then return end
     local name = locNameBox.Text
-    if not name or name == "" then
-        name = "Lokasi_" .. os.date("%H%M%S")
-    end
+    if not name or name == "" then name = "Lokasi_" .. os.date("%H%M%S") end
     table.insert(SavedLocations, {
         name = name,
         x = math.floor(hrp.Position.X),
@@ -1078,6 +1226,7 @@ Button(WorldTab, "💾 SAVE LOKASI SEKARANG", function()
     })
     saveLocations()
     locNameBox.Text = ""
+    Toast("✅ Lokasi disimpan: " .. name, 2)
 end)
 
 local locRow = make("Frame", {
@@ -1205,21 +1354,37 @@ end)
 
 Section(ConfigTab, "Save / Load")
 Button(ConfigTab, "💾 SAVE CONFIG", function()
-    pcall(function()
+    local ok, err = pcall(function()
         local data = HttpService:JSONEncode(Cfg)
-        if writefile then writefile("LiteHack_Config.json", data) end
+        if writefile then
+            writefile("AMN_Config.json", data)
+        else
+            error("Executor tidak support writefile")
+        end
     end)
+    if ok then
+        Toast("✅ Konfigurasi tersimpan!", 2)
+    else
+        Toast("❌ Gagal save: " .. tostring(err), 3)
+    end
 end)
 
 Button(ConfigTab, "📂 LOAD CONFIG", function()
-    pcall(function()
-        if isfile and isfile("LiteHack_Config.json") then
-            local data = HttpService:JSONDecode(readfile("LiteHack_Config.json"))
+    local ok, err = pcall(function()
+        if isfile and isfile("AMN_Config.json") then
+            local data = HttpService:JSONDecode(readfile("AMN_Config.json"))
             for k, v in pairs(data) do
                 if Cfg[k] ~= nil then Cfg[k] = v end
             end
+        else
+            error("Belum ada file config")
         end
     end)
+    if ok then
+        Toast("✅ Konfigurasi dimuat!", 2)
+    else
+        Toast("⚠️ " .. tostring(err), 3)
+    end
 end)
 
 -- ==========================================
@@ -1252,9 +1417,9 @@ CloseBtn.MouseButton1Click:Connect(function() MainFrame.Visible = false end)
 IconBtn.MouseButton1Click:Connect(function() MainFrame.Visible = not MainFrame.Visible end)
 
 -- ==========================================
--- FOV CIRCLE + AIM LINE + CROSSHAIR
+-- FOV + AIM LINE + CROSSHAIR
 -- ==========================================
-local FOVGui = make("ScreenGui", {Name = "LiteHack_FOV", ResetOnSpawn = false, IgnoreGuiInset = true, Parent = getGuiParent()})
+local FOVGui = make("ScreenGui", {Name = "AMN_Hack_FOV", ResetOnSpawn = false, IgnoreGuiInset = true, Parent = getGuiParent()})
 local FOVCircle = make("Frame", {
     Size = UDim2.new(0, 300, 0, 300),
     Position = UDim2.new(0.5, -150, 0.5, -150),
@@ -1276,61 +1441,45 @@ local AimLineGui = make("Frame", {
     Parent = FOVGui
 })
 
-local CrosshairDot = make("Frame", {
-    Size = UDim2.new(0, 3, 0, 3),
-    Position = UDim2.new(0.5, -1.5, 0.5, -1.5),
+local crossH = make("Frame", {
+    Size = UDim2.new(0, 11, 0, 1),
     BackgroundColor3 = Color3.fromRGB(255, 255, 255),
     BorderSizePixel = 0,
     Visible = false,
     ZIndex = 100,
     Parent = FOVGui
 })
-corner(CrosshairDot, 2)
-stroke(CrosshairDot, Color3.fromRGB(0, 0, 0), 1, 0.5)
+stroke(crossH, Color3.fromRGB(0, 0, 0), 1, 0.5)
 
-local CrosshairLines = {}
-for i = 1, 4 do
-    local line = make("Frame", {
-        BackgroundColor3 = Color3.fromRGB(255, 255, 255),
-        BorderSizePixel = 0,
-        Visible = false,
-        ZIndex = 100,
-        Parent = FOVGui
-    })
-    stroke(line, Color3.fromRGB(0, 0, 0), 1, 0.5)
-    table.insert(CrosshairLines, line)
-end
+local crossV = make("Frame", {
+    Size = UDim2.new(0, 1, 0, 11),
+    BackgroundColor3 = Color3.fromRGB(255, 255, 255),
+    BorderSizePixel = 0,
+    Visible = false,
+    ZIndex = 100,
+    Parent = FOVGui
+})
+stroke(crossV, Color3.fromRGB(0, 0, 0), 1, 0.5)
 
 RunService.RenderStepped:Connect(function()
     if Cfg.ShowCrosshair then
         local vs = Camera.ViewportSize
         local cx = vs.X / 2
         local cy = vs.Y / 2
-        CrosshairDot.Visible = true
-        CrosshairDot.Position = UDim2.new(0, cx - 1.5, 0, cy - 1.5)
-
-        CrosshairLines[1].Size = UDim2.new(0, 1, 0, 5)
-        CrosshairLines[1].Position = UDim2.new(0, cx - 0.5, 0, cy - 9)
-        CrosshairLines[1].Visible = true
-        CrosshairLines[2].Size = UDim2.new(0, 1, 0, 5)
-        CrosshairLines[2].Position = UDim2.new(0, cx - 0.5, 0, cy + 4)
-        CrosshairLines[2].Visible = true
-        CrosshairLines[3].Size = UDim2.new(0, 5, 0, 1)
-        CrosshairLines[3].Position = UDim2.new(0, cx - 9, 0, cy - 0.5)
-        CrosshairLines[3].Visible = true
-        CrosshairLines[4].Size = UDim2.new(0, 5, 0, 1)
-        CrosshairLines[4].Position = UDim2.new(0, cx + 4, 0, cy - 0.5)
-        CrosshairLines[4].Visible = true
+        crossH.Position = UDim2.new(0, cx - 5.5, 0, cy - 0.5)
+        crossV.Position = UDim2.new(0, cx - 0.5, 0, cy - 5.5)
+        crossH.Visible = true
+        crossV.Visible = true
     else
-        CrosshairDot.Visible = false
-        for _, l in ipairs(CrosshairLines) do l.Visible = false end
+        crossH.Visible = false
+        crossV.Visible = false
     end
 end)
 
 -- ==========================================
 -- ESP ENGINE
 -- ==========================================
-local ESPGui = make("ScreenGui", {Name = "LiteHack_ESP", ResetOnSpawn = false, IgnoreGuiInset = true, Parent = getGuiParent()})
+local ESPGui = make("ScreenGui", {Name = "AMN_Hack_ESP", ResetOnSpawn = false, IgnoreGuiInset = true, Parent = getGuiParent()})
 local ESPData = {}
 
 local function isEnemy(model)
@@ -1361,10 +1510,23 @@ local function createESP(model)
     local c7 = make("Frame", {Size = UDim2.new(0, 10, 0, 2), BackgroundColor3 = Color3.white, AnchorPoint = Vector2.new(1, 1), Position = UDim2.new(1, 0, 1, 0), BorderSizePixel = 0, ZIndex = 4, Parent = box})
     local c8 = make("Frame", {Size = UDim2.new(0, 2, 0, 10), BackgroundColor3 = Color3.white, AnchorPoint = Vector2.new(1, 1), Position = UDim2.new(1, 0, 1, 0), BorderSizePixel = 0, ZIndex = 4, Parent = box})
 
+    local nameBox = make("Frame", {
+        BackgroundTransparency = 1, BorderSizePixel = 0, Visible = false,
+        ZIndex = 9, Parent = ESPGui
+    })
+    local nc1 = make("Frame", {Size = UDim2.new(0, 6, 0, 1), BackgroundColor3 = Color3.white, BorderSizePixel = 0, ZIndex = 10, Parent = nameBox})
+    local nc2 = make("Frame", {Size = UDim2.new(0, 1, 0, 6), BackgroundColor3 = Color3.white, BorderSizePixel = 0, ZIndex = 10, Parent = nameBox})
+    local nc3 = make("Frame", {Size = UDim2.new(0, 6, 0, 1), BackgroundColor3 = Color3.white, AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, 0, 0, 0), BorderSizePixel = 0, ZIndex = 10, Parent = nameBox})
+    local nc4 = make("Frame", {Size = UDim2.new(0, 1, 0, 6), BackgroundColor3 = Color3.white, AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, 0, 0, 0), BorderSizePixel = 0, ZIndex = 10, Parent = nameBox})
+    local nc5 = make("Frame", {Size = UDim2.new(0, 6, 0, 1), BackgroundColor3 = Color3.white, AnchorPoint = Vector2.new(0, 1), Position = UDim2.new(0, 0, 1, 0), BorderSizePixel = 0, ZIndex = 10, Parent = nameBox})
+    local nc6 = make("Frame", {Size = UDim2.new(0, 1, 0, 6), BackgroundColor3 = Color3.white, AnchorPoint = Vector2.new(0, 1), Position = UDim2.new(0, 0, 1, 0), BorderSizePixel = 0, ZIndex = 10, Parent = nameBox})
+    local nc7 = make("Frame", {Size = UDim2.new(0, 6, 0, 1), BackgroundColor3 = Color3.white, AnchorPoint = Vector2.new(1, 1), Position = UDim2.new(1, 0, 1, 0), BorderSizePixel = 0, ZIndex = 10, Parent = nameBox})
+    local nc8 = make("Frame", {Size = UDim2.new(0, 1, 0, 6), BackgroundColor3 = Color3.white, AnchorPoint = Vector2.new(1, 1), Position = UDim2.new(1, 0, 1, 0), BorderSizePixel = 0, ZIndex = 10, Parent = nameBox})
+
     local name = make("TextLabel", {
-        BackgroundTransparency = 1, TextSize = 13, Font = Enum.Font.GothamBold,
+        BackgroundTransparency = 1, TextSize = 12, Font = Enum.Font.GothamBold,
         TextColor3 = Color3.white, TextStrokeTransparency = 0.4, Visible = false,
-        ZIndex = 10, Parent = ESPGui
+        ZIndex = 11, Parent = ESPGui
     })
 
     local weapon = make("TextLabel", {
@@ -1423,6 +1585,7 @@ local function createESP(model)
 
     return {
         Box = box, Corners = {c1,c2,c3,c4,c5,c6,c7,c8},
+        NameBox = nameBox, NameCorners = {nc1,nc2,nc3,nc4,nc5,nc6,nc7,nc8},
         Name = name, Weapon = weapon, Dist = dist, Pic = pic, Img = img,
         HealthBar = healthBar, HealthFill = healthFill,
         Skeleton = skeletonParts, Line = line
@@ -1440,7 +1603,7 @@ end
 
 local ValidEntities = {}
 task.spawn(function()
-    while task.wait(0.4) do
+    while task.wait(0.15) do
         local list = {}
         local aliveModels = {}
         for _, p in ipairs(Players:GetPlayers()) do
@@ -1497,6 +1660,16 @@ local function drawLine(frame, a, b)
     frame.Rotation = math.deg(ang)
 end
 
+local function isOnScreen(pos3d)
+    local screenPos, onScreen = Camera:WorldToViewportPoint(pos3d)
+    if not onScreen then return false end
+    local vs = Camera.ViewportSize
+    if screenPos.X < 0 or screenPos.X > vs.X or screenPos.Y < 0 or screenPos.Y > vs.Y then
+        return false
+    end
+    return true
+end
+
 RunService.RenderStepped:Connect(function()
     local myChar = LocalPlayer.Character
     local myRoot = myChar and myChar:FindFirstChild("HumanoidRootPart")
@@ -1520,8 +1693,19 @@ RunService.RenderStepped:Connect(function()
         if not showESP then
             if ESPData[model] then
                 local d = ESPData[model]
-                d.Box.Visible = false; d.Name.Visible = false; d.Weapon.Visible = false
-                d.Dist.Visible = false
+                d.Box.Visible = false; d.NameBox.Visible = false; d.Name.Visible = false
+                d.Weapon.Visible = false; d.Dist.Visible = false
+                d.Pic.Visible = false; d.HealthBar.Visible = false; d.Line.Visible = false
+                for _, s in ipairs(d.Skeleton) do s.Visible = false end
+            end
+            continue
+        end
+
+        if not isOnScreen(head.Position) then
+            if ESPData[model] then
+                local d = ESPData[model]
+                d.Box.Visible = false; d.NameBox.Visible = false; d.Name.Visible = false
+                d.Weapon.Visible = false; d.Dist.Visible = false
                 d.Pic.Visible = false; d.HealthBar.Visible = false; d.Line.Visible = false
                 for _, s in ipairs(d.Skeleton) do s.Visible = false end
             end
@@ -1553,24 +1737,35 @@ RunService.RenderStepped:Connect(function()
             d.Dist.Text = meters .. " m"
             d.Dist.Visible = Cfg.ESPDistance
 
-            d.Name.Position = UDim2.new(0, topLeft.X, 0, topLeft.Y - 26)
-            d.Name.Size = UDim2.new(0, 220, 0, 16)
+            local nameText = model.Name
+            local nameBoxW = 140
+            local nameBoxH = 18
+            local nameX = topLeft.X - nameBoxW/2
+            local nameY = topLeft.Y - 8 - nameBoxH - 4
+
+            d.NameBox.Position = UDim2.new(0, nameX, 0, nameY)
+            d.NameBox.Size = UDim2.new(0, nameBoxW, 0, nameBoxH)
+            d.NameBox.Visible = Cfg.ESPName
+            for _, c in ipairs(d.NameCorners) do c.BackgroundColor3 = color end
+
+            d.Name.Position = UDim2.new(0, topLeft.X, 0, nameY)
+            d.Name.Size = UDim2.new(0, nameBoxW, 0, nameBoxH)
             d.Name.AnchorPoint = Vector2.new(0.5, 0)
-            d.Name.Text = model.Name
+            d.Name.Text = nameText
             d.Name.TextColor3 = color
             d.Name.Visible = Cfg.ESPName
 
             local weaponName = ""
             local tool = model:FindFirstChildOfClass("Tool")
             if tool then weaponName = tool.Name end
-            d.Weapon.Position = UDim2.new(0, topLeft.X, 0, topLeft.Y - 46)
+            d.Weapon.Position = UDim2.new(0, topLeft.X, 0, nameY - 18)
             d.Weapon.Size = UDim2.new(0, 220, 0, 14)
             d.Weapon.AnchorPoint = Vector2.new(0.5, 0)
             d.Weapon.Text = weaponName
             d.Weapon.TextColor3 = Color3.fromRGB(255, 220, 100)
             d.Weapon.Visible = Cfg.ESPWeapon and weaponName ~= ""
 
-            local picTopY = topLeft.Y - 93
+            local picTopY = topLeft.Y - 115
             local picCenterY = picTopY + 21
 
             if Cfg.ESPPicture then
@@ -1593,7 +1788,7 @@ RunService.RenderStepped:Connect(function()
 
             if Cfg.ESPLine then
                 local screenTop = Vector2.new(Camera.ViewportSize.X / 2, 0)
-                local targetPt = Vector2.new(topLeft.X, picCenterY)
+                local targetPt = Vector2.new(topLeft.X, topLeft.Y - 90)
                 d.Line.Visible = true
                 d.Line.ZIndex = 4
                 local diff = targetPt - screenTop
@@ -1655,9 +1850,9 @@ RunService.RenderStepped:Connect(function()
 end)
 
 -- ==========================================
--- ESP BOM (PlantedC4)
+-- ESP BOM
 -- ==========================================
-local BombGui = make("ScreenGui", {Name = "LiteHack_Bomb", ResetOnSpawn = false, IgnoreGuiInset = true, Parent = getGuiParent()})
+local BombGui = make("ScreenGui", {Name = "AMN_Hack_Bomb", ResetOnSpawn = false, IgnoreGuiInset = true, Parent = getGuiParent()})
 local BombBox = make("Frame", {
     Size = UDim2.new(0, 100, 0, 100),
     BackgroundTransparency = 1,
@@ -1719,14 +1914,10 @@ RunService.RenderStepped:Connect(function()
 
     local bombPos
     local ok, pivot = pcall(function() return c4:GetPivot().Position end)
-    if ok and pivot then
-        bombPos = pivot
+    if ok and pivot then bombPos = pivot
     else
         for _, child in ipairs(c4:GetDescendants()) do
-            if child:IsA("BasePart") then
-                bombPos = child.Position
-                break
-            end
+            if child:IsA("BasePart") then bombPos = child.Position; break end
         end
     end
 
@@ -1748,9 +1939,7 @@ RunService.RenderStepped:Connect(function()
     local myChar = LocalPlayer.Character
     local myRoot = myChar and myChar:FindFirstChild("HumanoidRootPart")
     local meters = 0
-    if myRoot then
-        meters = math.floor((myRoot.Position - bombPos).Magnitude)
-    end
+    if myRoot then meters = math.floor((myRoot.Position - bombPos).Magnitude) end
 
     local size = math.clamp(2000 / math.max(meters, 5), 40, 200)
     local sx = screenPos.X
@@ -1771,21 +1960,12 @@ RunService.RenderStepped:Connect(function()
 end)
 
 -- ==========================================
--- AIMBOT + AUTO FIRE + AUTO MACRO QUICK CHANGE
+-- AIMBOT
 -- ==========================================
 local LockedTarget = nil
 local fireHoldActive = false
 local lastFireToggle = 0
 local FIRE_TOGGLE_DURATION = 0.05
-
--- Auto Macro Quick Change variables
-local macroRunning = false
-local lastMacroTime = 0
-local MACRO_COOLDOWN = 0.3  -- cooldown antar macro (jangan spam)
-
--- Nama tool yang kita tau dari scan
-local SG_NAME = "870MCS"      -- Shotgun
-local KNIFE_NAME = "M-7"      -- Knife/Pisau
 
 local function isVisible(part)
     if not part then return false end
@@ -1799,10 +1979,10 @@ end
 local function getAimPart(model)
     if not model then return nil end
     local map = {Head = "Head", Neck = "Neck", Chest = "UpperTorso"}
-    local targetName = map[Cfg.AimTarget] or "Head"
+    local targetName = map[Cfg.AimTarget] or "UpperTorso"
     local part = model:FindFirstChild(targetName)
     if part then return part end
-    return model:FindFirstChild("Head") or model:FindFirstChild("HumanoidRootPart")
+    return model:FindFirstChild("UpperTorso") or model:FindFirstChild("HumanoidRootPart") or model:FindFirstChild("Head")
 end
 
 local function validTarget(model)
@@ -1879,20 +2059,6 @@ local function getEquippedTool()
     return char:FindFirstChildOfClass("Tool")
 end
 
-local function getToolByName(name)
-    local char = LocalPlayer.Character
-    local bp = LocalPlayer:FindFirstChild("Backpack")
-    if char then
-        local t = char:FindFirstChild(name)
-        if t and t:IsA("Tool") then return t end
-    end
-    if bp then
-        local t = bp:FindFirstChild(name)
-        if t and t:IsA("Tool") then return t end
-    end
-    return nil
-end
-
 local function holdFireToggle()
     local tool = getEquippedTool()
     if not tool then return end
@@ -1900,62 +2066,10 @@ local function holdFireToggle()
     if (now - lastFireToggle) < FIRE_TOGGLE_DURATION then return end
     lastFireToggle = now
     pcall(function()
-        if fireHoldActive then
-            tool:Deactivate()
-        else
-            tool:Activate()
-        end
+        if fireHoldActive then tool:Deactivate() else tool:Activate() end
     end)
     fireHoldActive = not fireHoldActive
 end
-
--- Auto Macro Quick Change: SG → Knife → SG
-local function runQuickChangeMacro()
-    if macroRunning then return end
-    local now = tick()
-    if (now - lastMacroTime) < MACRO_COOLDOWN then return end
-    lastMacroTime = now
-    macroRunning = true
-
-    task.spawn(function()
-        local char = LocalPlayer.Character
-        if not char then macroRunning = false return end
-        local hum = char:FindFirstChildOfClass("Humanoid")
-        if not hum then macroRunning = false return end
-
-        local sg = getToolByName(SG_NAME)
-        local knife = getToolByName(KNIFE_NAME)
-
-        if sg and knife then
-            -- 1. Equip knife
-            pcall(function() hum:EquipTool(knife) end)
-            task.wait(0.10)
-            -- 2. Equip SG lagi
-            pcall(function() hum:EquipTool(sg) end)
-            task.wait(0.20)
-        end
-
-        macroRunning = false
-    end)
-end
-
--- Hook Tool.Activated tiap frame (deteksi kapan kamu nembak SG)
-RunService.Heartbeat:Connect(function()
-    if not Cfg.AutoMacro then return end
-    local tool = getEquippedTool()
-    if not tool then return end
-    if tool.Name ~= SG_NAME then return end
-
-    -- Kalau tool udah ada hook, skip
-    if tool:GetAttribute("__MacroHooked") then return end
-    tool:SetAttribute("__MacroHooked", true)
-
-    tool.Activated:Connect(function()
-        if Cfg.AutoMacro then
-            runQuickChangeMacro()
-        end
-    end)
-end)
 
 RunService.RenderStepped:Connect(function()
     if Cfg.Aimbot and Cfg.AimFOV then
@@ -2331,4 +2445,4 @@ task.spawn(function()
     end
 end)
 
-print("[LiteHack] UI Loaded (v17). AntiSmoke + AutoMacro QuickChange (870MCS ↔ M-7).")
+print("[AMN HACK] Loaded v19. Tombol animasi + Toast notifikasi + SAVE/LOAD feedback.")
