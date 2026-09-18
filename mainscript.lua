@@ -111,7 +111,7 @@ _G.LiteHackCfg = {
     AntiGM = false,
     SpamChat = false,
     SpamChatText = "ahh ahhh ahhh ahhh",
-    SpamChatInterval = 1.2,
+    SpamChatInterval = 2.0,
     Theme = "Dark",
 }
 
@@ -1033,7 +1033,7 @@ ComboBox(WorldTab, "Clock Time", {"Default", "Pagi", "Siang", "Sore", "Malam"}, 
 end, "ClockTime")
 
 -- ==========================================
--- SPAM CHAT
+-- SPAM CHAT (RANDOM 2 - 2.5 DETIK)
 -- ==========================================
 local chatSpamActive = false
 local chatSpamThread = nil
@@ -1076,7 +1076,8 @@ local function startChatSpam()
             if text and text ~= "" then
                 pcall(function() sendChatMessage(text) end)
             end
-            local interval = 1.5 + math.random() * 0.5
+            -- Delay random 2.0 - 2.5 detik
+            local interval = 2.0 + math.random() * 0.5
             task.wait(interval)
         end
         chatSpamThread = nil
@@ -1089,7 +1090,7 @@ local function stopChatSpam()
 end
 
 Section(WorldTab, "Chat Spam")
-Toggle(WorldTab, "Spam Chat (Random 1.5-2s)", Cfg.SpamChat, function(v)
+Toggle(WorldTab, "Spam Chat (Random 2-2.5s)", Cfg.SpamChat, function(v)
     Cfg.SpamChat = v
     if v then startChatSpam() else stopChatSpam() end
 end, "SpamChat")
@@ -1649,9 +1650,6 @@ local function isPlayerOrNPC(model)
     return plr ~= nil
 end
 
--- ==========================================
--- HELPER: SNAPSHOT POSISI 3D SEKALI PER FRAME
--- ==========================================
 local function getAllPositions(model)
     local head = model:FindFirstChild("Head")
     local root = model:FindFirstChild("HumanoidRootPart")
@@ -1934,7 +1932,6 @@ RunService.RenderStepped:Connect(function()
             d.Chams.Enabled = Cfg.ESPChams
         end
 
-        -- SNAPSHOT SEMUA POSISI SEKALI PER FRAME
         local positions = getAllPositions(model)
         local headPos = positions.head
         local rootPos = positions.root
@@ -2058,24 +2055,21 @@ RunService.RenderStepped:Connect(function()
                 d.Line.Visible = false
             end
 
-            -- ==========================================
-            -- HEALTH FIX TOTAL: X & Y dari ROOT saja
-            -- ==========================================
+            -- HEALTH: nempel ke BOX pakai AbsolutePosition
             local hp = math.clamp(hum.Health / hum.MaxHealth, 0, 1)
             d.HealthBar.Visible = Cfg.ESPHealth
 
-            if rootPos then
-                local hpBarX = rootPos.X + 30
-                local hpBarY = rootPos.Y - 20
-                local vs = Camera.ViewportSize
-                hpBarX = math.clamp(hpBarX, 2, vs.X - 10)
-                hpBarY = math.clamp(hpBarY, 2, vs.Y - 20)
+            local boxAbs = d.Box.AbsolutePosition
+            local boxAbsSize = d.Box.AbsoluteSize
 
-                d.HealthBar.Position = UDim2.new(0, hpBarX, 0, hpBarY)
-                d.HealthBar.Size = UDim2.new(0, 6, 0, height)
-            else
-                d.HealthBar.Visible = false
-            end
+            local hpBarX = boxAbs.X + boxAbsSize.X + 4
+            local hpBarY = boxAbs.Y
+            local vs = Camera.ViewportSize
+            hpBarX = math.clamp(hpBarX, 2, vs.X - 10)
+            hpBarY = math.clamp(hpBarY, 2, vs.Y - 20)
+
+            d.HealthBar.Position = UDim2.new(0, hpBarX, 0, hpBarY)
+            d.HealthBar.Size = UDim2.new(0, 6, 0, boxAbsSize.Y)
 
             local hcol
             if hp > 0.7 then hcol = Color3.fromRGB(0, 220, 60)
@@ -2716,4 +2710,4 @@ task.spawn(function()
     end
 end)
 
-print("[AMN HACK] v24 Loaded. Health FIX total — semua posisi snapshot 1 frame + health pakai root.")
+print("[AMN HACK] v26 Loaded. Spam Chat delay 2-2.5s random.")
