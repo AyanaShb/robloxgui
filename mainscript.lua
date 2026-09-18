@@ -1033,7 +1033,7 @@ ComboBox(WorldTab, "Clock Time", {"Default", "Pagi", "Siang", "Sore", "Malam"}, 
 end, "ClockTime")
 
 -- ==========================================
--- SPAM CHAT (RANDOM 1.5 - 2 DETIK)
+-- SPAM CHAT
 -- ==========================================
 local chatSpamActive = false
 local chatSpamThread = nil
@@ -1649,6 +1649,32 @@ local function isPlayerOrNPC(model)
     return plr ~= nil
 end
 
+-- ==========================================
+-- HELPER: SNAPSHOT POSISI 3D SEKALI PER FRAME
+-- ==========================================
+local function getAllPositions(model)
+    local head = model:FindFirstChild("Head")
+    local root = model:FindFirstChild("HumanoidRootPart")
+    local isR15 = model:FindFirstChild("UpperTorso") ~= nil
+    local footName = isR15 and "LeftFoot" or "Left Leg"
+    local foot = model:FindFirstChild(footName)
+
+    local headScreen, headOn
+    local rootScreen, rootOn
+    local footScreen, footOn
+
+    if head then headScreen, headOn = Camera:WorldToViewportPoint(head.Position) end
+    if root then rootScreen, rootOn = Camera:WorldToViewportPoint(root.Position) end
+    if foot then footScreen, footOn = Camera:WorldToViewportPoint(foot.Position) end
+
+    return {
+        head = headOn and Vector2.new(headScreen.X, headScreen.Y) or nil,
+        root = rootOn and Vector2.new(rootScreen.X, rootScreen.Y) or nil,
+        foot = footOn and Vector2.new(footScreen.X, footScreen.Y) or nil,
+        isR15 = isR15,
+    }
+end
+
 local function createESP(model)
     local box = make("Frame", {
         BackgroundTransparency = 1, BorderSizePixel = 0, Visible = false,
@@ -1908,19 +1934,18 @@ RunService.RenderStepped:Connect(function()
             d.Chams.Enabled = Cfg.ESPChams
         end
 
-        local headPos = pos2d(head)
-        local rootPos = pos2d(root)
+        -- SNAPSHOT SEMUA POSISI SEKALI PER FRAME
+        local positions = getAllPositions(model)
+        local headPos = positions.head
+        local rootPos = positions.root
+        local footPos = positions.foot
+        local isR15 = positions.isR15
+
         local topLeft = headPos
         local anchorX = rootPos and rootPos.X or (headPos and headPos.X) or 0
 
-        local isR15 = model:FindFirstChild("UpperTorso") ~= nil
-        local footName = isR15 and "LeftFoot" or "Left Leg"
-        local foot = model:FindFirstChild(footName)
-        local footPos = pos2d(foot)
-        if not footPos then
-            if rootPos then
-                footPos = Vector2.new(rootPos.X, rootPos.Y + 30)
-            end
+        if not footPos and rootPos then
+            footPos = Vector2.new(rootPos.X, rootPos.Y + 30)
         end
 
         if topLeft and footPos then
@@ -2034,18 +2059,23 @@ RunService.RenderStepped:Connect(function()
             end
 
             -- ==========================================
-            -- HEALTH ANTI-GOYANG: offset tetap 30px
+            -- HEALTH FIX TOTAL: X & Y dari ROOT saja
             -- ==========================================
             local hp = math.clamp(hum.Health / hum.MaxHealth, 0, 1)
             d.HealthBar.Visible = Cfg.ESPHealth
 
-            local hpBarX = boxCenterX + 30
-            local vs = Camera.ViewportSize
-            hpBarX = math.clamp(hpBarX, 0, vs.X - 10)
-            local hpBarY = math.max(topLeft.Y - 8, 0)
+            if rootPos then
+                local hpBarX = rootPos.X + 30
+                local hpBarY = rootPos.Y - 20
+                local vs = Camera.ViewportSize
+                hpBarX = math.clamp(hpBarX, 2, vs.X - 10)
+                hpBarY = math.clamp(hpBarY, 2, vs.Y - 20)
 
-            d.HealthBar.Position = UDim2.new(0, hpBarX, 0, hpBarY)
-            d.HealthBar.Size = UDim2.new(0, 6, 0, height)
+                d.HealthBar.Position = UDim2.new(0, hpBarX, 0, hpBarY)
+                d.HealthBar.Size = UDim2.new(0, 6, 0, height)
+            else
+                d.HealthBar.Visible = false
+            end
 
             local hcol
             if hp > 0.7 then hcol = Color3.fromRGB(0, 220, 60)
@@ -2686,4 +2716,4 @@ task.spawn(function()
     end
 end)
 
-print("[AMN HACK] v23 Loaded. ESP Health offset tetap 30px (anti-goyang).")
+print("[AMN HACK] v24 Loaded. Health FIX total — semua posisi snapshot 1 frame + health pakai root.")
