@@ -1076,7 +1076,6 @@ local function startChatSpam()
             if text and text ~= "" then
                 pcall(function() sendChatMessage(text) end)
             end
-            -- Random 1.5 - 2.0 detik
             local interval = 1.5 + math.random() * 0.5
             task.wait(interval)
         end
@@ -1912,7 +1911,6 @@ RunService.RenderStepped:Connect(function()
         local headPos = pos2d(head)
         local rootPos = pos2d(root)
         local topLeft = headPos
-        -- ANCHOR X dari ROOT (stabil) — anti-goyang
         local anchorX = rootPos and rootPos.X or (headPos and headPos.X) or 0
 
         local isR15 = model:FindFirstChild("UpperTorso") ~= nil
@@ -1930,13 +1928,11 @@ RunService.RenderStepped:Connect(function()
             height = math.max(height, 20)
             local width = height * 0.55
 
-            -- BOX pakai anchorX dari root
-            local boxCenterX = anchorX  -- pakai root X yang stabil
+            local boxCenterX = anchorX
             d.Box.Position = UDim2.new(0, boxCenterX - width/2, 0, topLeft.Y - 8)
             d.Box.Size = UDim2.new(0, width, 0, height)
             d.Box.Visible = Cfg.ESPBox
 
-            -- DYNAMIC CORNER
             local thick = 2
             local cornerLenH = math.clamp(width * 0.25, 5, 15)
             local cornerLenV = math.clamp(height * 0.15, 5, 15)
@@ -1950,7 +1946,6 @@ RunService.RenderStepped:Connect(function()
             cs[7].Size = UDim2.new(0, cornerLenH, 0, thick); cs[7].Position = UDim2.new(1, 0, 1, 0); cs[7].AnchorPoint = Vector2.new(1, 1); cs[7].BackgroundColor3 = color
             cs[8].Size = UDim2.new(0, thick, 0, cornerLenV); cs[8].Position = UDim2.new(1, 0, 1, 0); cs[8].AnchorPoint = Vector2.new(1, 1); cs[8].BackgroundColor3 = color
 
-            -- Distance (bawah box, pakai anchorX)
             d.Dist.Position = UDim2.new(0, boxCenterX, 0, topLeft.Y + height + 4)
             d.Dist.Size = UDim2.new(0, 200, 0, 14)
             d.Dist.AnchorPoint = Vector2.new(0.5, 0)
@@ -1958,7 +1953,6 @@ RunService.RenderStepped:Connect(function()
             d.Dist.Text = meters .. " m"
             d.Dist.Visible = Cfg.ESPDistance
 
-            -- AUTO-SIZE NAME BOX (pakai anchorX)
             local nameText = model.Name
             local textSize = TextService:GetTextSize(nameText, 12, Enum.Font.GothamBold, Vector2.new(500, 100))
             local nameBoxW = textSize.X + 12
@@ -2020,7 +2014,6 @@ RunService.RenderStepped:Connect(function()
                 d.Pic.Visible = false
             end
 
-            -- LINE: mentok border atas picture (PAKAI anchorX)
             if Cfg.ESPLine then
                 local startPt = Vector2.new(Camera.ViewportSize.X / 2, 0)
                 local endPt = Vector2.new(boxCenterX, picTopY)
@@ -2041,13 +2034,12 @@ RunService.RenderStepped:Connect(function()
             end
 
             -- ==========================================
-            -- HEALTH FIX: pakai anchorX dari ROOT (STABIL)
+            -- HEALTH ANTI-GOYANG: offset tetap 30px
             -- ==========================================
             local hp = math.clamp(hum.Health / hum.MaxHealth, 0, 1)
             d.HealthBar.Visible = Cfg.ESPHealth
 
-            -- Pakai boxCenterX (dari root) + width/2 (rumus sama dengan box)
-            local hpBarX = boxCenterX + (width/2) + 4
+            local hpBarX = boxCenterX + 30
             local vs = Camera.ViewportSize
             hpBarX = math.clamp(hpBarX, 0, vs.X - 10)
             local hpBarY = math.max(topLeft.Y - 8, 0)
@@ -2694,4 +2686,4 @@ task.spawn(function()
     end
 end)
 
-print("[AMN HACK] v22 Loaded. ESP Health pakai anchorX dari root (anti-goyang) + Spam Chat random 1.5-2s.")
+print("[AMN HACK] v23 Loaded. ESP Health offset tetap 30px (anti-goyang).")
