@@ -72,7 +72,6 @@ end
 -- CONFIG GLOBAL
 -- ==========================================
 _G.LiteHackCfg = {
-    -- ESP
     ESPEnemy = false,
     ESPTeam = false,
     ESPAll = false,
@@ -87,7 +86,6 @@ _G.LiteHackCfg = {
     ESPBomb = false,
     ESPChams = false,
     ESPColor = Color3.fromRGB(255, 60, 60),
-    -- Aimbot
     Aimbot = false,
     AimTeamCheck = true,
     AimWallCheck = true,
@@ -101,23 +99,19 @@ _G.LiteHackCfg = {
     AimSmoothness = 30,
     AutoFire = false,
     ShowCrosshair = false,
-    -- Player
     SpeedRun = false,
     SpeedRunValue = 50,
     RapidFire = false,
     UnlimitedAmmo = false,
     NoRecoil = false,
     WallHack = false,
-    -- World
     ClockTime = "Default",
     LowGravity = false,
     AntiSmoke = false,
     AntiGM = false,
-    -- Chat
     SpamChat = false,
     SpamChatText = "ahh ahhh ahhh ahhh",
     SpamChatInterval = 1.2,
-    -- UI
     Theme = "Dark",
 }
 
@@ -164,7 +158,7 @@ end
 local FONT_BOLD = Enum.Font.GothamBold
 
 -- ==========================================
--- SMOOTH TELEPORT (BodyVelocity)
+-- SMOOTH TELEPORT
 -- ==========================================
 _G.__SmoothTeleport = function(targetPos, duration)
     local char = LocalPlayer.Character
@@ -378,12 +372,11 @@ local Tabs = {}
 local TabButtons = {}
 local ActiveTab = nil
 
--- UI reference untuk LOAD CONFIG
 local UIReferences = {
-    Toggles = {},   -- [key] = toggle object
-    Sliders = {},   -- [key] = slider object
-    Combos = {},    -- [key] = combo object
-    TextBoxes = {}  -- [key] = textbox object
+    Toggles = {},
+    Sliders = {},
+    Combos = {},
+    TextBoxes = {}
 }
 
 local function CreateTab(name, icon)
@@ -1046,20 +1039,16 @@ local chatSpamActive = false
 local chatSpamThread = nil
 
 local function sendChatMessage(msg)
-    -- Cara 1: Chat lama (SayMessageRequest)
     local ReplicatedStorage = game:GetService("ReplicatedStorage")
     local chatEvents = ReplicatedStorage:FindFirstChild("DefaultChatSystemChatEvents")
     if chatEvents then
         local sayRemote = chatEvents:FindFirstChild("SayMessageRequest")
         if sayRemote then
-            pcall(function()
-                sayRemote:FireServer(msg, "All")
-            end)
+            pcall(function() sayRemote:FireServer(msg, "All") end)
             return true
         end
     end
 
-    -- Cara 2: TextChatService (baru)
     local TextChatService = game:GetService("TextChatService")
     if TextChatService.ChatVersion == Enum.ChatVersion.TextChatService then
         local ok = pcall(function()
@@ -1102,11 +1091,7 @@ end
 Section(WorldTab, "Chat Spam")
 Toggle(WorldTab, "Spam Chat (1.2 detik)", Cfg.SpamChat, function(v)
     Cfg.SpamChat = v
-    if v then
-        startChatSpam()
-    else
-        stopChatSpam()
-    end
+    if v then startChatSpam() else stopChatSpam() end
 end, "SpamChat")
 
 TextBox(WorldTab, "Teks spam...", function(text)
@@ -1489,54 +1474,27 @@ end, "Theme")
 Section(ConfigTab, "Save / Load")
 
 local function applyConfigToUI()
-    -- Toggle
     for key, ref in pairs(UIReferences.Toggles) do
-        if Cfg[key] ~= nil then
-            ref:SetSilent(Cfg[key])
-        end
+        if Cfg[key] ~= nil then ref:SetSilent(Cfg[key]) end
     end
-    -- Slider
     for key, ref in pairs(UIReferences.Sliders) do
-        if Cfg[key] ~= nil then
-            ref:SetSilent(Cfg[key])
-        end
+        if Cfg[key] ~= nil then ref:SetSilent(Cfg[key]) end
     end
-    -- Combo
     for key, ref in pairs(UIReferences.Combos) do
-        if Cfg[key] ~= nil then
-            ref:SetSilent(Cfg[key])
-        end
+        if Cfg[key] ~= nil then ref:SetSilent(Cfg[key]) end
     end
-    -- TextBox
     for key, ref in pairs(UIReferences.TextBoxes) do
-        if Cfg[key] ~= nil then
-            ref:Set(Cfg[key])
-        end
+        if Cfg[key] ~= nil then ref:Set(Cfg[key]) end
     end
 end
 
 local function applyConfigToRuntime()
-    -- Terapkan efek runtime untuk fitur yang ON saat load
-    -- Speed Run
     if Cfg.SpeedRun and LocalPlayer.Character then
         local h = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
         if h then h.WalkSpeed = 16 * (Cfg.SpeedRunValue / 100) end
     end
-    -- Low Gravity
-    if Cfg.LowGravity then
-        applyLowGravity(LocalPlayer.Character)
-    else
-        removeLowGravity()
-    end
-    -- Anti Smoke: otomatis dari Heartbeat loop
-    -- Spam Chat
-    if Cfg.SpamChat then
-        startChatSpam()
-    else
-        stopChatSpam()
-    end
-    -- Wall Hack: otomatis dari Stepped loop
-    -- Rapid Fire / Unlimited / No Recoil: otomatis dari RenderStepped loop
+    if Cfg.LowGravity then applyLowGravity(LocalPlayer.Character) else removeLowGravity() end
+    if Cfg.SpamChat then startChatSpam() else stopChatSpam() end
 end
 
 Button(ConfigTab, "💾 SAVE CONFIG", function()
@@ -1562,7 +1520,6 @@ Button(ConfigTab, "📂 LOAD CONFIG", function()
             for k, v in pairs(data) do
                 if Cfg[k] ~= nil then Cfg[k] = v end
             end
-            -- Update UI + runtime
             applyConfigToUI()
             applyConfigToRuntime()
         else
@@ -1671,7 +1628,6 @@ end)
 local ESPGui = make("ScreenGui", {Name = "AMN_Hack_ESP", ResetOnSpawn = false, IgnoreGuiInset = true, Parent = getGuiParent()})
 local ESPData = {}
 
--- TextService untuk auto-size name box
 local TextService = game:GetService("TextService")
 
 local function isEnemy(model)
@@ -1698,27 +1654,31 @@ local function createESP(model)
         BackgroundTransparency = 1, BorderSizePixel = 0, Visible = false,
         ZIndex = 3, Parent = ESPGui, Name = "Box"
     })
-    local c1 = make("Frame", {Size = UDim2.new(0, 10, 0, 2), BackgroundColor3 = Color3.white, BorderSizePixel = 0, ZIndex = 4, Parent = box})
-    local c2 = make("Frame", {Size = UDim2.new(0, 2, 0, 10), BackgroundColor3 = Color3.white, BorderSizePixel = 0, ZIndex = 4, Parent = box})
-    local c3 = make("Frame", {Size = UDim2.new(0, 10, 0, 2), BackgroundColor3 = Color3.white, AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, 0, 0, 0), BorderSizePixel = 0, ZIndex = 4, Parent = box})
-    local c4 = make("Frame", {Size = UDim2.new(0, 2, 0, 10), BackgroundColor3 = Color3.white, AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, 0, 0, 0), BorderSizePixel = 0, ZIndex = 4, Parent = box})
-    local c5 = make("Frame", {Size = UDim2.new(0, 10, 0, 2), BackgroundColor3 = Color3.white, AnchorPoint = Vector2.new(0, 1), Position = UDim2.new(0, 0, 1, 0), BorderSizePixel = 0, ZIndex = 4, Parent = box})
-    local c6 = make("Frame", {Size = UDim2.new(0, 2, 0, 10), BackgroundColor3 = Color3.white, AnchorPoint = Vector2.new(0, 1), Position = UDim2.new(0, 0, 1, 0), BorderSizePixel = 0, ZIndex = 4, Parent = box})
-    local c7 = make("Frame", {Size = UDim2.new(0, 10, 0, 2), BackgroundColor3 = Color3.white, AnchorPoint = Vector2.new(1, 1), Position = UDim2.new(1, 0, 1, 0), BorderSizePixel = 0, ZIndex = 4, Parent = box})
-    local c8 = make("Frame", {Size = UDim2.new(0, 2, 0, 10), BackgroundColor3 = Color3.white, AnchorPoint = Vector2.new(1, 1), Position = UDim2.new(1, 0, 1, 0), BorderSizePixel = 0, ZIndex = 4, Parent = box})
+
+    -- Corner putus-putus (ukuran diupdate tiap frame di render loop)
+    local corners = {}
+    for i = 1, 8 do
+        table.insert(corners, make("Frame", {
+            BackgroundColor3 = Color3.white,
+            BorderSizePixel = 0,
+            ZIndex = 4,
+            Parent = box
+        }))
+    end
 
     local nameBox = make("Frame", {
         BackgroundTransparency = 1, BorderSizePixel = 0, Visible = false,
         ZIndex = 9, Parent = ESPGui
     })
-    local nc1 = make("Frame", {Size = UDim2.new(0, 6, 0, 1), BackgroundColor3 = Color3.white, BorderSizePixel = 0, ZIndex = 10, Parent = nameBox})
-    local nc2 = make("Frame", {Size = UDim2.new(0, 1, 0, 6), BackgroundColor3 = Color3.white, BorderSizePixel = 0, ZIndex = 10, Parent = nameBox})
-    local nc3 = make("Frame", {Size = UDim2.new(0, 6, 0, 1), BackgroundColor3 = Color3.white, AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, 0, 0, 0), BorderSizePixel = 0, ZIndex = 10, Parent = nameBox})
-    local nc4 = make("Frame", {Size = UDim2.new(0, 1, 0, 6), BackgroundColor3 = Color3.white, AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, 0, 0, 0), BorderSizePixel = 0, ZIndex = 10, Parent = nameBox})
-    local nc5 = make("Frame", {Size = UDim2.new(0, 6, 0, 1), BackgroundColor3 = Color3.white, AnchorPoint = Vector2.new(0, 1), Position = UDim2.new(0, 0, 1, 0), BorderSizePixel = 0, ZIndex = 10, Parent = nameBox})
-    local nc6 = make("Frame", {Size = UDim2.new(0, 1, 0, 6), BackgroundColor3 = Color3.white, AnchorPoint = Vector2.new(0, 1), Position = UDim2.new(0, 0, 1, 0), BorderSizePixel = 0, ZIndex = 10, Parent = nameBox})
-    local nc7 = make("Frame", {Size = UDim2.new(0, 6, 0, 1), BackgroundColor3 = Color3.white, AnchorPoint = Vector2.new(1, 1), Position = UDim2.new(1, 0, 1, 0), BorderSizePixel = 0, ZIndex = 10, Parent = nameBox})
-    local nc8 = make("Frame", {Size = UDim2.new(0, 1, 0, 6), BackgroundColor3 = Color3.white, AnchorPoint = Vector2.new(1, 1), Position = UDim2.new(1, 0, 1, 0), BorderSizePixel = 0, ZIndex = 10, Parent = nameBox})
+    local nameCorners = {}
+    for i = 1, 8 do
+        table.insert(nameCorners, make("Frame", {
+            BackgroundColor3 = Color3.white,
+            BorderSizePixel = 0,
+            ZIndex = 10,
+            Parent = nameBox
+        }))
+    end
 
     local name = make("TextLabel", {
         BackgroundTransparency = 1, TextSize = 12, Font = Enum.Font.GothamBold,
@@ -1776,11 +1736,10 @@ local function createESP(model)
 
     local line = make("Frame", {
         BackgroundColor3 = Color3.fromRGB(255,80,80), BorderSizePixel = 0,
-        Size = UDim2.new(0,2,0,0), AnchorPoint = Vector2.new(0.5,1),
+        Size = UDim2.new(0,2,0,0), AnchorPoint = Vector2.new(0.5, 0.5),
         Visible = false, ZIndex = 4, Parent = ESPGui
     })
 
-    -- Chams
     local chams = make("Highlight", {
         FillColor = Color3.fromRGB(255, 0, 0),
         OutlineColor = Color3.fromRGB(255, 0, 0),
@@ -1793,8 +1752,8 @@ local function createESP(model)
     })
 
     return {
-        Box = box, Corners = {c1,c2,c3,c4,c5,c6,c7,c8},
-        NameBox = nameBox, NameCorners = {nc1,nc2,nc3,nc4,nc5,nc6,nc7,nc8},
+        Box = box, Corners = corners,
+        NameBox = nameBox, NameCorners = nameCorners,
         Name = name, Weapon = weapon, Dist = dist, Pic = pic, Img = img,
         HealthBar = healthBar, HealthFill = healthFill,
         Skeleton = skeletonParts, Line = line,
@@ -1811,13 +1770,11 @@ local function destroyESP(data)
     end
 end
 
--- ValidEntities cache
 local ValidEntities = {}
 task.spawn(function()
     while task.wait(0.15) do
         local list = {}
         local aliveModels = {}
-        -- Pemain
         for _, p in ipairs(Players:GetPlayers()) do
             if p ~= LocalPlayer and p.Character and p.Character.Parent then
                 local hum = p.Character:FindFirstChildOfClass("Humanoid")
@@ -1827,7 +1784,6 @@ task.spawn(function()
                 end
             end
         end
-        -- NPC/Bot (kalau ESP All ON)
         if Cfg.ESPAll then
             for _, obj in ipairs(workspace:GetChildren()) do
                 if obj:IsA("Model") and not Players:GetPlayerFromCharacter(obj) then
@@ -1917,12 +1873,9 @@ RunService.RenderStepped:Connect(function()
         local isT = isTeam(model)
         local isPlayer = isPlayerOrNPC(model)
 
-        -- Tentukan tampil atau nggak
         local showESP = false
         if Cfg.ESPEnemy and isE then showESP = true end
         if Cfg.ESPTeam and isT then showESP = true end
-        if Cfg.ESPAll and not isPlayer then showESP = true end
-        -- Kalau ESP All ON, tampilkan semua (player + npc)
         if Cfg.ESPAll then showESP = true end
 
         if not showESP then
@@ -1952,7 +1905,6 @@ RunService.RenderStepped:Connect(function()
         ESPData[model] = d
         local color = Cfg.ESPColor
 
-        -- Chams
         if d.Chams then
             d.Chams.Enabled = Cfg.ESPChams
         end
@@ -1962,15 +1914,70 @@ RunService.RenderStepped:Connect(function()
         local footName = isR15 and "LeftFoot" or "Left Leg"
         local foot = model:FindFirstChild(footName)
         local footPos = pos2d(foot)
+        if not footPos then
+            local rootPos = pos2d(root)
+            if rootPos then
+                footPos = Vector2.new(rootPos.X, rootPos.Y + 30)
+            end
+        end
 
         if topLeft and footPos then
             local height = (footPos.Y - topLeft.Y) + 16
+            height = math.max(height, 20)  -- clamp minimal 20px
             local width = height * 0.55
+
             d.Box.Position = UDim2.new(0, topLeft.X - width/2, 0, topLeft.Y - 8)
             d.Box.Size = UDim2.new(0, width, 0, height)
             d.Box.Visible = Cfg.ESPBox
-            for _, c in ipairs(d.Corners) do c.BackgroundColor3 = color end
 
+            -- DYNAMIC CORNER: 25% dari ukuran box, clamp 5-15px
+            local thick = 2
+            local cornerLenH = math.clamp(width * 0.25, 5, 15)
+            local cornerLenV = math.clamp(height * 0.15, 5, 15)
+            local cs = d.Corners
+
+            -- 1: kiri atas horizontal
+            cs[1].Size = UDim2.new(0, cornerLenH, 0, thick)
+            cs[1].Position = UDim2.new(0, 0, 0, 0)
+            cs[1].AnchorPoint = Vector2.new(0, 0)
+            cs[1].BackgroundColor3 = color
+            -- 2: kiri atas vertical
+            cs[2].Size = UDim2.new(0, thick, 0, cornerLenV)
+            cs[2].Position = UDim2.new(0, 0, 0, 0)
+            cs[2].AnchorPoint = Vector2.new(0, 0)
+            cs[2].BackgroundColor3 = color
+            -- 3: kanan atas horizontal
+            cs[3].Size = UDim2.new(0, cornerLenH, 0, thick)
+            cs[3].Position = UDim2.new(1, 0, 0, 0)
+            cs[3].AnchorPoint = Vector2.new(1, 0)
+            cs[3].BackgroundColor3 = color
+            -- 4: kanan atas vertical
+            cs[4].Size = UDim2.new(0, thick, 0, cornerLenV)
+            cs[4].Position = UDim2.new(1, 0, 0, 0)
+            cs[4].AnchorPoint = Vector2.new(1, 0)
+            cs[4].BackgroundColor3 = color
+            -- 5: kiri bawah horizontal
+            cs[5].Size = UDim2.new(0, cornerLenH, 0, thick)
+            cs[5].Position = UDim2.new(0, 0, 1, 0)
+            cs[5].AnchorPoint = Vector2.new(0, 1)
+            cs[5].BackgroundColor3 = color
+            -- 6: kiri bawah vertical
+            cs[6].Size = UDim2.new(0, thick, 0, cornerLenV)
+            cs[6].Position = UDim2.new(0, 0, 1, 0)
+            cs[6].AnchorPoint = Vector2.new(0, 1)
+            cs[6].BackgroundColor3 = color
+            -- 7: kanan bawah horizontal
+            cs[7].Size = UDim2.new(0, cornerLenH, 0, thick)
+            cs[7].Position = UDim2.new(1, 0, 1, 0)
+            cs[7].AnchorPoint = Vector2.new(1, 1)
+            cs[7].BackgroundColor3 = color
+            -- 8: kanan bawah vertical
+            cs[8].Size = UDim2.new(0, thick, 0, cornerLenV)
+            cs[8].Position = UDim2.new(1, 0, 1, 0)
+            cs[8].AnchorPoint = Vector2.new(1, 1)
+            cs[8].BackgroundColor3 = color
+
+            -- Distance (bawah box)
             d.Dist.Position = UDim2.new(0, topLeft.X, 0, topLeft.Y + height + 4)
             d.Dist.Size = UDim2.new(0, 200, 0, 14)
             d.Dist.AnchorPoint = Vector2.new(0.5, 0)
@@ -1981,15 +1988,51 @@ RunService.RenderStepped:Connect(function()
             -- AUTO-SIZE NAME BOX
             local nameText = model.Name
             local textSize = TextService:GetTextSize(nameText, 12, Enum.Font.GothamBold, Vector2.new(500, 100))
-            local nameBoxW = textSize.X + 12  -- padding 6px kiri kanan
-            local nameBoxH = textSize.Y + 4   -- padding 2px atas bawah
+            local nameBoxW = textSize.X + 12
+            local nameBoxH = textSize.Y + 4
             local nameX = topLeft.X - nameBoxW/2
             local nameY = topLeft.Y - 8 - nameBoxH - 4
 
             d.NameBox.Position = UDim2.new(0, nameX, 0, nameY)
             d.NameBox.Size = UDim2.new(0, nameBoxW, 0, nameBoxH)
             d.NameBox.Visible = Cfg.ESPName
-            for _, c in ipairs(d.NameCorners) do c.BackgroundColor3 = color end
+
+            -- Name box corner putus-putus
+            local ncLenH = math.clamp(nameBoxW * 0.20, 4, 10)
+            local ncLenV = math.clamp(nameBoxH * 0.30, 4, 10)
+            local ncs = d.NameCorners
+            ncs[1].Size = UDim2.new(0, ncLenH, 0, thick)
+            ncs[1].Position = UDim2.new(0, 0, 0, 0)
+            ncs[1].AnchorPoint = Vector2.new(0, 0)
+            ncs[1].BackgroundColor3 = color
+            ncs[2].Size = UDim2.new(0, thick, 0, ncLenV)
+            ncs[2].Position = UDim2.new(0, 0, 0, 0)
+            ncs[2].AnchorPoint = Vector2.new(0, 0)
+            ncs[2].BackgroundColor3 = color
+            ncs[3].Size = UDim2.new(0, ncLenH, 0, thick)
+            ncs[3].Position = UDim2.new(1, 0, 0, 0)
+            ncs[3].AnchorPoint = Vector2.new(1, 0)
+            ncs[3].BackgroundColor3 = color
+            ncs[4].Size = UDim2.new(0, thick, 0, ncLenV)
+            ncs[4].Position = UDim2.new(1, 0, 0, 0)
+            ncs[4].AnchorPoint = Vector2.new(1, 0)
+            ncs[4].BackgroundColor3 = color
+            ncs[5].Size = UDim2.new(0, ncLenH, 0, thick)
+            ncs[5].Position = UDim2.new(0, 0, 1, 0)
+            ncs[5].AnchorPoint = Vector2.new(0, 1)
+            ncs[5].BackgroundColor3 = color
+            ncs[6].Size = UDim2.new(0, thick, 0, ncLenV)
+            ncs[6].Position = UDim2.new(0, 0, 1, 0)
+            ncs[6].AnchorPoint = Vector2.new(0, 1)
+            ncs[6].BackgroundColor3 = color
+            ncs[7].Size = UDim2.new(0, ncLenH, 0, thick)
+            ncs[7].Position = UDim2.new(1, 0, 1, 0)
+            ncs[7].AnchorPoint = Vector2.new(1, 1)
+            ncs[7].BackgroundColor3 = color
+            ncs[8].Size = UDim2.new(0, thick, 0, ncLenV)
+            ncs[8].Position = UDim2.new(1, 0, 1, 0)
+            ncs[8].AnchorPoint = Vector2.new(1, 1)
+            ncs[8].BackgroundColor3 = color
 
             d.Name.Position = UDim2.new(0, topLeft.X, 0, nameY)
             d.Name.Size = UDim2.new(0, nameBoxW, 0, nameBoxH)
@@ -2029,26 +2072,38 @@ RunService.RenderStepped:Connect(function()
                 d.Pic.Visible = false
             end
 
-            -- LINE FIX: mentok ke center picture (picCenterY)
+            -- ==========================================
+            -- LINE: mentok ke BORDER ATAS picture
+            -- Pakai AnchorPoint (0.5, 0.5) + titik tengah
+            -- ==========================================
             if Cfg.ESPLine then
-                local screenTop = Vector2.new(Camera.ViewportSize.X / 2, 0)
-                local targetPt = Vector2.new(topLeft.X, picCenterY)
+                local startPt = Vector2.new(Camera.ViewportSize.X / 2, 0)
+                local endPt = Vector2.new(topLeft.X, picTopY)
+                -- Clamp target Y minimal 0 biar nggak keluar layar
+                if endPt.Y < 0 then endPt = Vector2.new(endPt.X, 0) end
+
+                local midPt = (startPt + endPt) / 2
+                local len = (endPt - startPt).Magnitude
+                local ang = math.atan2(endPt.Y - startPt.Y, endPt.X - startPt.X)
+
                 d.Line.Visible = true
                 d.Line.ZIndex = 4
-                local diff = targetPt - screenTop
-                local dist2 = diff.Magnitude
-                local ang = math.atan2(diff.Y, diff.X)
-                d.Line.Size = UDim2.new(0, dist2, 0, 1)
-                d.Line.Position = UDim2.new(0, screenTop.X, 0, screenTop.Y)
+                d.Line.Size = UDim2.new(0, len, 0, 2)
+                d.Line.Position = UDim2.new(0, midPt.X, 0, midPt.Y)
                 d.Line.Rotation = math.deg(ang)
                 d.Line.BackgroundColor3 = color
             else
                 d.Line.Visible = false
             end
 
+            -- HEALTH: clamp X biar nggak ketinggalan di map mini
             local hp = math.clamp(hum.Health / hum.MaxHealth, 0, 1)
             d.HealthBar.Visible = Cfg.ESPHealth
-            d.HealthBar.Position = UDim2.new(0, topLeft.X + (width/2) + 4, 0, topLeft.Y - 8)
+            local hpBarX = topLeft.X + (width/2) + 4
+            local vs = Camera.ViewportSize
+            hpBarX = math.clamp(hpBarX, 0, vs.X - 10)
+            local hpBarY = math.max(topLeft.Y - 8, 0)
+            d.HealthBar.Position = UDim2.new(0, hpBarX, 0, hpBarY)
             d.HealthBar.Size = UDim2.new(0, 6, 0, height)
             local hcol
             if hp > 0.7 then hcol = Color3.fromRGB(0, 220, 60)
@@ -2689,4 +2744,4 @@ task.spawn(function()
     end
 end)
 
-print("[AMN HACK] v20 Loaded. SpamChat + Chams + ESP All + AutoSize Name + Load Fix + FOV 40.")
+print("[AMN HACK] v21 Loaded. ESP Line fix (PASTI nyentuh border atas picture) + Corner dynamic + Health clamp.")
