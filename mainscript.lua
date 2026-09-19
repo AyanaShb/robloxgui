@@ -967,6 +967,7 @@ Toggle(AimbotTab, "Aim Line", Cfg.AimLine, function(v) Cfg.AimLine = v end, "Aim
 ComboBox(AimbotTab, "Aim Target", {"Head", "Neck", "Chest"}, Cfg.AimTarget, function(v) Cfg.AimTarget = v end, "AimTarget")
 Slider(AimbotTab, "Aim Distance", 50, 2000, Cfg.AimDistance, "m", function(v) Cfg.AimDistance = v end, "AimDistance")
 Slider(AimbotTab, "Aim Smoothness", 1, 100, Cfg.AimSmoothness, "%", function(v) Cfg.AimSmoothness = v end, "AimSmoothness")
+
 -- ==========================================
 -- FORWARD DECLARE
 -- ==========================================
@@ -1033,7 +1034,7 @@ ComboBox(WorldTab, "Clock Time", {"Default", "Pagi", "Siang", "Sore", "Malam"}, 
 end, "ClockTime")
 
 -- ==========================================
--- SPAM CHAT (4 PESAN RANDOM + 3.4 DETIK)
+-- SPAM CHAT
 -- ==========================================
 local chatSpamActive = false
 local chatSpamThread = nil
@@ -1078,7 +1079,6 @@ local function startChatSpam()
     chatSpamActive = true
     chatSpamThread = task.spawn(function()
         while chatSpamActive do
-            -- Pilih pesan RANDOM
             local msg = chatSpamMessages[math.random(1, #chatSpamMessages)]
             if msg and msg ~= "" then
                 pcall(function() sendChatMessage(msg) end)
@@ -1100,7 +1100,6 @@ Toggle(WorldTab, "Spam Chat (4 pesan random, 3.4s)", Cfg.SpamChat, function(v)
     if v then startChatSpam() else stopChatSpam() end
 end, "SpamChat")
 
--- Info label pesan spam
 local spamInfoRow = make("Frame", {
     Size = UDim2.new(1, 0, 0, 90),
     BackgroundColor3 = Color3.fromRGB(25, 25, 35),
@@ -1599,7 +1598,6 @@ makeDraggable(IconBtn, IconBtn)
 
 CloseBtn.MouseButton1Click:Connect(function() MainFrame.Visible = false end)
 IconBtn.MouseButton1Click:Connect(function() MainFrame.Visible = not MainFrame.Visible end)
-
 -- ==========================================
 -- FOV + AIM LINE + CROSSHAIR
 -- ==========================================
@@ -1772,12 +1770,12 @@ local function createESP(model)
     })
     corner(img, 19)
 
-    -- HealthBar: AnchorPoint diubah jadi (0,0) biar SEJAJAR dengan atas box
+    -- HealthBar: AnchorPoint (0,1) = kiri-bawah biar bawahnya sejajar box
     local healthBar = make("Frame", {
-        Size = UDim2.new(0, 6, 0, 40),
+        Size = UDim2.new(0, 5, 0, 40),
         BackgroundColor3 = Color3.fromRGB(15, 15, 15),
         BorderSizePixel = 0, Visible = false, ZIndex = 7,
-        AnchorPoint = Vector2.new(0, 0),
+        AnchorPoint = Vector2.new(0, 1),   -- ✅ FIX: kiri-bawah
         Parent = ESPGui
     })
     corner(healthBar, 3)
@@ -1915,7 +1913,8 @@ local function isOnScreen(pos3d)
     return true
 end
 
-RunService.PostSimulation:Connect(function()
+-- ✅ FIX: RenderStepped (bukan PostSimulation) supaya ESP gak ketinggalan saat musuh lari
+RunService.RenderStepped:Connect(function()
     local myChar = LocalPlayer.Character
     local myRoot = myChar and myChar:FindFirstChild("HumanoidRootPart")
     local myPos = myRoot and myRoot.Position
@@ -1991,7 +1990,8 @@ RunService.PostSimulation:Connect(function()
             local width = height * 0.55
 
             local boxCenterX = anchorX
-            d.Box.Position = UDim2.new(0, boxCenterX - width/2, 0, topLeft.Y - 8)
+            local boxTop = topLeft.Y - 8
+            d.Box.Position = UDim2.new(0, boxCenterX - width/2, 0, boxTop)
             d.Box.Size = UDim2.new(0, width, 0, height)
             d.Box.Visible = Cfg.ESPBox
 
@@ -2096,22 +2096,22 @@ RunService.PostSimulation:Connect(function()
             end
 
             -- ==========================================
-            -- HEALTH v31: SAMPING KANAN box, SEJAJAR
+            -- ✅ HEALTH v33 FIX: SAMPING KANAN, BAWAH SEJAJAR BOX
             -- ==========================================
             local hp = math.clamp(hum.Health / hum.MaxHealth, 0, 1)
             d.HealthBar.Visible = Cfg.ESPHealth
 
-            local boxAbsPos = d.Box.AbsolutePosition
-            local boxAbsSize = d.Box.AbsoluteSize
+            local boxLeft = boxCenterX - width / 2
+            local boxBottom = boxTop + height
+            local barW = 5
+            local gap = 6
 
-            local hpBarX = boxAbsPos.X + boxAbsSize.X + 10  -- KANAN box + gap 10px
-            local hpBarY = boxAbsPos.Y  -- SEJAJAR dengan atas box
-            local vs = Camera.ViewportSize
-            hpBarX = math.clamp(hpBarX, 2, vs.X - 10)
-            hpBarY = math.clamp(hpBarY, 2, vs.Y - 20)
+            -- X = kanan box + gap, Y = bawah box (karena AnchorPoint (0,1))
+            local hpBarX = boxLeft + width + gap
+            local hpBarY = boxBottom
 
             d.HealthBar.Position = UDim2.new(0, hpBarX, 0, hpBarY)
-            d.HealthBar.Size = UDim2.new(0, 6, 0, boxAbsSize.Y)
+            d.HealthBar.Size = UDim2.new(0, barW, 0, height)
 
             local hcol
             if hp > 0.7 then hcol = Color3.fromRGB(0, 220, 60)
@@ -2752,4 +2752,4 @@ task.spawn(function()
     end
 end)
 
-print("[AMN HACK] v31 Loaded. Health SEJAJAR di kanan box + Spam Chat 4 pesan RANDOM 3.4s.")
+print("[AMN HACK] v33 Loaded. HealthBar di samping KANAN, BAWAH sejajar box, pakai RenderStepped (anti-lag).")
