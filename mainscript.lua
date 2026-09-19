@@ -111,7 +111,7 @@ _G.LiteHackCfg = {
     AntiGM = false,
     SpamChat = false,
     SpamChatText = "ahh ahhh ahhh ahhh",
-    SpamChatInterval = 2.0,
+    SpamChatInterval = 5.0,
     Theme = "Dark",
 }
 
@@ -1033,7 +1033,7 @@ ComboBox(WorldTab, "Clock Time", {"Default", "Pagi", "Siang", "Sore", "Malam"}, 
 end, "ClockTime")
 
 -- ==========================================
--- SPAM CHAT (RANDOM 2 - 2.5 DETIK)
+-- SPAM CHAT (FIX 5 DETIK)
 -- ==========================================
 local chatSpamActive = false
 local chatSpamThread = nil
@@ -1076,9 +1076,7 @@ local function startChatSpam()
             if text and text ~= "" then
                 pcall(function() sendChatMessage(text) end)
             end
-            -- Delay random 2.0 - 2.5 detik
-            local interval = 2.0 + math.random() * 0.5
-            task.wait(interval)
+            task.wait(5)
         end
         chatSpamThread = nil
     end)
@@ -1090,7 +1088,7 @@ local function stopChatSpam()
 end
 
 Section(WorldTab, "Chat Spam")
-Toggle(WorldTab, "Spam Chat (Random 2-2.5s)", Cfg.SpamChat, function(v)
+Toggle(WorldTab, "Spam Chat (5 detik)", Cfg.SpamChat, function(v)
     Cfg.SpamChat = v
     if v then startChatSpam() else stopChatSpam() end
 end, "SpamChat")
@@ -1795,7 +1793,7 @@ end
 
 local ValidEntities = {}
 task.spawn(function()
-    while task.wait(0.15) do
+    while task.wait(0.05) do
         local list = {}
         local aliveModels = {}
         for _, p in ipairs(Players:GetPlayers()) do
@@ -1875,7 +1873,7 @@ local function isOnScreen(pos3d)
     return true
 end
 
-RunService.RenderStepped:Connect(function()
+RunService.PostSimulation:Connect(function()
     local myChar = LocalPlayer.Character
     local myRoot = myChar and myChar:FindFirstChild("HumanoidRootPart")
     local myPos = myRoot and myRoot.Position
@@ -2055,21 +2053,18 @@ RunService.RenderStepped:Connect(function()
                 d.Line.Visible = false
             end
 
-            -- HEALTH: nempel ke BOX pakai AbsolutePosition
+            -- HEALTH: di KIRI player (rumus langsung, ringan)
             local hp = math.clamp(hum.Health / hum.MaxHealth, 0, 1)
             d.HealthBar.Visible = Cfg.ESPHealth
 
-            local boxAbs = d.Box.AbsolutePosition
-            local boxAbsSize = d.Box.AbsoluteSize
-
-            local hpBarX = boxAbs.X + boxAbsSize.X + 4
-            local hpBarY = boxAbs.Y
+            local hpBarX = boxCenterX - (width / 2) - 10
+            local hpBarY = topLeft.Y - 8
             local vs = Camera.ViewportSize
             hpBarX = math.clamp(hpBarX, 2, vs.X - 10)
             hpBarY = math.clamp(hpBarY, 2, vs.Y - 20)
 
             d.HealthBar.Position = UDim2.new(0, hpBarX, 0, hpBarY)
-            d.HealthBar.Size = UDim2.new(0, 6, 0, boxAbsSize.Y)
+            d.HealthBar.Size = UDim2.new(0, 6, 0, height)
 
             local hcol
             if hp > 0.7 then hcol = Color3.fromRGB(0, 220, 60)
@@ -2710,4 +2705,4 @@ task.spawn(function()
     end
 end)
 
-print("[AMN HACK] v26 Loaded. Spam Chat delay 2-2.5s random.")
+print("[AMN HACK] v27 Loaded. Health di kiri player + PostSimulation + Spam Chat 5 detik fix.")
