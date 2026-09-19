@@ -111,7 +111,7 @@ _G.LiteHackCfg = {
     AntiGM = false,
     SpamChat = false,
     SpamChatText = "ahh ahhh ahhh ahhh",
-    SpamChatInterval = 3.0,
+    SpamChatInterval = 3.4,
     Theme = "Dark",
 }
 
@@ -1033,16 +1033,20 @@ ComboBox(WorldTab, "Clock Time", {"Default", "Pagi", "Siang", "Sore", "Malam"}, 
 end, "ClockTime")
 
 -- ==========================================
--- SPAM CHAT (SIMBOL BERGANTIAN + 3 DETIK)
+-- SPAM CHAT (4 PESAN RANDOM + 3.4 DETIK)
 -- ==========================================
 local chatSpamActive = false
 local chatSpamThread = nil
-local chatSpamPrefixes = {"~ ", "> ", "- ", "• "}
-local chatSpamPrefixIndex = 1
+local chatSpamMessages = {
+    "~ hidup jokowi",
+    "- saya akan lawan",
+    "• ndaś muu",
+    "× nyenyenyenye",
+}
 
 local function sendChatMessage(msg)
     local ReplicatedStorage = game:GetService("ReplicatedStorage")
-    local chatEvents = ReplicatedStorage:FindFirstChild("DefaultChatSystemChatEvents")
+    local chatEvents = ReplicatedStorage:FindFirstChild("DefaultDefaultChatSystemChatEvents") or ReplicatedStorage:FindFirstChild("DefaultChatSystemChatEvents")
     if chatEvents then
         local sayRemote = chatEvents:FindFirstChild("SayMessageRequest")
         if sayRemote then
@@ -1072,20 +1076,14 @@ end
 local function startChatSpam()
     if chatSpamThread then return end
     chatSpamActive = true
-    chatSpamPrefixIndex = 1
     chatSpamThread = task.spawn(function()
         while chatSpamActive do
-            local text = Cfg.SpamChatText
-            if text and text ~= "" then
-                local prefix = chatSpamPrefixes[chatSpamPrefixIndex]
-                local fullMsg = prefix .. text
-                pcall(function() sendChatMessage(fullMsg) end)
-                chatSpamPrefixIndex = chatSpamPrefixIndex + 1
-                if chatSpamPrefixIndex > #chatSpamPrefixes then
-                    chatSpamPrefixIndex = 1
-                end
+            -- Pilih pesan RANDOM
+            local msg = chatSpamMessages[math.random(1, #chatSpamMessages)]
+            if msg and msg ~= "" then
+                pcall(function() sendChatMessage(msg) end)
             end
-            task.wait(3)
+            task.wait(3.4)
         end
         chatSpamThread = nil
     end)
@@ -1097,14 +1095,46 @@ local function stopChatSpam()
 end
 
 Section(WorldTab, "Chat Spam")
-Toggle(WorldTab, "Spam Chat (3 detik, simbol bergantian)", Cfg.SpamChat, function(v)
+Toggle(WorldTab, "Spam Chat (4 pesan random, 3.4s)", Cfg.SpamChat, function(v)
     Cfg.SpamChat = v
     if v then startChatSpam() else stopChatSpam() end
 end, "SpamChat")
 
-TextBox(WorldTab, "Teks spam...", function(text)
-    Cfg.SpamChatText = text
-end, "SpamChatText")
+-- Info label pesan spam
+local spamInfoRow = make("Frame", {
+    Size = UDim2.new(1, 0, 0, 90),
+    BackgroundColor3 = Color3.fromRGB(25, 25, 35),
+    BorderSizePixel = 0,
+    Parent = WorldTab
+})
+corner(spamInfoRow, 8)
+padding(spamInfoRow, 8)
+make("TextLabel", {
+    Size = UDim2.new(1, 0, 0, 16),
+    BackgroundTransparency = 1,
+    Text = "▸ Pesan Spam (random):",
+    TextColor3 = Color3.fromRGB(255, 100, 100),
+    TextSize = 11,
+    Font = FONT_BOLD,
+    TextXAlignment = Enum.TextXAlignment.Left,
+    Parent = spamInfoRow
+})
+local spamMessagesPreview = ""
+for i, m in ipairs(chatSpamMessages) do
+    spamMessagesPreview = spamMessagesPreview .. (i > 1 and "\n" or "") .. m
+end
+make("TextLabel", {
+    Size = UDim2.new(1, 0, 1, -20),
+    Position = UDim2.new(0, 0, 0, 20),
+    BackgroundTransparency = 1,
+    Text = spamMessagesPreview,
+    TextColor3 = Color3.fromRGB(200, 200, 210),
+    TextSize = 10,
+    Font = Enum.Font.Code,
+    TextXAlignment = Enum.TextXAlignment.Left,
+    TextYAlignment = Enum.TextYAlignment.Top,
+    Parent = spamInfoRow
+})
 
 -- ==========================================
 -- ANTI GM
@@ -1742,10 +1772,13 @@ local function createESP(model)
     })
     corner(img, 19)
 
+    -- HealthBar: AnchorPoint diubah jadi (0,0) biar SEJAJAR dengan atas box
     local healthBar = make("Frame", {
         Size = UDim2.new(0, 6, 0, 40),
         BackgroundColor3 = Color3.fromRGB(15, 15, 15),
-        BorderSizePixel = 0, Visible = false, ZIndex = 7, Parent = ESPGui
+        BorderSizePixel = 0, Visible = false, ZIndex = 7,
+        AnchorPoint = Vector2.new(0, 0),
+        Parent = ESPGui
     })
     corner(healthBar, 3)
     stroke(healthBar, Color3.fromRGB(0,0,0), 1, 0.3)
@@ -2063,7 +2096,7 @@ RunService.PostSimulation:Connect(function()
             end
 
             -- ==========================================
-            -- HEALTH v29: di SAMPING KANAN box
+            -- HEALTH v31: SAMPING KANAN box, SEJAJAR
             -- ==========================================
             local hp = math.clamp(hum.Health / hum.MaxHealth, 0, 1)
             d.HealthBar.Visible = Cfg.ESPHealth
@@ -2071,9 +2104,8 @@ RunService.PostSimulation:Connect(function()
             local boxAbsPos = d.Box.AbsolutePosition
             local boxAbsSize = d.Box.AbsoluteSize
 
-            -- KANAN box: X = boxAbsPos.X + lebar box + 10px gap
-            local hpBarX = boxAbsPos.X + boxAbsSize.X + 10
-            local hpBarY = boxAbsPos.Y
+            local hpBarX = boxAbsPos.X + boxAbsSize.X + 10  -- KANAN box + gap 10px
+            local hpBarY = boxAbsPos.Y  -- SEJAJAR dengan atas box
             local vs = Camera.ViewportSize
             hpBarX = math.clamp(hpBarX, 2, vs.X - 10)
             hpBarY = math.clamp(hpBarY, 2, vs.Y - 20)
@@ -2720,4 +2752,4 @@ task.spawn(function()
     end
 end)
 
-print("[AMN HACK] v29 Loaded. Health di KANAN box + Spam Chat 3s + simbol '-'.")
+print("[AMN HACK] v31 Loaded. Health SEJAJAR di kanan box + Spam Chat 4 pesan RANDOM 3.4s.")
