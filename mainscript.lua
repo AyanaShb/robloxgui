@@ -111,7 +111,7 @@ _G.LiteHackCfg = {
     AntiGM = false,
     SpamChat = false,
     SpamChatText = "ahh ahhh ahhh ahhh",
-    SpamChatInterval = 5.0,
+    SpamChatInterval = 2.0,
     Theme = "Dark",
 }
 
@@ -1033,10 +1033,12 @@ ComboBox(WorldTab, "Clock Time", {"Default", "Pagi", "Siang", "Sore", "Malam"}, 
 end, "ClockTime")
 
 -- ==========================================
--- SPAM CHAT (FIX 5 DETIK)
+-- SPAM CHAT (SIMBOL BERGANTIAN + 2 DETIK)
 -- ==========================================
 local chatSpamActive = false
 local chatSpamThread = nil
+local chatSpamPrefixes = {"~ ", "> ", "× ", "• "}
+local chatSpamPrefixIndex = 1
 
 local function sendChatMessage(msg)
     local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -1070,13 +1072,22 @@ end
 local function startChatSpam()
     if chatSpamThread then return end
     chatSpamActive = true
+    chatSpamPrefixIndex = 1  -- reset tiap kali ON
     chatSpamThread = task.spawn(function()
         while chatSpamActive do
             local text = Cfg.SpamChatText
             if text and text ~= "" then
-                pcall(function() sendChatMessage(text) end)
+                -- Ambil prefix bergantian
+                local prefix = chatSpamPrefixes[chatSpamPrefixIndex]
+                local fullMsg = prefix .. text
+                pcall(function() sendChatMessage(fullMsg) end)
+                -- Geser ke prefix berikutnya (rotasi)
+                chatSpamPrefixIndex = chatSpamPrefixIndex + 1
+                if chatSpamPrefixIndex > #chatSpamPrefixes then
+                    chatSpamPrefixIndex = 1
+                end
             end
-            task.wait(5)
+            task.wait(2)
         end
         chatSpamThread = nil
     end)
@@ -1088,7 +1099,7 @@ local function stopChatSpam()
 end
 
 Section(WorldTab, "Chat Spam")
-Toggle(WorldTab, "Spam Chat (5 detik)", Cfg.SpamChat, function(v)
+Toggle(WorldTab, "Spam Chat (2 detik, simbol bergantian)", Cfg.SpamChat, function(v)
     Cfg.SpamChat = v
     if v then startChatSpam() else stopChatSpam() end
 end, "SpamChat")
@@ -2053,18 +2064,24 @@ RunService.PostSimulation:Connect(function()
                 d.Line.Visible = false
             end
 
-            -- HEALTH: di KIRI player (rumus langsung, ringan)
+            -- ==========================================
+            -- HEALTH v28: PAKAI AbsolutePosition BOX
+            -- Nempel sempurna, cover Box ON/OFF
+            -- ==========================================
             local hp = math.clamp(hum.Health / hum.MaxHealth, 0, 1)
             d.HealthBar.Visible = Cfg.ESPHealth
 
-            local hpBarX = boxCenterX - (width / 2) - 10
-            local hpBarY = topLeft.Y - 8
+            local boxAbsPos = d.Box.AbsolutePosition
+            local boxAbsSize = d.Box.AbsoluteSize
+
+            local hpBarX = boxAbsPos.X - 10  -- KIRI box, gap 10px
+            local hpBarY = boxAbsPos.Y
             local vs = Camera.ViewportSize
             hpBarX = math.clamp(hpBarX, 2, vs.X - 10)
             hpBarY = math.clamp(hpBarY, 2, vs.Y - 20)
 
             d.HealthBar.Position = UDim2.new(0, hpBarX, 0, hpBarY)
-            d.HealthBar.Size = UDim2.new(0, 6, 0, height)
+            d.HealthBar.Size = UDim2.new(0, 6, 0, boxAbsSize.Y)  -- tinggi sama dengan box
 
             local hcol
             if hp > 0.7 then hcol = Color3.fromRGB(0, 220, 60)
@@ -2705,4 +2722,4 @@ task.spawn(function()
     end
 end)
 
-print("[AMN HACK] v27 Loaded. Health di kiri player + PostSimulation + Spam Chat 5 detik fix.")
+print("[AMN HACK] v28 Loaded. Health pakai AbsolutePosition box + Spam Chat simbol bergantian 2 detik.")
